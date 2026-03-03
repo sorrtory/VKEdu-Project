@@ -13,7 +13,9 @@
 - WebRTC - LiveKit
 - Онлайн-доска - Excalidraw
 - Инфраструктура - Docker, Nginx, Coturn, SocketIO, Redis, Postgres, Minio, Kafka
-- AI - VAD, ASR (FastAPI), VLM (FastAPI), LLM (vLLM).
+- AI - Fafka Event Handlers, VAD, ASR (FastAPI), VLM (FastAPI), LLM (vLLM).
+
+## Архитектура - [Miro](https://miro.com/welcomeonboard/SWE1WG1pMk5uSS9vdTZIUEhqSy8rTi8vcHUzSkhMRGhLZzVZSVpNeE1jaDh4VVowRW1kdUtaU2tZM1BaUzVOVmQvSkJyZGFGQzUyNlJFVXkxbDNMV29HWkozbm42Mzhza3Mxek9VbFA5Z3Q2TU5JWmxWTXpRdjM4a3h6K3J2ZlBNakdSWkpBejJWRjJhRnhhb1UwcS9BPT0hdjE=?share_link_id=211148927232)
 
 ## Наша команда
 

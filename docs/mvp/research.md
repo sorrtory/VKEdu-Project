@@ -37,5 +37,5 @@
 
 ## ML: примеры моделей
 
-ASR - openai/whisper-large-v3
-VLM - Qwen/Qwen3-VL-8B-Instruct-GGUF
+- ASR - openai/whisper-large-v3
+- VLM - Qwen/Qwen3-VL-8B-Instruct-GGUF
