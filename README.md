@@ -9,7 +9,7 @@
 ## Технологический стек
 
 - API - Node.js
-- Фронтенд - React
+- Фронтенд - React + Next, Tailwind
 - WebRTC - LiveKit
 - Онлайн-доска - Excalidraw
 - AI ...
