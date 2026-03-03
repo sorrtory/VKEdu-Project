@@ -22,8 +22,9 @@
 - API - node
 - Фронт - react/next
 - WebRTC - mediamtx server
-- AI. voice2text - ?
-- AI. Распознование с доски - ?
+- AI. ASR - Whisper
+- AI. Распознование с доски - VLM
+- AI. Генерация markdown и ответов на сообщения - LLM
 
 ## Список фич
 
