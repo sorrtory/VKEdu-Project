@@ -12,6 +12,7 @@
 - Фронтенд - React + Next, Tailwind
 - WebRTC - LiveKit
 - Онлайн-доска - Excalidraw
+- Инфраструктура - Docker, Nginx, Coturn, SocketIO, Redis, Postgres, Minio
 - AI ...
 
 ## Наша команда
