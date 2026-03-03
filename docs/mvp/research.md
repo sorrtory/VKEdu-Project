@@ -11,6 +11,7 @@
 - [LiveKit](https://docs.livekit.io/intro/about/) - скелет для создания ВКС, есть LiveKit Cloud с демо. Есть поддержка ИИ в облаке
 - [mediasoup](https://mediasoup.org/) - лоу левл WebRTC SFU framework. Тулкит для создания кастомного функционала
 - [OpenVidu](https://www.google.com/search?q=OpenVidu) - жесткий фреймворк, надстройка над LiveKit и mediasoup. Есть встроенные [Live Captions](https://openvidu.io/latest/docs/ai/live-captions/)
+- [Janus](https://github.com/meetecho/janus-gateway) - Janus Gateway сервер WebRTC, в отличие от Jitsi Meet сосредоточен на предоставлении низкоуровневого API для управления медиа-потоками, что делает его более гибким.  Для Janus доступна очень подробная [документация](https://janus.conf.meetecho.com/docs/modules.html) и много отдельных [демо](https://janus.conf.meetecho.com/demos/) [статья на хабре](https://habr.com/ru/articles/800699/)
 
 ### Доска
 
