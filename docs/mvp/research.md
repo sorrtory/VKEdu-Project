@@ -35,3 +35,7 @@
     - Подключить к LiveKit через MCP
     - Подключить ИИ для распознавания формул
 
+## ML: примеры моделей
+
+ASR - openai/whisper-large-v3
+VLM - Qwen/Qwen3-VL-8B-Instruct-GGUF
