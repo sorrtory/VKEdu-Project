@@ -13,7 +13,7 @@
 - WebRTC - LiveKit
 - Онлайн-доска - Excalidraw
 - Инфраструктура - Docker, Nginx, Coturn, SocketIO, Redis, Postgres, Minio, Kafka
-- AI - Kafka Event Handler, VAD, Speech-to-text (FastAPI), VLM (FastAPI), LLM (vLLM).
+- AI - VAD, ASR (FastAPI), VLM (FastAPI), LLM (vLLM).
 
 ## Наша команда
 
