@@ -4,15 +4,18 @@
 
 ## Основные функции MVP
 
-<вытащить из [docs/mvp/](./docs/mvp/)>
+- Видеоконференции
+- Онлайн-доска
+- Рилтайм саммари и субтитры
+- Общение в чате (голосом?) с ИИ в контексте саммари и доски
 
 ## Технологический стек
 
-- API - Node.js
+- API - Node.js + NestJS
 - Фронтенд - React + Next, Tailwind
 - WebRTC - LiveKit
 - Онлайн-доска - Excalidraw
-- Инфраструктура - Docker, Nginx, Coturn, SocketIO, Redis, Postgres, Minio, Kafka
+- Инфраструктура - Docker, Nginx, Coturn, SocketIO, Redis, Postgres, Minio, RabbitMQ
 - AI - Fafka Event Handlers, VAD, ASR (FastAPI), VLM (FastAPI), LLM (vLLM).
 
 ## Архитектура - [Miro](https://miro.com/welcomeonboard/SWE1WG1pMk5uSS9vdTZIUEhqSy8rTi8vcHUzSkhMRGhLZzVZSVpNeE1jaDh4VVowRW1kdUtaU2tZM1BaUzVOVmQvSkJyZGFGQzUyNlJFVXkxbDNMV29HWkozbm42Mzhza3Mxek9VbFA5Z3Q2TU5JWmxWTXpRdjM4a3h6K3J2ZlBNakdSWkpBejJWRjJhRnhhb1UwcS9BPT0hdjE=?share_link_id=211148927232)
