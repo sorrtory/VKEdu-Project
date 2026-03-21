@@ -12,8 +12,11 @@ export class AppController {
   }
 
   @Post('send')
-  @UseInterceptors(FileInterceptor('image'))
-  async send(@UploadedFile() image: Express.Multer.File, @Body() body: any): Promise<object> {
+  @UseInterceptors(FileInterceptor('file'))
+  async send(
+    @UploadedFile() image: Express.Multer.File,
+    @Body() body: any,
+  ): Promise<object> {
     return this.appService.send(image, body);
   }
 }

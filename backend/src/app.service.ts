@@ -1,14 +1,18 @@
-import { Inject, Injectable, OnModuleInit } from '@nestjs/common';
+import { BadRequestException, Inject, Injectable, OnModuleInit } from '@nestjs/common';
 import { ClientKafka } from '@nestjs/microservices';
+import { lastValueFrom } from 'rxjs/internal/lastValueFrom';
 
 @Injectable()
 export class AppService implements OnModuleInit {
   constructor(
-    @Inject('KAFKA_CLIENT') private readonly kafkaClient: ClientKafka,
+    @Inject('KAFKA_SERVICE') private readonly kafkaClient: ClientKafka,
   ) {}
 
   async onModuleInit() {
     await this.kafkaClient.connect();
+  }
+  async onModuleDestroy() {
+    await this.kafkaClient.close();
   }
 
   getHello(): string {
@@ -16,15 +20,20 @@ export class AppService implements OnModuleInit {
   }
 
   async send(image: Express.Multer.File, body: any): Promise<object> {
+    if (!image) {
+      throw new BadRequestException('file is required');
+    }
+
     const payload = {
       filename: image.originalname,
       mimetype: image.mimetype,
       size: image.size,
-      data: image.buffer.toString('base64'), // encode image as base64
+      data: image.buffer.toString('base64'),
       ...body,
+      uploadedAt: new Date().toISOString(),
     };
 
-    await this.kafkaClient.emit('image-topic', payload);
+    await lastValueFrom(this.kafkaClient.emit('boardEvent', payload));
 
     return {
       success: true,

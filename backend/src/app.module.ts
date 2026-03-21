@@ -7,13 +7,19 @@ import { AppService } from './app.service';
   imports: [
     ClientsModule.register([
       {
-        name: 'KAFKA_CLIENT',
+        name: 'KAFKA_SERVICE',
         transport: Transport.KAFKA,
         options: {
           client: {
-            brokers: ['localhost:9092'], // your broker address
+            clientId: 'nestjs-producer-client',
+            brokers: ['localhost:9092'], // use broker:29092 if Nest runs in Docker
           },
-          producer: {},
+          producer: {
+            allowAutoTopicCreation: true,
+          },
+          consumer: {
+            groupId: 'nestjs-producer-consumer',
+          },
         },
       },
     ]),
