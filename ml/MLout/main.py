@@ -2,11 +2,17 @@ import os
 import signal
 import sys
 from confluent_kafka import Consumer, KafkaError, KafkaException
+import redis
 
 BOOTSTRAP_SERVERS = os.getenv('KAFKA_BOOTSTRAP_SERVERS', 'localhost:9092')
 GROUP_ID = os.getenv('KAFKA_GROUP_ID', 'mlout_group')
 TOPICS = os.getenv('KAFKA_TOPICS', 'chatEvent,summaryEvent').split(',')
 AUTO_OFFSET_RESET = os.getenv('KAFKA_AUTO_OFFSET_RESET', 'earliest')
+
+REDIS_HOST = os.getenv('REDIS_HOST', 'redis')
+REDIS_PORT = int(os.getenv('REDIS_PORT', 6379))
+
+redis_client = redis.Redis(host=REDIS_HOST, port=REDIS_PORT, decode_responses=True)
 
 def chat_event_handler(msg):
     print(f"[chatEvent] Received: {msg.value().decode('utf-8')}")
