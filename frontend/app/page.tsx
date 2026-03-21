@@ -59,14 +59,14 @@ export default function Home() {
     <div className="h-screen overflow-hidden bg-gradient-to-br from-slate-950 via-slate-900 to-slate-800 text-white">
       <div className="mx-auto flex h-full max-w-6xl flex-col items-center justify-center gap-8 px-4 py-6">
         <h1 className="text-4xl font-semibold text-white">Broad Board</h1>
-        <div className="flex w-full flex-1 items-center gap-6">
+        <div className="flex w-full flex-1 items-stretch gap-6">
           <div
             className="flex-1 h-[80vh] overflow-hidden rounded-3xl border border-white/10 bg-slate-900/70 shadow-[0_35px_120px_-45px_rgba(15,23,42,0.9)]"
             ref={excalidrawContainerRef}
           >
             <Excalidraw />
           </div>
-          <div className="flex w-56 flex-col items-center gap-4 rounded-3xl border border-white/10 bg-white/5 p-6 text-center">
+          <div className="flex h-[80vh] w-72 flex-col gap-4 rounded-3xl border border-white/10 bg-white/5 p-6 text-center">
             <button
               className="w-full rounded-full bg-white/10 px-4 py-3 text-xs font-semibold uppercase tracking-wide text-white transition hover:bg-white/20"
               onClick={handleSendScreenshot}
@@ -74,11 +74,19 @@ export default function Home() {
             >
               {isSending ? "Отправляем..." : "Отправить скриншот"}
             </button>
-            {statusMessage && (
-              <p className="text-xs text-slate-200">
-                {statusMessage}
-              </p>
-            )}
+            <p className="min-h-[1.25rem] text-xs text-slate-200">
+              {statusMessage || ""}
+            </p>
+            <div className="flex-1 w-full overflow-hidden rounded-2xl border border-white/10 bg-slate-950/40">
+              <iframe
+                src="/livekit"
+                title="LiveKit видеозвонок"
+                className="h-full w-full border-0"
+                allow="camera; microphone; fullscreen; display-capture; autoplay"
+                loading="lazy"
+                referrerPolicy="no-referrer"
+              />
+            </div>
           </div>
         </div>
       </div>
