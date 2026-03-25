@@ -1,7 +1,5 @@
-version: '3.8'
-
 services:
-  broker:
+  broker: # kafka
     image: apache/kafka:latest
     hostname: broker
     container_name: broker
@@ -23,7 +21,9 @@ services:
       KAFKA_CONTROLLER_LISTENER_NAMES: CONTROLLER
       KAFKA_LOG_DIRS: /tmp/kraft-combined-logs
       CLUSTER_ID: MkU3OEVBNTcwNTJENDM2Qk
-  context-storage:
+    networks:
+      - ml-net
+  context-storage: # redis
     image: redis:7-alpine
     container_name: redis-context-storage
     ports:
@@ -67,6 +67,53 @@ services:
     networks:
       - ml-net
     restart: unless-stopped
+  topic-creator: # для теста
+    build:
+      context: ./ml/producer
+      dockerfile: Dockerfile
+    environment:
+      KAFKA_BOOTSTRAP_SERVERS: broker:29092
+    depends_on:
+      - broker
+    networks:
+      - ml-net
+    restart: on-failure
+
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    environment:
+      KAFKA_BOOTSTRAP_SERVERS: broker:29092
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      PORT: 3000
+    ports:
+      - "3000:3000"
+    depends_on:
+      - broker
+      - context-storage
+      - topic-creator
+    networks:
+      - ml-net
+    restart: unless-stopped
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+      shm_size: 2gb
+    environment:
+      NEXT_PUBLIC_API_URL: http://localhost:3000
+      NODE_OPTIONS: --max_old_space_size=4096
+    ports:
+      - "3001:3000"
+    depends_on:
+      - backend
+    networks:
+      - ml-net
+    restart: unless-stoppe
+
 
 networks:
   ml-net:
