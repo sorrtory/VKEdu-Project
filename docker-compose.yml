@@ -67,17 +67,6 @@ services:
     networks:
       - ml-net
     restart: unless-stopped
-  topic-creator: # для теста
-    build:
-      context: ./ml/producer
-      dockerfile: Dockerfile
-    environment:
-      KAFKA_BOOTSTRAP_SERVERS: broker:29092
-    depends_on:
-      - broker
-    networks:
-      - ml-net
-    restart: on-failure
 
   backend:
     build:
@@ -93,7 +82,6 @@ services:
     depends_on:
       - broker
       - context-storage
-      - topic-creator
     networks:
       - ml-net
     restart: unless-stopped
