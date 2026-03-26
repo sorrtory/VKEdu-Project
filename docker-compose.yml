@@ -102,9 +102,10 @@ services:
     build:
       context: ./frontend
       dockerfile: Dockerfile
+      args:
+        NEXT_PUBLIC_API_URL: http://localhost:3000   # для доступа из браузера
       shm_size: 2gb
     environment:
-      NEXT_PUBLIC_API_URL: http://localhost:3000
       NODE_OPTIONS: --max_old_space_size=4096
     ports:
       - "3001:3000"
@@ -112,7 +113,7 @@ services:
       - backend
     networks:
       - ml-net
-    restart: unless-stoppe
+    restart: unless-stopped
 
 
 networks:

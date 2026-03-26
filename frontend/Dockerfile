@@ -1,31 +1,28 @@
 FROM node:20-alpine AS builder
 
+ARG NEXT_PUBLIC_API_URL
+ENV NEXT_PUBLIC_API_URL=$NEXT_PUBLIC_API_URL
+
 WORKDIR /app
 
-
-ENV NODE_OPTIONS="--max_old_space_size=4096"
-
-
-COPY package.json package-lock.json ./
-RUN npm ci
-
+COPY package.json yarn.lock ./
+RUN yarn install --frozen-lockfile
 
 COPY . .
-
-
-RUN npm run build
-
+RUN yarn build
 
 FROM node:20-alpine
 
 WORKDIR /app
 
+ENV NODE_ENV=production
 
 COPY --from=builder /app/.next ./.next
 COPY --from=builder /app/public ./public
 COPY --from=builder /app/package.json ./package.json
-COPY --from=builder /app/package-lock.json ./package-lock.json
+COPY --from=builder /app/yarn.lock ./yarn.lock
 COPY --from=builder /app/node_modules ./node_modules
 
 EXPOSE 3000
-CMD ["npm", "run", "start"]
+
+CMD ["yarn", "start", "-p", "3000"]
