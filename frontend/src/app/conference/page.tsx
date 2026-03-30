@@ -78,7 +78,7 @@ export default function ConferenceRoomPage() {
     };
   }, [reloadKey, roomName, userName]);
 
-  const serverUrl = 'http://localhost:7880';
+  const serverUrl = 'http://95.165.175.223:7880';
 
   if (!serverUrl) {
     return (
