@@ -77,7 +77,7 @@ export default function RoomPage() {
     };
   }, [reloadKey, roomName, username]);
 
-  const livekitUrl = process.env.NEXT_PUBLIC_LIVEKIT_URL;
+  const livekitUrl = 'http://localhost:7880';
 
   if (!livekitUrl) {
     return (
