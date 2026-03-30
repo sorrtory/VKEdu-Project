@@ -1,6 +1,58 @@
 version: '3.8'
 
 services:
+  livekit:
+    image: livekit/livekit-server:latest
+    command:
+      - --node-ip=172.19.80.1
+      - --config
+      - /etc/livekit.yaml
+    container_name: livekit_server
+    env_file:
+      - .env
+    ports:
+      - "7880:7880"
+      - "7881:7881"
+      - "7882:7882/udp"
+    volumes:
+      - ./livekit.yaml:/etc/livekit.yaml:ro
+    depends_on:
+      - redis
+    restart: unless-stopped
+    environment:
+      LIVEKIT_KEYS: "devkey: ${LK_KEY}"
+    networks:
+      - livekit-network
+
+  egress:
+    image: livekit/egress:latest
+    environment:
+      EGRESS_CONFIG_FILE: /etc/egress.yaml
+    volumes:
+      - ./egress.yaml:/etc/egress.yaml
+      - ./recordings:/recordings
+    cap_add:
+      - SYS_ADMIN
+    depends_on:
+      - redis
+      - livekit
+    restart: unless-stopped
+    networks:
+      - livekit-network
+
+  temp_back:
+    build: 
+      context: .
+      dockerfile: Dockerfile
+    container_name: bb_back
+    env_file:
+      - .env
+    ports:
+      - "8080:8080"
+    environment:
+      - name=value
+    networks:
+      - livekit-network
   broker:
     image: apache/kafka:latest
     hostname: broker
@@ -70,6 +122,8 @@ services:
 
 networks:
   ml-net:
+    driver: bridge
+  livekit-network:
     driver: bridge
 
 volumes:
