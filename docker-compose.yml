@@ -71,6 +71,9 @@ services:
       KAFKA_CONTROLLER_LISTENER_NAMES: CONTROLLER
       KAFKA_LOG_DIRS: /tmp/kraft-combined-logs
       CLUSTER_ID: MkU3OEVBNTcwNTJENDM2Qk
+    networks:
+      - ml-net
+
   context-storage:
     image: redis:7-alpine
     container_name: redis-context-storage
