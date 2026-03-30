@@ -157,11 +157,11 @@ services:
     restart: unless-stopped
 
 networks:
-ml-net:
-  driver: bridge
-livekit-network:
-  driver: bridge
+  ml-net:
+    driver: bridge
+  livekit-network:
+    driver: bridge
 
 volumes:
-redis-data:
-redis-livekit-data:
+  redis-data:
+  redis-livekit-data:
