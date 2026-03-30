@@ -25,8 +25,8 @@ export class LivekitController {
     const token = await at.toJwt();
 
     return {
+      token,
       serverUrl: process.env.LIVEKIT_URL,
-      participantToken: token,
       roomName: room,
       identity,
     };

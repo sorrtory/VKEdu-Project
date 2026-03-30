@@ -18,7 +18,8 @@ export async function GET(request: NextRequest) {
 
     const targetUrl = new URL(LIVEKIT_TOKEN_URL);
     targetUrl.searchParams.set("room", room);
-    targetUrl.searchParams.set("username", username);
+    // backend ожидает параметр identity, используем username как identity
+    targetUrl.searchParams.set("identity", username);
 
     const backendResponse = await fetch(targetUrl.toString());
     const rawBody = await backendResponse.text();
