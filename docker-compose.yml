@@ -15,7 +15,7 @@ services:
   livekit:
     image: livekit/livekit-server:latest
     command:
-      - --node-ip=172.19.80.1
+      - --node-ip=95.165.175.223
       - --config
       - /etc/livekit.yaml
     container_name: livekit_server
@@ -26,7 +26,7 @@ services:
       - "7881:7881"
       - "7882:7882/udp"
     volumes:
-      - ./livekit/livekit.yaml:/etc/livekit.yaml:ro
+      - ./livekit.yaml:/etc/livekit.yaml:ro
     depends_on:
       - redis
     restart: unless-stopped
