@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 
 const DEFAULT_TOKEN_URL = "http://localhost:3000/livekit/token";
-const LIVEKIT_TOKEN_URL = process.env.LIVEKIT_TOKEN_URL ?? DEFAULT_TOKEN_URL;
+const LIVEKIT_TOKEN_URL = "http://localhost:3000/livekit/token";
 
 export async function GET(request: NextRequest) {
   try {
