@@ -17,7 +17,7 @@ services:
     volumes:
       - ./livekit.yaml:/etc/livekit.yaml:ro
     depends_on:
-      - redis
+      - context-storage
     restart: unless-stopped
     environment:
       LIVEKIT_KEYS: "devkey: ${LK_KEY}"
@@ -34,7 +34,7 @@ services:
     cap_add:
       - SYS_ADMIN
     depends_on:
-      - redis
+      - context-storage
       - livekit
     restart: unless-stopped
     networks:
