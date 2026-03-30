@@ -78,7 +78,7 @@ export default function ConferenceRoomPage() {
     };
   }, [reloadKey, roomName, userName]);
 
-  const serverUrl = process.env.NEXT_PUBLIC_LIVEKIT_URL;
+  const serverUrl = 'http://localhost:7880';
 
   if (!serverUrl) {
     return (
