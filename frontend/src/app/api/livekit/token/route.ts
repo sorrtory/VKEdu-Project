@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 
-const DEFAULT_TOKEN_URL = "http://localhost:3000/livekit/token";
-const LIVEKIT_TOKEN_URL = "http://localhost:3000/livekit/token";
+// Жёстко указываем адрес backend для MVP.
+// При необходимости позже заменим на переменные окружения.
+const LIVEKIT_TOKEN_URL = "http://95.165.175.223:3000/livekit/token";
 
 export async function GET(request: NextRequest) {
   try {
