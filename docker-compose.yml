@@ -1,17 +1,16 @@
-version: '3.8'
+version: "3.8"
 
 services:
-
   redis:
-      image: redis:7-alpine
-      command: redis-server --appendonly yes
-      volumes:
-        - redis-livekit-data:/data
-      ports:
-        - "6380:6380"
-      restart: unless-stopped
-      networks:
-        - livekit-network
+    image: redis:7-alpine
+    command: redis-server --appendonly yes
+    volumes:
+      - redis-livekit-data:/data
+    ports:
+      - "6380:6380"
+    restart: unless-stopped
+    networks:
+      - livekit-network
 
   livekit:
     image: livekit/livekit-server:latest
@@ -140,10 +139,12 @@ services:
       context: ./frontend
       dockerfile: Dockerfile
       args:
-        NEXT_PUBLIC_API_URL: http://localhost:3000  
-      shm_size: 2gb
+        NEXT_PUBLIC_API_URL: http://localhost:3000
+    shm_size: 2gb
     environment:
-      NODE_OPTIONS: --max_old_space_size=4096
+      - NEXT_PUBLIC_LIVEKIT_URL=ws://95.165.175.223:7880
+      - NEXT_PUBLIC_BACKEND_URL=http://localhost:8080
+      - NODE_OPTIONS=--max_old_space_size=4096
     ports:
       - "3001:3000"
     depends_on:
