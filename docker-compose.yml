@@ -1,6 +1,18 @@
 version: '3.8'
 
 services:
+
+  redis:
+      image: redis:7-alpine
+      command: redis-server --appendonly yes
+      volumes:
+        - redis-livekit-data:/data
+      ports:
+        - "6380:6380"
+      restart: unless-stopped
+      networks:
+        - livekit-network
+
   livekit:
     image: livekit/livekit-server:latest
     command:
@@ -15,12 +27,10 @@ services:
       - "7881:7881"
       - "7882:7882/udp"
     volumes:
-      - ./livekit.yaml:/etc/livekit.yaml:ro
+      - ./livekit/livekit.yaml:/etc/livekit.yaml:ro
     depends_on:
-      - context-storage
+      - redis
     restart: unless-stopped
-    environment:
-      LIVEKIT_KEYS: "devkey: ${LK_KEY}"
     networks:
       - livekit-network
 
@@ -34,7 +44,7 @@ services:
     cap_add:
       - SYS_ADMIN
     depends_on:
-      - context-storage
+      - redis
       - livekit
     restart: unless-stopped
     networks:
@@ -107,6 +117,41 @@ services:
       - ml-net
     restart: unless-stopped
 
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    environment:
+      KAFKA_BOOTSTRAP_SERVERS: broker:29092
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      PORT: 3000
+    ports:
+      - "3000:3000"
+    depends_on:
+      - broker
+      - context-storage
+    networks:
+      - ml-net
+    restart: unless-stopped
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+      args:
+        NEXT_PUBLIC_API_URL: http://localhost:3000  
+      shm_size: 2gb
+    environment:
+      NODE_OPTIONS: --max_old_space_size=4096
+    ports:
+      - "3001:3000"
+    depends_on:
+      - backend
+    networks:
+      - ml-net
+    restart: unless-stopped
+
 networks:
   ml-net:
     driver: bridge
@@ -115,3 +160,4 @@ networks:
 
 volumes:
   redis-data:
+  redis-livekit-data:
