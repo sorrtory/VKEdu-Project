@@ -4,6 +4,8 @@ import sys
 import base64
 from confluent_kafka import Consumer, KafkaError, KafkaException
 import redis
+import time
+from confluent_kafka.admin import AdminClient, NewTopic
 
 BOOTSTRAP_SERVERS = os.getenv('KAFKA_BOOTSTRAP_SERVERS', 'localhost:9092')
 GROUP_ID = os.getenv('KAFKA_GROUP_ID', 'mlin_group')
@@ -14,6 +16,30 @@ REDIS_HOST = os.getenv('REDIS_HOST', 'redis')
 REDIS_PORT = int(os.getenv('REDIS_PORT', 6379))
 
 redis_client = redis.Redis(host=REDIS_HOST, port=REDIS_PORT, decode_responses=True)
+
+def wait_for_topics(bootstrap_servers, topics, timeout=60):
+    start = time.time()
+    last_error = None
+    while time.time() - start < timeout:
+        try:
+            admin = AdminClient({'bootstrap.servers': bootstrap_servers})
+            existing = set(admin.list_topics(timeout=10).topics.keys())
+            missing = [t for t in topics if t not in existing]
+            if missing:
+                print(f"Creating topics: {missing}")
+                new_topics = [NewTopic(t, num_partitions=1, replication_factor=1) for t in missing]
+                fs = admin.create_topics(new_topics)
+                for topic, f in fs.items():
+                    f.result(timeout=10)
+                    print(f"Topic {topic} created")
+            else:
+                print("All topics already exist")
+            return
+        except Exception as e:
+            last_error = e
+            print(f"Waiting for Kafka/topics... {e}")
+            time.sleep(2)
+    raise Exception(f"Failed to ensure topics after {timeout} seconds: {last_error}")
 
 def speech_event_handler(msg):
     print(f"[speechEvent] Received: {msg.value().decode('utf-8')}")
@@ -36,14 +62,18 @@ def main():
         'auto.offset.reset': AUTO_OFFSET_RESET,
         'enable.auto.commit': False,
     }
+    wait_for_topics(BOOTSTRAP_SERVERS, TOPICS)
     consumer = Consumer(conf)
+    print("Consumer created, subscribing...", flush=True)
     consumer.subscribe(TOPICS)
+    print(f"Subscribed to {TOPICS}", flush=True)
 
     print(f"MLin started. Subscribed to: {TOPICS}")
     try:
         while True:
             msg = consumer.poll(timeout=1.0)
             if msg is None:
+                # print("No message received", flush=True)
                 continue
             if msg.error():
                 if msg.error().code() == KafkaError._PARTITION_EOF:

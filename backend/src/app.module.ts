@@ -11,7 +11,7 @@ import { AppService } from './app.service';
         transport: Transport.KAFKA,
         options: {
           client: {
-            brokers: ['localhost:9092'], // your broker address
+            brokers: ['broker:29092'], // your broker address
           },
           producer: {},
         },
