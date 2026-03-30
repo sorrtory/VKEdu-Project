@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 
-const DEFAULT_TOKEN_URL = "http://localhost:3000/livekit/token";
-const LIVEKIT_TOKEN_URL = process.env.LIVEKIT_TOKEN_URL ?? DEFAULT_TOKEN_URL;
+// Жёстко указываем адрес сервиса backend внутри docker-compose-сети.
+// Снаружи фронт доступен по IP, но из контейнера проще ходить по имени сервиса.
+const LIVEKIT_TOKEN_URL = "http://backend:3000/livekit/token";
 
 export async function GET(request: NextRequest) {
   try {
@@ -18,7 +19,8 @@ export async function GET(request: NextRequest) {
 
     const targetUrl = new URL(LIVEKIT_TOKEN_URL);
     targetUrl.searchParams.set("room", room);
-    targetUrl.searchParams.set("username", username);
+    // backend ожидает параметр identity, используем username как identity
+    targetUrl.searchParams.set("identity", username);
 
     const backendResponse = await fetch(targetUrl.toString());
     const rawBody = await backendResponse.text();
