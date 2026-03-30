@@ -40,19 +40,6 @@ services:
     networks:
       - livekit-network
 
-  temp_back:
-    build: 
-      context: .
-      dockerfile: Dockerfile
-    container_name: bb_back
-    env_file:
-      - .env
-    ports:
-      - "8080:8080"
-    environment:
-      - name=value
-    networks:
-      - livekit-network
   broker:
     image: apache/kafka:latest
     hostname: broker
