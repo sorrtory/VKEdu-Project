@@ -1,5 +1,55 @@
+version: "3.8"
+
 services:
-  broker: # kafka
+  redis:
+    image: redis:7-alpine
+    command: redis-server --appendonly yes
+    volumes:
+      - redis-livekit-data:/data
+    ports:
+      - "6380:6380"
+    restart: unless-stopped
+    networks:
+      - livekit-network
+
+  livekit:
+    image: livekit/livekit-server:latest
+    command:
+      - --node-ip=172.19.80.1
+      - --config
+      - /etc/livekit.yaml
+    container_name: livekit_server
+    env_file:
+      - .env
+    ports:
+      - "7880:7880"
+      - "7881:7881"
+      - "7882:7882/udp"
+    volumes:
+      - ./livekit/livekit.yaml:/etc/livekit.yaml:ro
+    depends_on:
+      - redis
+    restart: unless-stopped
+    networks:
+      - livekit-network
+
+  egress:
+    image: livekit/egress:latest
+    environment:
+      EGRESS_CONFIG_FILE: /etc/egress.yaml
+    volumes:
+      - ./egress.yaml:/etc/egress.yaml
+      - ./recordings:/recordings
+    cap_add:
+      - SYS_ADMIN
+    depends_on:
+      - redis
+      - livekit
+    restart: unless-stopped
+    networks:
+      - livekit-network
+
+  broker:
     image: apache/kafka:latest
     hostname: broker
     container_name: broker
@@ -21,9 +71,7 @@ services:
       KAFKA_CONTROLLER_LISTENER_NAMES: CONTROLLER
       KAFKA_LOG_DIRS: /tmp/kraft-combined-logs
       CLUSTER_ID: MkU3OEVBNTcwNTJENDM2Qk
-    networks:
-      - ml-net
-  context-storage: # redis
+  context-storage:
     image: redis:7-alpine
     container_name: redis-context-storage
     ports:
@@ -91,10 +139,12 @@ services:
       context: ./frontend
       dockerfile: Dockerfile
       args:
-        NEXT_PUBLIC_API_URL: http://localhost:3000   # для доступа из браузера
-      shm_size: 2gb
+        NEXT_PUBLIC_API_URL: http://localhost:3000
+    shm_size: 2gb
     environment:
-      NODE_OPTIONS: --max_old_space_size=4096
+      - NEXT_PUBLIC_LIVEKIT_URL=ws://95.165.175.223:7880
+      - NEXT_PUBLIC_BACKEND_URL=http://localhost:8080
+      - NODE_OPTIONS=--max_old_space_size=4096
     ports:
       - "3001:3000"
     depends_on:
@@ -103,10 +153,12 @@ services:
       - ml-net
     restart: unless-stopped
 
-
 networks:
   ml-net:
+    driver: bridge
+  livekit-network:
     driver: bridge
 
 volumes:
   redis-data:
+  redis-livekit-data:
