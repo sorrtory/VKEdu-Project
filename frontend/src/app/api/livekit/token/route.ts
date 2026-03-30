@@ -1,8 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 
-// Жёстко указываем адрес backend для MVP.
-// При необходимости позже заменим на переменные окружения.
-const LIVEKIT_TOKEN_URL = "http://95.165.175.223:3000/livekit/token";
+// Жёстко указываем адрес сервиса backend внутри docker-compose-сети.
+// Снаружи фронт доступен по IP, но из контейнера проще ходить по имени сервиса.
+const LIVEKIT_TOKEN_URL = "http://backend:3000/livekit/token";
 
 export async function GET(request: NextRequest) {
   try {
