@@ -116,26 +116,26 @@ services:
       - ml-net
     restart: unless-stopped
 
-backend:
-  build:
-    context: ./backend
-    dockerfile: Dockerfile
-  environment:
-    - LIVEKIT_API_KEY=devkey
-    - LIVEKIT_API_SECRET=secret_hehe_boy_a3f8c1e9b2d4f6a0c5e7b9d1f3a5c8e2b4d6f8a0c2e4b6d8f0a2c4e6b8d0f2a4
-    - LIVEKIT_URL=ws://livekit_server:7880
-    - KAFKA_BOOTSTRAP_SERVERS=broker:29092
-    - REDIS_HOST=context-storage
-    - REDIS_PORT=6379 
-    - PORT=3000
-  ports:
-    - "3000:3000"
-  depends_on:
-    - broker
-    - context-storage
-  networks:
-    - ml-net
-  restart: unless-stopped
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    environment:
+      - LIVEKIT_API_KEY=devkey
+      - LIVEKIT_API_SECRET=secret_hehe_boy_a3f8c1e9b2d4f6a0c5e7b9d1f3a5c8e2b4d6f8a0c2e4b6d8f0a2c4e6b8d0f2a4
+      - LIVEKIT_URL=ws://livekit_server:7880
+      - KAFKA_BOOTSTRAP_SERVERS=broker:29092
+      - REDIS_HOST=context-storage
+      - REDIS_PORT=6379 
+      - PORT=3000
+    ports:
+      - "3000:3000"
+    depends_on:
+      - broker
+      - context-storage
+    networks:
+      - ml-net
+    restart: unless-stopped
 
   frontend:
     build:
@@ -157,11 +157,11 @@ backend:
     restart: unless-stopped
 
 networks:
-  ml-net:
-    driver: bridge
-  livekit-network:
-    driver: bridge
+ml-net:
+  driver: bridge
+livekit-network:
+  driver: bridge
 
 volumes:
-  redis-data:
-  redis-livekit-data:
+redis-data:
+redis-livekit-data:
