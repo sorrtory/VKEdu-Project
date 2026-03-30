@@ -12,7 +12,7 @@ import { AppService } from './app.service';
         options: {
           client: {
             clientId: 'nestjs-producer-client',
-            brokers: ['localhost:9092'], // use broker:29092 if Nest runs in Docker
+            brokers: ['broker:9092'], // use broker:29092 if Nest runs in Docker
           },
           producer: {
             allowAutoTopicCreation: true,
