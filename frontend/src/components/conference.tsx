@@ -35,7 +35,6 @@ export default function ConferenceRoom({
         data-lk-theme="default"
       >
         <VideoConference />
-        <ControlBar variation="minimal" />
         <RoomAudioRenderer />
       </LiveKitRoom>
     </div>
