@@ -1,18 +1,18 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react'; // ← Добавлено useSearchParams
-import { useSearchParams } from 'next/navigation';
+import { useEffect, useMemo, useState } from 'react';
 import ConferenceRoom from '@/src/components/conference';
 
-export default function ConferenceRoomPage() {
-  const searchParams = useSearchParams(); // ← Получаем параметры
-  
+export default function ConferenceRoomPage({ 
+  searchParams 
+}: { 
+  searchParams: { room?: string } 
+}) {
   const [token, setToken] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [reloadKey, setReloadKey] = useState(0);
 
-  // ← Берём roomName из URL, иначе дефолтное значение
-  const roomName = searchParams.get('room') ?? process.env.NEXT_PUBLIC_LIVEKIT_ROOM ?? 'my-room';
+  const roomName = searchParams.room ?? process.env.NEXT_PUBLIC_LIVEKIT_ROOM ?? 'my-room';
 
   const userName = useMemo(() => {
     const randomSegment =
@@ -33,7 +33,6 @@ export default function ConferenceRoomPage() {
       setToken(null);
 
       try {
-        // ← Бэкенд ждёт username (не userName) и room
         const params = new URLSearchParams({ room: roomName, username: userName });
         const response = await fetch(`/api/livekit/token?${params.toString()}`, {
           signal: controller.signal,
@@ -79,7 +78,6 @@ export default function ConferenceRoomPage() {
     };
   }, [reloadKey, roomName, userName]);
 
-  // ← Server URL: можно оставить хардкод или взять из env
   const serverUrl = process.env.NEXT_PUBLIC_LIVEKIT_URL ?? 'http://95.165.175.223:7880';
 
   if (!serverUrl) {
