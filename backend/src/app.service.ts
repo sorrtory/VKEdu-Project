@@ -1,30 +1,55 @@
-import { BadRequestException, Inject, Injectable, OnModuleInit } from '@nestjs/common';
+import {
+  BadRequestException,
+  Inject,
+  Injectable,
+  OnModuleInit,
+  Optional,
+  ServiceUnavailableException,
+} from '@nestjs/common';
 import { ClientKafka } from '@nestjs/microservices';
 import { lastValueFrom } from 'rxjs/internal/lastValueFrom';
+
+export interface BoardEventPayload {
+  filename: string;
+  mimetype: string;
+  size: number;
+  data: string; // base64
+  uploadedAt: string; // ISO timestamp
+  [key: string]: unknown;
+}
 
 @Injectable()
 export class AppService implements OnModuleInit {
   constructor(
-    @Inject('KAFKA_SERVICE') private readonly kafkaClient: ClientKafka,
+    @Optional()
+    @Inject('KAFKA_SERVICE')
+    private readonly kafkaClient?: ClientKafka,
   ) {}
 
   async onModuleInit() {
-    await this.kafkaClient.connect();
+    if (this.kafkaClient) {
+      await this.kafkaClient.connect();
+    }
   }
   async onModuleDestroy() {
-    await this.kafkaClient.close();
+    if (this.kafkaClient) {
+      await this.kafkaClient.close();
+    }
   }
 
   getHello(): string {
     return 'Hello World!';
   }
 
-  async send(image: Express.Multer.File, body: any): Promise<object> {
+  async send(
+    image: Express.Multer.File,
+    body: Record<string, unknown>,
+  ): Promise<object> {
     if (!image) {
       throw new BadRequestException('file is required');
     }
 
-    const payload = {
+    const payload: BoardEventPayload = {
       filename: image.originalname,
       mimetype: image.mimetype,
       size: image.size,
@@ -32,6 +57,12 @@ export class AppService implements OnModuleInit {
       ...body,
       uploadedAt: new Date().toISOString(),
     };
+
+    if (!this.kafkaClient) {
+      throw new ServiceUnavailableException(
+        'Kafka is not configured; feature disabled',
+      );
+    }
 
     await lastValueFrom(this.kafkaClient.emit('boardEvent', payload));
 

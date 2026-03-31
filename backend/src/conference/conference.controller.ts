@@ -1,21 +1,53 @@
-import { Body, Controller, Post } from "@nestjs/common";
-import { ConferenceService } from "./conference.service";
+import { Body, Controller, Post } from '@nestjs/common';
+import { ConferenceService } from './conference.service';
+import {
+  ApiTags,
+  ApiOperation,
+  ApiResponse,
+  ApiProperty,
+} from '@nestjs/swagger';
+
+class TokenDto {
+  @ApiProperty()
+  roomName: string;
+
+  @ApiProperty()
+  participantName: string;
+}
+
+class RoomDto {
+  @ApiProperty()
+  roomName: string;
+}
 
 @Controller('conference')
+@ApiTags('Conference')
 export class ConferenceController {
-    constructor(private ConferenceService: ConferenceService) {}
+  constructor(private ConferenceService: ConferenceService) {}
 
   @Post('token')
-  async getToken(@Body() body: { roomName: string; participantName: string }) {
+  @ApiOperation({ summary: 'Generate LiveKit token for a participant' })
+  @ApiResponse({
+    status: 200,
+    description: 'Returns a JWT token',
+    schema: { example: { token: '...' } },
+  })
+  async getToken(@Body() body: TokenDto) {
     const token = await this.ConferenceService.generateToken(
       body.roomName,
-      body.participantName
+      body.participantName,
     );
     return { token };
   }
 
   @Post('room')
-  async createRoom(@Body() body: { roomName: string }) {
+  @ApiOperation({ summary: 'Create a LiveKit room' })
+  @ApiResponse({
+    status: 200,
+    description: 'Room created',
+    schema: { example: { success: true } },
+  })
+  async createRoom(@Body() body: RoomDto) {
     await this.ConferenceService.createRoom(body.roomName);
     return { success: true };
   }

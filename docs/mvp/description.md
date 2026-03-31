@@ -17,13 +17,11 @@
 
 ## Сущности
 
-~~мб будем поддерживать дестктопность (мини ddd / hexagonal arch -> tauri)~~
-
-- API - node
-- Фронт - react/next
-- WebRTC - mediamtx server
+- API - nestjs
+- Фронт - nextjs
+- WebRTC - livekit
 - AI. ASR - Whisper
-- AI. Распознавание с доски - MCP (+- VLM)
+- AI. Распознавание с доски - MCP (+ VLM)
 - AI. Генерация markdown и ответов на сообщения - LLM
 
 ## Список фич
