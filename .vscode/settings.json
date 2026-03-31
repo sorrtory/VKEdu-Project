@@ -1,0 +1,9 @@
+// {
+//   "github.copilot.advanced": {
+//     "excludedFiles": [
+//       "**/secrets/**",
+//       "**/*.env",
+//       "**/test/fixtures/**"
+//     ]
+//   }
+// }
