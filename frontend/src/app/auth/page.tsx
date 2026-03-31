@@ -24,7 +24,7 @@ export default function Auth() {
     return (
 
         <div className="relative w-full min-h-[calc(100vh-4rem)] overflow-hidden bg-white flex">
-            {mode === 'login' ? (
+            {/* {mode === 'login' ? (
                 <Image 
                 src="/images/Logo.png"
                 alt="logo"
@@ -33,7 +33,7 @@ export default function Auth() {
                 />           
             ) : (
                 <h3 className="self-start text-sm md:text-base text-white/90 max-w-xl">Забудьте о неудобных конспектах в блокноте во время интернет лекций!</h3>
-            )}
+            )} */}
 
             <div
                 className="absolute h-full inset-y-0 left-0 min-w-[60vw] bg-primary flex flex-col items-start justify-center p-10 gap-4 transition-transform duration-700 ease-in-out"

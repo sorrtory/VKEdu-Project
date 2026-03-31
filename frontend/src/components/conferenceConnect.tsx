@@ -15,7 +15,6 @@ export default function ConferenceConnectionModule({ isOpen, onClose }: Conferen
   const [loading, setLoading] = useState(false);
   const router = useRouter();
 
-  // Блокировка скролла и закрытие по Escape
   useEffect(() => {
     if (isOpen) {
       document.body.style.overflow = 'hidden';
@@ -56,16 +55,16 @@ export default function ConferenceConnectionModule({ isOpen, onClose }: Conferen
       onClick={onClose}
     >
       <div 
-        className="bg-white dark:bg-gray-800 rounded-xl p-6 w-full max-w-md shadow-2xl mx-4"
+        className="bg-white dark:bg-white rounded-xl p-6 w-full max-w-md shadow-2xl mx-4"
         onClick={(e) => e.stopPropagation()}
       >
         <div className="flex justify-between items-center mb-6">
-          <h2 className="text-xl font-bold text-gray-900 dark:text-white">
+          <h2 className="text-xl font-bold text-gray-900">
             Подключение к конференции
           </h2>
           <button 
             onClick={onClose}
-            className="text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-white transition"
+            className="text-white bg-primary hover:bg-primary-hover transition"
             type="button"
           >
             <RxCross2 size={28} />

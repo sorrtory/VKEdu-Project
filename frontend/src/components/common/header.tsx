@@ -21,15 +21,15 @@ export default function Header() {
                     </Link>
                 </div>
                 <div className="flex gap-2">
-                    <Link href='/auth'>
                         <button className="bg-primary hover:bg-primary-hover px-4 py-2 rounded-4 h-12 w-12 flex flex-col items-center justify-center gap-2"          >
                             <IoMdSettings size={60}/>
                         </button>
-                    </Link>
                     <div>
-                        <button className="bg-primary hover:bg-primary-hover px-4 py-2 rounded-full h-12 w-12 flex flex-col items-center justify-center gap-2"          >
-                            <CgProfile size={60}/>
-                        </button>
+                        <Link href='/auth'>
+                            <button className="bg-primary hover:bg-primary-hover px-4 py-2 rounded-full h-12 w-12 flex flex-col items-center justify-center gap-2"          >
+                                <CgProfile size={60}/>
+                            </button>
+                        </Link>
                     </div>
                 </div>              
             </div>
