@@ -4,7 +4,6 @@ import Image from "next/image";
 import { FaCalendar } from "react-icons/fa";
 import { FaUserGroup } from "react-icons/fa6";
 import { IoIosVideocam } from "react-icons/io";
-import Input from "../components/ui/Input";
 
 export default function Home() {
   return (
@@ -43,8 +42,6 @@ export default function Home() {
               </span>
             </button>
           </div>
-
-          <Input label="Введите ваш email" />
         </div>
       </div>
     </div>

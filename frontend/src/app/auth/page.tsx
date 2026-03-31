@@ -24,8 +24,8 @@ export default function Auth() {
 
         <div className="relative w-full min-h-[calc(100vh-4rem)] overflow-hidden bg-white">
             <div
-                className="absolute h-full inset-y-0 left-0 min-w-[80vw] bg-primary flex flex-col items-start justify-center p-10 gap-4 transition-transform duration-700 ease-in-out"
-                style={{ transform: mode === 'register' ? 'translateX(60vw)' : 'translateX(0)' }}
+                className="absolute h-full inset-y-0 left-0 min-w-[60vw] bg-primary flex flex-col items-start justify-center p-10 gap-4 transition-transform duration-700 ease-in-out"
+                style={{ transform: mode === 'register' ? 'translateX(40vw)' : 'translateX(0)' }}
             >
             {mode === 'login' ? (
                 <h1 className="self-start text-5xl md:text-6xl font-extrabold text-white">Логин</h1>
