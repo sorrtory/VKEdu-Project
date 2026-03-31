@@ -1,19 +1,21 @@
-npm i -g @nestjs/cli
+# Logging of CLI commands
 
-nest new backend
+This file contains a log of CLI commands that were run in the course of development.
 
+Note: If having trouble with VS code errors. [Restart](https://stackoverflow.com/questions/78665250/unsafe-assignment-of-an-error-typed-value-typescript-eslint-error) eslint server
 
-yarn add -D @types/multer
+## Backend yarn log
 
-yarn add @nestjs/microservices kafkajs
+1. `npm i -g @nestjs/cli`
+2. `nest new backend`
+3. `yarn add -D @types/multer`
+4. `yarn add @nestjs/microservices kafkajs`
+5. `yarn add livekit-server-sdk`
+6. `yarn add @nestjs/swagger swagger-ui-express`
+7. `yarn add @nestjs/config`
 
-yarn add livekit-server-sdk
+## Frontend yarn log
 
-
-
-## front
-yarn add next react react-dom 
-yarn add -D typescript @types/node @types/react @types/react-dom 
-
-
-yarn add livekit-client @livekit/components-react @livekit/components-styles
+1. `yarn add next react react-dom`
+2. `yarn add -D typescript @types/node @types/react @types/react-dom`
+3. `yarn add livekit-client @livekit/components-react @livekit/components-styles`

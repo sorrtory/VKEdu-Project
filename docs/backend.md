@@ -1,9 +1,16 @@
 # Backend
 
+## Tips and commands
+
+To start the backend server:
+
 ```bash
 cd backend
 yarn start
 ```
+
+
+### Test /send endpoint:
 
 Test /send endpoint:
 
@@ -17,7 +24,7 @@ curl -X POST http://localhost:3000/send \
 
 <!-- {"success":true,"filename":"input.png","mimetype":"image/png","size":18441,"body":{"message":"hello"}}%  -->
 
-kafka
+### kafka
 
 announce topic
 
