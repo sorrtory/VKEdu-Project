@@ -1,164 +1,183 @@
-version: "3.8"
-
 services:
   redis:
     image: redis:7-alpine
+    container_name: livekit-redis
+    profiles: ["infra", "webapp", "ml"]
     command: redis-server --appendonly yes
+    ports:
+      - "${LIVEKIT_REDIS_PORT}:${REDIS_CONTAINER_PORT}"
     volumes:
       - redis-livekit-data:/data
-    ports:
-      - "6380:6380"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
     restart: unless-stopped
     networks:
-      - livekit-network
+      - app-network
 
   livekit:
     image: livekit/livekit-server:latest
+    container_name: livekit-server
+    profiles: ["infra", "webapp"]
     command:
-      - --node-ip=172.19.80.1
       - --config
       - /etc/livekit.yaml
-    container_name: livekit_server
-    env_file:
-      - .env
+    volumes:
+      - ./livekit.yaml:/etc/livekit.yaml:ro
     ports:
-      - "7880:7880"
-      - "7881:7881"
-      - "7882:7882/udp"
-    volumes:
-      - ./livekit/livekit.yaml:/etc/livekit.yaml:ro
+      - "${LIVEKIT_PORT}:${LIVEKIT_PORT}"
+      - "${LIVEKIT_SIGNAL_PORT}:${LIVEKIT_SIGNAL_PORT}"
+      - "${LIVEKIT_RTC_UDP_PORT}:${LIVEKIT_RTC_UDP_PORT}/udp"
     depends_on:
-      - redis
+      redis:
+        condition: service_healthy
     restart: unless-stopped
     networks:
-      - livekit-network
-
-  egress:
-    image: livekit/egress:latest
-    environment:
-      EGRESS_CONFIG_FILE: /etc/egress.yaml
-    volumes:
-      - ./egress.yaml:/etc/egress.yaml
-      - ./recordings:/recordings
-    cap_add:
-      - SYS_ADMIN
-    depends_on:
-      - redis
-      - livekit
-    restart: unless-stopped
-    networks:
-      - livekit-network
+      - app-network
 
   broker:
     image: apache/kafka:latest
-    hostname: broker
     container_name: broker
+    hostname: broker
+    profiles: ["infra", "webapp", "ml"]
     ports:
-      - 9092:9092
+      - "${KAFKA_EXTERNAL_PORT}:${KAFKA_EXTERNAL_PORT}"
     environment:
-      KAFKA_BROKER_ID: 1
-      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT,PLAINTEXT_HOST:PLAINTEXT,CONTROLLER:PLAINTEXT
-      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://broker:29092,PLAINTEXT_HOST://localhost:9092
-      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
-      KAFKA_GROUP_INITIAL_REBALANCE_DELAY_MS: 0
-      KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 1
-      KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 1
-      KAFKA_PROCESS_ROLES: broker,controller
-      KAFKA_NODE_ID: 1
-      KAFKA_CONTROLLER_QUORUM_VOTERS: 1@broker:29093
-      KAFKA_LISTENERS: PLAINTEXT://broker:29092,CONTROLLER://broker:29093,PLAINTEXT_HOST://0.0.0.0:9092
-      KAFKA_INTER_BROKER_LISTENER_NAME: PLAINTEXT
-      KAFKA_CONTROLLER_LISTENER_NAMES: CONTROLLER
-      KAFKA_LOG_DIRS: /tmp/kraft-combined-logs
-      CLUSTER_ID: MkU3OEVBNTcwNTJENDM2Qk
-  context-storage:
-    image: redis:7-alpine
-    container_name: redis-context-storage
-    ports:
-      - "6379:6379"
-    volumes:
-      - redis-data:/data
+      KAFKA_BROKER_ID: ${KAFKA_BROKER_ID}
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: ${KAFKA_LISTENER_SECURITY_PROTOCOL_MAP}
+      KAFKA_ADVERTISED_LISTENERS: ${KAFKA_ADVERTISED_LISTENERS}
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: ${KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR}
+      KAFKA_GROUP_INITIAL_REBALANCE_DELAY_MS: ${KAFKA_GROUP_INITIAL_REBALANCE_DELAY_MS}
+      KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: ${KAFKA_TRANSACTION_STATE_LOG_MIN_ISR}
+      KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: ${KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR}
+      KAFKA_PROCESS_ROLES: ${KAFKA_PROCESS_ROLES}
+      KAFKA_NODE_ID: ${KAFKA_NODE_ID}
+      KAFKA_CONTROLLER_QUORUM_VOTERS: ${KAFKA_CONTROLLER_QUORUM_VOTERS}
+      KAFKA_LISTENERS: ${KAFKA_LISTENERS}
+      KAFKA_INTER_BROKER_LISTENER_NAME: ${KAFKA_INTER_BROKER_LISTENER_NAME}
+      KAFKA_CONTROLLER_LISTENER_NAMES: ${KAFKA_CONTROLLER_LISTENER_NAMES}
+      KAFKA_LOG_DIRS: ${KAFKA_LOG_DIRS}
+      CLUSTER_ID: ${KAFKA_CLUSTER_ID}
+    restart: unless-stopped
     networks:
-      - ml-net
-    command: redis-server --appendonly yes
+      - app-network
+
+  postgres:
+    image: postgres:17
+    container_name: postgres
+    profiles: ["infra", "webapp"]
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-vkedu}
+      POSTGRES_USER: ${POSTGRES_USER:-vkedu}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-vkedu}
+      PGDATA: /var/lib/postgresql/data/pgdata
+    ports:
+      - "${POSTGRES_PORT:-5432}:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-vkedu} -d ${POSTGRES_DB:-vkedu}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    restart: unless-stopped
+    networks:
+      - app-network
+
   mlin:
+    profiles: ["ml"]
     build:
-      context: ./ml/MLin
+      context: ./services/ml/MLin
       dockerfile: Dockerfile
     environment:
-      KAFKA_BOOTSTRAP_SERVERS: broker:29092
-      KAFKA_GROUP_ID: mlin_group
-      KAFKA_TOPICS: speechEvent,boardEvent
+      KAFKA_BOOTSTRAP_SERVERS: broker:${KAFKA_INTERNAL_PORT}
+      KAFKA_GROUP_ID: ${MLIN_KAFKA_GROUP_ID}
+      KAFKA_TOPICS: ${MLIN_KAFKA_TOPICS}
       REDIS_HOST: redis
-      REDIS_PORT: 6379
-
+      REDIS_PORT: ${REDIS_CONTAINER_PORT}
     depends_on:
-      - broker
-      - context-storage
-    networks:
-      - ml-net
+      broker:
+        condition: service_started
+      redis:
+        condition: service_healthy
     restart: unless-stopped
+    networks:
+      - app-network
 
   mlout:
+    profiles: ["ml"]
     build:
-      context: ./ml/MLout
+      context: ./services/ml/MLout
       dockerfile: Dockerfile
     environment:
-      KAFKA_BOOTSTRAP_SERVERS: broker:29092
-      KAFKA_GROUP_ID: mlout_group
-      KAFKA_TOPICS: chatEvent,summaryEvent
+      KAFKA_BOOTSTRAP_SERVERS: broker:${KAFKA_INTERNAL_PORT}
+      KAFKA_GROUP_ID: ${MLOUT_KAFKA_GROUP_ID}
+      KAFKA_TOPICS: ${MLOUT_KAFKA_TOPICS}
       REDIS_HOST: redis
-      REDIS_PORT: 6379
+      REDIS_PORT: ${REDIS_CONTAINER_PORT}
     depends_on:
-      - broker
-      - context-storage
-    networks:
-      - ml-net
+      broker:
+        condition: service_started
+      redis:
+        condition: service_healthy
     restart: unless-stopped
+    networks:
+      - app-network
 
   backend:
+    profiles: ["webapp"]
     build:
-      context: ./backend
-      dockerfile: Dockerfile
+      context: .
+      dockerfile: infra/docker/backend.Dockerfile
     environment:
-      KAFKA_BOOTSTRAP_SERVERS: broker:29092
-      REDIS_HOST: redis
-      REDIS_PORT: 6379
-      PORT: 3000
+      BACKEND_PORT: ${BACKEND_PORT}
+      KAFKA_BROKERS: broker:${KAFKA_INTERNAL_PORT}
+      KAFKA_CONSUMER_GROUP: ${KAFKA_CONSUMER_GROUP}
+      LIVEKIT_SERVER_URL: http://livekit:${LIVEKIT_PORT}
+      LIVEKIT_API_KEY: ${LIVEKIT_API_KEY}
+      LIVEKIT_API_SECRET: ${LIVEKIT_API_SECRET}
+      DATABASE_URL: ${DATABASE_URL:-postgresql://${POSTGRES_USER:-vkedu}:${POSTGRES_PASSWORD:-vkedu}@postgres:5432/${POSTGRES_DB:-vkedu}}
     ports:
-      - "3000:3000"
+      - "${BACKEND_PORT}:${BACKEND_PORT}"
     depends_on:
-      - broker
-      - context-storage
-    networks:
-      - ml-net
+      livekit:
+        condition: service_started
+      broker:
+        condition: service_started
+      postgres:
+        condition: service_healthy
     restart: unless-stopped
+    networks:
+      - app-network
 
   frontend:
+    profiles: ["webapp"]
     build:
-      context: ./frontend
-      dockerfile: Dockerfile
+      context: .
+      dockerfile: infra/docker/frontend.Dockerfile
       args:
-        NEXT_PUBLIC_API_URL: http://localhost:3000
-    shm_size: 2gb
+        NEXT_PUBLIC_LIVEKIT_URL: ${NEXT_PUBLIC_LIVEKIT_URL}
+        NEXT_PUBLIC_LIVEKIT_ROOM: ${NEXT_PUBLIC_LIVEKIT_ROOM}
     environment:
-      - NEXT_PUBLIC_LIVEKIT_URL=ws://95.165.175.223:7880
-      - NEXT_PUBLIC_BACKEND_URL=http://localhost:8080
-      - NODE_OPTIONS=--max_old_space_size=4096
+      NEXT_PUBLIC_LIVEKIT_URL: ${NEXT_PUBLIC_LIVEKIT_URL}
+      NEXT_PUBLIC_LIVEKIT_ROOM: ${NEXT_PUBLIC_LIVEKIT_ROOM}
+      NODE_OPTIONS: ${NODE_OPTIONS}
     ports:
-      - "3001:3000"
+      - "${FRONTEND_PORT}:${FRONTEND_PORT}"
     depends_on:
-      - backend
-    networks:
-      - ml-net
+      backend:
+        condition: service_started
     restart: unless-stopped
+    networks:
+      - app-network
 
 networks:
-  ml-net:
-    driver: bridge
-  livekit-network:
+  app-network:
     driver: bridge
 
 volumes:
-  redis-data:
+  postgres-data:
   redis-livekit-data:

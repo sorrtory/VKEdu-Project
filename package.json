@@ -1,0 +1,19 @@
+{
+    "name": "broadboard",
+    "private": true,
+    "workspaces": [
+        "apps/*"
+    ],
+    "scripts": {
+        "dev:web": "yarn workspace frontend dev",
+        "dev:api": "yarn workspace backend start:dev",
+        "build:web": "yarn workspace frontend build",
+        "build:api": "yarn workspace backend build",
+        "lint:web": "yarn workspace frontend lint",
+        "lint:api": "yarn workspace backend lint",
+        "test:api": "yarn workspace backend test",
+        "build": "yarn workspaces run build",
+        "lint": "yarn workspaces run lint",
+        "test": "yarn workspaces run test"
+    }
+}

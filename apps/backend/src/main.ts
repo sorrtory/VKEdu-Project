@@ -14,6 +14,9 @@ async function bootstrap() {
   const document = SwaggerModule.createDocument(app, config);
   SwaggerModule.setup('api', app, document);
 
-  await app.listen(process.env.PORT ?? 3000);
+  const port = Number(process.env.BACKEND_PORT) || 3000;
+  // Bind to 0.0.0.0 so the server is reachable from other Docker containers
+  // and external hosts when running in a containerized environment.
+  await app.listen(port, '0.0.0.0');
 }
 bootstrap();

@@ -4,6 +4,9 @@ import { ClientsModule, Transport } from '@nestjs/microservices';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
 import { ConferenceModule } from './conference/conference.module';
+import { PrismaModule } from './prisma/prisma.module';
+import { AuthModule } from './auth/auth.module';
+import { UsersModule } from './users/users.module';
 import { join } from 'path';
 
 // Make Kafka client registration optional. If no KAFKA_BROKERS env var is present
@@ -39,9 +42,17 @@ const kafkaClients = kafkaEnabled
   imports: [
     ConfigModule.forRoot({
       isGlobal: true,
-      envFilePath: join(__dirname, '..', '..', '.env'),
+      // Load env file based on NODE_ENV (e.g. .env.dev or .env.prod),
+      // falling back to the root .env if the specific file isn't present.
+      envFilePath: [
+        join(__dirname, '..', '..', `.env.${process.env.NODE_ENV}`),
+        join(__dirname, '..', '..', '.env'),
+      ],
     }),
     ConferenceModule,
+    PrismaModule,
+    AuthModule,
+    UsersModule,
     // spread kafkaClients (empty when disabled)
     ...kafkaClients,
   ],
