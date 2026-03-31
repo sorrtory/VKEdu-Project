@@ -8,7 +8,7 @@ import {
   RoomAudioRenderer,
 } from '@livekit/components-react';
 import '@livekit/components-styles';
-import router from 'next/router';
+import { useRouter } from 'next/router';
 
 interface ConferenceRoomProps {
   roomName: string;
@@ -25,6 +25,7 @@ export default function ConferenceRoom({
   serverUrl,
   token,
 }: ConferenceRoomProps) {
+    const router = useRouter();
 
     const handleDisconnect = ()=> {
         router.push('/')
