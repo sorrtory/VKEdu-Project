@@ -25,6 +25,7 @@ services:
       - "7880:7880"
       - "7881:7881"
       - "7882:7882/udp"
+      - "8000-8010:8000-8010/udp"
     volumes:
       - ./livekit.yaml:/etc/livekit.yaml:ro
     depends_on:
