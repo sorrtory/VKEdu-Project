@@ -6,6 +6,7 @@ import { FaCalendar } from "react-icons/fa";
 import { FaUserGroup } from "react-icons/fa6";
 import { IoIosVideocam } from "react-icons/io";
 import ConferenceConnectionModule from "../components/conferenceConnect";
+import Link from "next/link";
 
 export default function Home() {
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -26,17 +27,19 @@ export default function Home() {
           </div>
         </div>
         <div className="flex gap-4 justify-center">
+          <Link href='/conference'>
           <button className="bg-primary hover:bg-primary-hover text-white px-4 py-2 rounded-4 h-71 w-71 flex flex-col items-center justify-center gap-2 transition-colors duration-200">
             <IoIosVideocam size={100} />
             <span className="text-lg">
               Создать <br /> Встречу
             </span>
           </button>
+          </Link>
           
           <div className="flex flex-col gap-3">
             <button 
               className="bg-primary hover:bg-primary-hover text-white px-4 py-2 rounded-4 h-34 w-34 flex flex-col items-center justify-center gap-2 transition-colors duration-200"
-              onClick={() => setIsModalOpen(true)} // ← Уже было
+              onClick={() => setIsModalOpen(true)}
             >
               <FaUserGroup size={40} />
               <span>Подключиться</span>

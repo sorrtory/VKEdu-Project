@@ -64,7 +64,7 @@ export default function ConferenceConnectionModule({ isOpen, onClose }: Conferen
           </h2>
           <button 
             onClick={onClose}
-            className="text-white bg-primary hover:bg-primary-hover transition"
+            className="text-white bg-primary hover:bg-primary-hover rounded-full transition"
             type="button"
           >
             <RxCross2 size={28} />
@@ -74,8 +74,7 @@ export default function ConferenceConnectionModule({ isOpen, onClose }: Conferen
         <form onSubmit={handleJoin} className="space-y-5">
           <Input
             label="Название комнаты"
-            type="text"
-            placeholder="my-room"
+            type="text"git 
             value={roomName}
             onChange={(e) => setRoomName(e.target.value)}
             required
@@ -85,7 +84,7 @@ export default function ConferenceConnectionModule({ isOpen, onClose }: Conferen
           <button
             type="submit"
             disabled={loading || !roomName.trim()}
-            className="w-full py-3 px-4 bg-primary hover:bg-primary-hover disabled:bg-gray-400 text-white font-semibold rounded-lg transition-all duration-150 disabled:cursor-not-allowed"
+            className="w-full py-3 px-4 bg-primary hover:bg-primary-hover disabled:bg-secondary text-white font-semibold rounded-lg transition-all duration-150 disabled:cursor-not-allowed"
           >
             {loading ? 'Подключение...' : 'Войти'}
           </button>
