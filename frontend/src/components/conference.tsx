@@ -8,6 +8,7 @@ import {
   RoomAudioRenderer,
 } from '@livekit/components-react';
 import '@livekit/components-styles';
+import router from 'next/router';
 
 interface ConferenceRoomProps {
   roomName: string;
@@ -24,6 +25,11 @@ export default function ConferenceRoom({
   serverUrl,
   token,
 }: ConferenceRoomProps) {
+
+    const handleDisconnect = ()=> {
+        router.push('/')
+    }
+
   return (
     <div className="conference-wrapper" style={{ height: '100vh', width: '100vw' }}>
       <LiveKitRoom
@@ -33,6 +39,7 @@ export default function ConferenceRoom({
         audio={true}
         video={true}
         data-lk-theme="default"
+        onDisconnected={handleDisconnect}
       >
         <VideoConference />
         <RoomAudioRenderer />
