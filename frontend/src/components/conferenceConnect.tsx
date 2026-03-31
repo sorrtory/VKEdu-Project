@@ -43,7 +43,7 @@ export default function ConferenceConnectionModule({ isOpen, onClose }: Conferen
 
     // Переходим на страницу конференции с room в query
     // ConferenceRoomPage сам сгенерирует userName, userId и получит токен
-    router.push(`/conference?room=${encodeURIComponent(roomName.trim())}`);
+  router.push(`/conference/room?room=${encodeURIComponent(roomName.trim())}`);
     
     onClose();
     setLoading(false);
