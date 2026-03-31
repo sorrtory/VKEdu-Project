@@ -8,7 +8,7 @@ import {
   RoomAudioRenderer,
 } from '@livekit/components-react';
 import '@livekit/components-styles';
-import { useRouter } from 'next/router';
+import { useRouter } from 'next/navigation';
 
 interface ConferenceRoomProps {
   roomName: string;
