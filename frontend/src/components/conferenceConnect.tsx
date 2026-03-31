@@ -41,9 +41,9 @@ export default function ConferenceConnectionModule({ isOpen, onClose }: Conferen
 
     setLoading(true);
 
-    // Просто переходим на страницу комнаты с roomName в URL
+    // Переходим на страницу конференции с room в query
     // ConferenceRoomPage сам сгенерирует userName, userId и получит токен
-    router.push(`/conference/room?room=${encodeURIComponent(roomName.trim())}`);
+    router.push(`/conference?room=${encodeURIComponent(roomName.trim())}`);
     
     onClose();
     setLoading(false);
@@ -74,7 +74,7 @@ export default function ConferenceConnectionModule({ isOpen, onClose }: Conferen
         <form onSubmit={handleJoin} className="space-y-5">
           <Input
             label="Название комнаты"
-            type="text"git 
+            type="text"
             value={roomName}
             onChange={(e) => setRoomName(e.target.value)}
             required

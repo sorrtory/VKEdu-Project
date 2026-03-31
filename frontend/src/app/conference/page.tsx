@@ -12,7 +12,7 @@ export default function ConferenceRoomPage({
   const [error, setError] = useState<string | null>(null);
   const [reloadKey, setReloadKey] = useState(0);
 
-  const roomName = searchParams.room ?? process.env.NEXT_PUBLIC_LIVEKIT_ROOM ?? 'my-room';
+  const roomName = searchParams.room ?? 'my-room';
 
   const userName = useMemo(() => {
     const randomSegment =
