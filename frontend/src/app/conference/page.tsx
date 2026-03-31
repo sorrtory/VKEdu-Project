@@ -1,14 +1,18 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react'; // ← Добавлено useSearchParams
+import { useSearchParams } from 'next/navigation';
 import ConferenceRoom from '@/src/components/conference';
 
 export default function ConferenceRoomPage() {
+  const searchParams = useSearchParams(); // ← Получаем параметры
+  
   const [token, setToken] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [reloadKey, setReloadKey] = useState(0);
 
-  const roomName = process.env.NEXT_PUBLIC_LIVEKIT_ROOM ?? 'my-room';
+  // ← Берём roomName из URL, иначе дефолтное значение
+  const roomName = searchParams.get('room') ?? process.env.NEXT_PUBLIC_LIVEKIT_ROOM ?? 'my-room';
 
   const userName = useMemo(() => {
     const randomSegment =
@@ -29,6 +33,7 @@ export default function ConferenceRoomPage() {
       setToken(null);
 
       try {
+        // ← Бэкенд ждёт username (не userName) и room
         const params = new URLSearchParams({ room: roomName, username: userName });
         const response = await fetch(`/api/livekit/token?${params.toString()}`, {
           signal: controller.signal,
@@ -41,7 +46,6 @@ export default function ConferenceRoomPage() {
         }
 
         let payload: { token?: string } | null = null;
-
         try {
           payload = JSON.parse(rawBody);
         } catch {
@@ -56,10 +60,7 @@ export default function ConferenceRoomPage() {
           setToken(payload.token);
         }
       } catch (requestError) {
-        if (controller.signal.aborted) {
-          return;
-        }
-
+        if (controller.signal.aborted) return;
         if (isMounted) {
           setError(
             requestError instanceof Error
@@ -78,7 +79,8 @@ export default function ConferenceRoomPage() {
     };
   }, [reloadKey, roomName, userName]);
 
-  const serverUrl = 'http://95.165.175.223:7880';
+  // ← Server URL: можно оставить хардкод или взять из env
+  const serverUrl = process.env.NEXT_PUBLIC_LIVEKIT_URL ?? 'http://95.165.175.223:7880';
 
   if (!serverUrl) {
     return (

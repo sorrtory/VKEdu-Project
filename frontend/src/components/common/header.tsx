@@ -11,12 +11,14 @@ export default function Header() {
         <header className="bg-white dark:bg-background-grey flex items-center justify-center h-16 border-b-4 border-primary">
             <div className="flex justify-between w-full p-2">
                 <div className="h-12 w-12 overflow-hidden rounded-full">
-                    <Image 
-                    src="/images/Logo.png"
-                    alt="logo"
-                    width={160}
-                    height={160}
-                    />
+                    <Link href='/'>
+                        <Image 
+                        src="/images/Logo.png"
+                        alt="logo"
+                        width={300}
+                        height={300}
+                        />
+                    </Link>
                 </div>
                 <div className="flex gap-2">
                     <Link href='/auth'>

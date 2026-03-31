@@ -1,11 +1,15 @@
 "use client";
 
 import Image from "next/image";
+import { useState } from "react";
 import { FaCalendar } from "react-icons/fa";
 import { FaUserGroup } from "react-icons/fa6";
 import { IoIosVideocam } from "react-icons/io";
+import ConferenceConnectionModule from "../components/conferenceConnect";
 
 export default function Home() {
+  const [isModalOpen, setIsModalOpen] = useState(false);
+
   return (
     <div className="flex flex-col items-center justify-center p-10">
       <div className="flex flex-col items-center justify-center gap-4 max-w-4x px-4">
@@ -30,7 +34,10 @@ export default function Home() {
           </button>
           
           <div className="flex flex-col gap-3">
-            <button className="bg-primary hover:bg-primary-hover text-white px-4 py-2 rounded-4 h-34 w-34 flex flex-col items-center justify-center gap-2 transition-colors duration-200">
+            <button 
+              className="bg-primary hover:bg-primary-hover text-white px-4 py-2 rounded-4 h-34 w-34 flex flex-col items-center justify-center gap-2 transition-colors duration-200"
+              onClick={() => setIsModalOpen(true)} // ← Уже было
+            >
               <FaUserGroup size={40} />
               <span>Подключиться</span>
             </button>
@@ -44,6 +51,11 @@ export default function Home() {
           </div>
         </div>
       </div>
+
+      <ConferenceConnectionModule 
+        isOpen={isModalOpen} 
+        onClose={() => setIsModalOpen(false)} 
+      />
     </div>
   );
 }
