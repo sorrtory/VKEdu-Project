@@ -33,6 +33,7 @@ Read and follow these first, in order:
     - `backend/test/**`
 5. Feature/domain docs when relevant: `docs/**`
 
+
 # Tool Preferences
 
 - Prefer workspace-aware tools for search and edits:

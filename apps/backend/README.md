@@ -31,6 +31,12 @@
 $ yarn install
 ```
 
+### Docker / env files
+
+When running the backend inside Docker Compose, ensure `NODE_ENV` selects the intended env file (for example `NODE_ENV=dev` will allow loading `.env.dev`). The Docker Compose dev file already maps Docker-friendly variables (e.g. `LIVEKIT_DOCKER_URL`, `KAFKA_BOOTSTRAP_SERVERS`, `MONGODB_DOCKER_URI`) so prefer those values when running with `docker compose -f docker-compose.dev.yml up`.
+
+If you run the backend locally (not in Docker), keep host-focused variables like `LIVEKIT_SERVER_URL` and `KAFKA_BROKERS` pointing to `localhost` in your local `.env` or `.env.dev` as appropriate.
+
 ## Compile and run the project
 
 ```bash

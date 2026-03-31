@@ -19,3 +19,13 @@ Note: If having trouble with VS code errors. [Restart](https://stackoverflow.com
 1. `yarn add next react react-dom`
 2. `yarn add -D typescript @types/node @types/react @types/react-dom`
 3. `yarn add livekit-client @livekit/components-react @livekit/components-styles`
+
+## Services
+
+### Livekit agent
+
+1. `uv init`
+2. `uv add python-dotenv`
+
+#### Links
+- [livekit docs](https://docs.livekit.io/agents/models/#inference)

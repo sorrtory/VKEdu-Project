@@ -8,7 +8,10 @@ export class ConferenceService {
   private readonly apiSecret: string;
 
   constructor() {
-    const host = process.env.LIVEKIT_HOST ?? 'http://livekit:7880';
+    const host =
+      process.env.LIVEKIT_SERVER_URL ??
+      process.env.LIVEKIT_HOST ??
+      'http://localhost:7880';
     const apiKey = process.env.LIVEKIT_API_KEY ?? 'devkey';
     const apiSecret = process.env.LIVEKIT_API_SECRET ?? process.env.LK_KEY;
 
