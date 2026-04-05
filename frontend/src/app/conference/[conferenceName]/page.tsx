@@ -34,8 +34,16 @@ export default function ConferenceRoomPage({
 
       try {
         const params = new URLSearchParams({ room: roomName, username: userName });
-        const response = await fetch(`/api/livekit/token?${params.toString()}`, {
-          signal: controller.signal,
+        const response = await fetch('/api/livekit/token', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({
+            participantName: userName,
+            confereceName: roomName,
+          })
+            
         });
 
         const rawBody = await response.text();
