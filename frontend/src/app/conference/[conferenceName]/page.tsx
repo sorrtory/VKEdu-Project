@@ -41,7 +41,7 @@ export default function ConferenceRoomPage({
           },
           body: JSON.stringify({
             participantName: userName,
-            confereceName: roomName,
+            conferenceName: roomName,
           })
             
         });
