@@ -1,8 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 
-// Жёстко указываем адрес сервиса backend внутри docker-compose-сети.
-// Снаружи фронт доступен по IP, но из контейнера проще ходить по имени сервиса.
-const LIVEKIT_TOKEN_URL = "http://backend:3000/livekit/token";
+const LIVEKIT_TOKEN_URL = "http://backend:3000/conference/token";
 
 export async function GET(request: NextRequest) {
   try {
@@ -56,5 +54,25 @@ export async function GET(request: NextRequest) {
       { message: "Не удалось получить токен", details: `${error}` },
       { status: 500 }
     );
+  }
+}
+
+export async function POST(request: NextRequest) {
+  try {
+
+    const target = new URL(request.url);
+
+    const backendResponse = await fetch(target);
+
+    
+
+  } catch (error) {
+
+    return NextResponse.json(
+      {
+
+
+      }
+    )
   }
 }

@@ -6,6 +6,8 @@ import {
   VideoConference,
   ControlBar,
   RoomAudioRenderer,
+  useTracks,
+  PreJoin,
 } from '@livekit/components-react';
 import '@livekit/components-styles';
 import { useRouter } from 'next/navigation';
@@ -27,12 +29,17 @@ export default function ConferenceRoom({
 }: ConferenceRoomProps) {
     const router = useRouter();
 
+    const tracks = useTracks(
+
+    )
+
     const handleDisconnect = ()=> {
         router.push('/')
     }
 
   return (
     <div className="conference-wrapper" style={{ height: '100vh', width: '100vw' }}>
+      <PreJoin/>
       <LiveKitRoom
         serverUrl={serverUrl}
         token={token}

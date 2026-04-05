@@ -1,47 +1,82 @@
-import { Injectable } from "@nestjs/common";
-import { AccessToken, RoomServiceClient } from 'livekit-server-sdk';
+import { AccessToken, RoomServiceClient, TrackSource, VideoGrant } from "livekit-server-sdk";
 
 
-@Injectable()
 export class ConferenceService {
     private readonly roomService: RoomServiceClient;
-    private readonly apiKey: string;
-    private readonly apiSecret: string;
+    private readonly API_KEY: string;
+    private readonly API_Secret: string;
 
     constructor() {
-        const host = process.env.LIVEKIT_HOST ?? 'http://livekit:7880';
-        const apiKey = process.env.LIVEKIT_API_KEY ?? 'devkey';
-        const apiSecret = process.env.LIVEKIT_API_SECRET ?? process.env.LK_KEY;
 
-        if (!apiKey || !apiSecret) {
-            throw new Error('LiveKit API credentials are not configured');
-        }
+        const LK_HOST = process.env.LK_HOST || 'http://livekit:7880';
+        this.API_KEY = process.env.API_KEY || 'i<3tonykanev';
+        this.API_Secret = process.env.API_Secret || 'i<3tonykanev';
 
-        this.apiKey = apiKey;
-        this.apiSecret = apiSecret;
 
-        this.roomService = new RoomServiceClient(host, apiKey, apiSecret);
+        this.roomService = new RoomServiceClient(LK_HOST, this.API_KEY, this.API_Secret);
     }
 
-    async createRoom(roomName: string) {
-        await this.roomService.createRoom({
-            name: roomName,
-        });
-    }
+    // Генерит входной токен для конфы
+    async generateToken(conferenceName: string, participantName: string, isAdmin: boolean) {
 
-    async generateToken(roomName: string, participantName: string): Promise<string> {
-        const accessToken = new AccessToken(this.apiKey, this.apiSecret, {
-            identity: participantName,
-            name: participantName,
-        });
+        const token = new AccessToken(this.API_KEY, this.API_Secret, 
+            {identity: participantName, name: participantName}
+        )
 
-        accessToken.addGrant({
-            room: roomName,
+        const grant: VideoGrant = {
             roomJoin: true,
+            room: conferenceName,
             canPublish: true,
             canSubscribe: true,
-        });
 
-        return accessToken.toJwt();
+            roomAdmin: isAdmin,
+        }
+
+        token.addGrant(grant);
+
+        return token.toJwt();
     }
+
+    // + конфа
+    async createConference(conferenceName: string) {
+        await this.roomService.createRoom({name: conferenceName});
+    }
+
+
+    // Мутит или размучивает треки участникам. True - включить, false - выключить.
+    async manageTrack(conferenceName: string, callerName: string, targetName: string, trackType: TrackSource, type: boolean) {
+
+        const participant = await this.roomService.getParticipant(conferenceName, targetName);
+        for (const track of participant.tracks) {
+            if (track.source === trackType) {
+                await this.roomService.mutePublishedTrack(
+                    conferenceName,
+                    targetName,
+                    track.sid,
+                    type
+                )
+            }
+        };
+        
+        return {success: true}
+    }
+
+    async onMicro(conferenceName: string, callerName: string, targetName: string) {
+        await this.manageTrack(conferenceName, callerName, targetName, TrackSource.MICROPHONE, true)
+    }
+
+    async offMicro(conferenceName: string, callerName: string, targetName: string) {
+        await this.manageTrack(conferenceName, callerName, targetName, TrackSource.MICROPHONE, false)    
+    }
+
+    async onCam(conferenceName: string, callerName: string, targetName: string) {
+        await this.manageTrack(conferenceName, callerName, targetName, TrackSource.CAMERA, true)
+    }
+
+    async offCam(conferenceName: string, callerName: string, targetName: string) {
+        await this.manageTrack(conferenceName, callerName, targetName, TrackSource.CAMERA, false)    
+    }
+
+
+
 }

@@ -4,6 +4,7 @@ import { AppController } from './app.controller';
 import { AppService } from './app.service';
 import { LivekitController } from './livekit.controller';
 import { ConferenceModule } from './conference/conference.module';
+import { ConferenceController } from './conference/conference.controller';
 
 @Module({
   imports: [
@@ -21,7 +22,7 @@ import { ConferenceModule } from './conference/conference.module';
       },
     ]),
   ],
-  controllers: [AppController, LivekitController],
+  controllers: [AppController, LivekitController, ConferenceController],
   providers: [AppService],
 })
 export class AppModule {}
