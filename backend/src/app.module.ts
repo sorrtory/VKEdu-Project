@@ -3,12 +3,10 @@ import { ClientsModule, Transport } from '@nestjs/microservices';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
 import { LivekitController } from './livekit.controller';
-import { ConferenceModule } from './conference/conference.module';
 import { ConferenceController } from './conference/conference.controller';
 
 @Module({
   imports: [
-    ConferenceModule,
     ClientsModule.register([
       {
         name: 'KAFKA_CLIENT',
