@@ -29,9 +29,9 @@ export default function ConferenceRoom({
 }: ConferenceRoomProps) {
     const router = useRouter();
 
-    const tracks = useTracks(
+    // const tracks = useTracks(
 
-    )
+    // )
 
     const handleDisconnect = ()=> {
         router.push('/')
@@ -39,7 +39,6 @@ export default function ConferenceRoom({
 
   return (
     <div className="conference-wrapper" style={{ height: '100vh', width: '100vw' }}>
-      <PreJoin/>
       <LiveKitRoom
         serverUrl={serverUrl}
         token={token}
@@ -49,6 +48,7 @@ export default function ConferenceRoom({
         data-lk-theme="default"
         onDisconnected={handleDisconnect}
       >
+        <PreJoin/>
         <VideoConference />
         <RoomAudioRenderer />
       </LiveKitRoom>

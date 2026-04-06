@@ -13,8 +13,8 @@ export class ConferenceController {
   }
 
   @Post('token')
-  async generateToken(@Body() body: {conferenceName: string, participantName: string, isAdmin: boolean}) {
-    const token = await this.ConferenceService.generateToken(body.conferenceName, body.participantName, body.isAdmin);
+  async generateToken(@Body() body: {conferenceName: string, participantName: string}) {
+    const token = await this.ConferenceService.generateToken(body.conferenceName, body.participantName, true);
     return {token};
   }
 
