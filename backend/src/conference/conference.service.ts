@@ -8,9 +8,9 @@ export class ConferenceService {
 
     constructor() {
 
-        const LK_HOST = process.env.LK_HOST || 'http://livekit:7880';
-        this.API_KEY = process.env.API_KEY || 'APIsfUzV59T5F4n';
-        this.API_Secret = process.env.API_Secret || 'EXYw8Fidbr5T9z5LJ53vzIHxp0of3CEmdP0nj9Bvd5d';
+        const LK_HOST = 'http://livekit:7880';
+        this.API_KEY = 'APIsfUzV59T5F4n';
+        this.API_Secret = 'EXYw8Fidbr5T9z5LJ53vzIHxp0of3CEmdP0nj9Bvd5d';
 
 
         this.roomService = new RoomServiceClient(LK_HOST, this.API_KEY, this.API_Secret);
