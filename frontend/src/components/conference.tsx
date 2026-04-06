@@ -48,7 +48,6 @@ export default function ConferenceRoom({
         data-lk-theme="default"
         onDisconnected={handleDisconnect}
       >
-        <PreJoin/>
         <VideoConference />
         <RoomAudioRenderer />
       </LiveKitRoom>
