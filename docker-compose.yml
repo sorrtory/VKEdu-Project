@@ -1,6 +1,19 @@
 version: "3.8"
 
 services:
+
+  nginx:
+    image: nginx:alpine
+    container_name: nginx
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./nginx/conf.d:/etc/nginx/conf.d
+      - ./certs:/etc/nginx/certs
+    networks:
+      - ml-net
+
   redis:
     image: redis:7-alpine
     command: redis-server --appendonly yes
