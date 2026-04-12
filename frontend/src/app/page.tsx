@@ -13,7 +13,7 @@ export default function Home() {
   const router = useRouter();
 
   const handleCreateMeeting = () => {
-    const roomName = `room-${crypto.randomUUID()}`;
+    const roomName = `room-${Date.now()}-${Math.random().toString(36).substring(2, 11)}`;
     router.push(`/conference/${encodeURIComponent(roomName)}`);};
 
   return (
