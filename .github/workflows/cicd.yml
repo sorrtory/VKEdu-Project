@@ -18,7 +18,7 @@ jobs:
                   password: ${{ secrets.SERVER_PASS }}
                   key: ${{ secrets.SSH_KEY_PRIME }}
                   script: |
-                      cd ~/apps/broadboard
+                      cd broadboard/VKEdu-Project
                       sudo git fetch origin feature/audio-tracks
                       sudo git reset --hard origin/feature/audio-tracks
                       docker compose down backend frontend nginx
