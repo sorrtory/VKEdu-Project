@@ -77,7 +77,7 @@ export default function RoomPage() {
     };
   }, [reloadKey, roomName, username]);
 
-  const livekitUrl = 'http://95.165.175.223:7880';
+  const livekitUrl = 'http://83.166.251.174:7880';
 
   if (!livekitUrl) {
     return (
