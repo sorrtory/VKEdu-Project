@@ -10,7 +10,7 @@ export default function ConferenceRoomPage() {
   const [reloadKey, setReloadKey] = useState(0);
 
   const params = useParams();
-  const roomName = params.roomName as string;
+  const roomName = params.conferenceName as string;
   console.log(roomName)
 
   const userName = useMemo(() => {
