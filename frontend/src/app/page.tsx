@@ -14,9 +14,7 @@ export default function Home() {
 
 const handleCreateMeeting = () => {
   const uniqueId = `${Date.now()}-${performance.now()}-${Math.random().toString(36).substring(2, 15)}-${crypto?.getRandomValues ? crypto.getRandomValues(new Uint32Array(1))[0] : Math.random()}`;
-  const roomName = `room-${uniqueId}`;
-  console.log("Generated unique room:", roomName);
-  router.push(`/conference/${encodeURIComponent(roomName)}`);
+  router.push(`/conference/${encodeURIComponent(uniqueId)}`);
 };
   return (
     <div className="flex flex-col items-center justify-center p-10">

@@ -11,6 +11,7 @@ export default function ConferenceRoomPage() {
 
   const params = useParams();
   const roomName = params.roomName as string;
+  console.log(roomName)
 
   const userName = useMemo(() => {
     const randomSegment =
