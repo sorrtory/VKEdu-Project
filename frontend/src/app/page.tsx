@@ -12,10 +12,12 @@ export default function Home() {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const router = useRouter();
 
-  const handleCreateMeeting = () => {
-    const roomName = `room-${Date.now()}-${Math.random().toString(36).substring(2, 11)}`;
-    router.push(`/conference/${encodeURIComponent(roomName)}`);};
-
+const handleCreateMeeting = () => {
+  const uniqueId = `${Date.now()}-${performance.now()}-${Math.random().toString(36).substring(2, 15)}-${crypto?.getRandomValues ? crypto.getRandomValues(new Uint32Array(1))[0] : Math.random()}`;
+  const roomName = `room-${uniqueId}`;
+  console.log("Generated unique room:", roomName);
+  router.push(`/conference/${encodeURIComponent(roomName)}`);
+};
   return (
     <div className="flex flex-col items-center justify-center p-10">
       <div className="flex flex-col items-center justify-center gap-4 max-w-4x px-4">
