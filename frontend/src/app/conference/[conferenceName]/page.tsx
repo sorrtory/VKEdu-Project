@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from 'react';
 import ConferenceRoom from '@/src/components/conference';
-import { useParams } from 'next/dist/client/components/navigation';
+import { useParams } from 'next/navigation';
 
 export default function ConferenceRoomPage() {
   const [token, setToken] = useState<string | null>(null);
