@@ -2,17 +2,15 @@
 
 import { useEffect, useMemo, useState } from 'react';
 import ConferenceRoom from '@/src/components/conference';
+import { useParams } from 'next/dist/client/components/navigation';
 
-export default function ConferenceRoomPage({ 
-  searchParams 
-}: { 
-  searchParams: { room?: string } 
-}) {
+export default function ConferenceRoomPage() {
   const [token, setToken] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [reloadKey, setReloadKey] = useState(0);
 
-  const roomName = searchParams.room ?? 'my-room';
+  const params = useParams();
+  const roomName = params.roomName as string;
 
   const userName = useMemo(() => {
     const randomSegment =
