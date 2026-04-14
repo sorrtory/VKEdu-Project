@@ -12,8 +12,9 @@ export class ConferenceService {
       process.env.LIVEKIT_SERVER_URL ??
       process.env.LIVEKIT_HOST ??
       'http://localhost:7880';
+    // TODO: remove this neuroshit
     const apiKey = process.env.LIVEKIT_API_KEY ?? 'devkey';
-    const apiSecret = process.env.LIVEKIT_API_SECRET ?? process.env.LK_KEY;
+    const apiSecret = process.env.LIVEKIT_API_SECRET || 'devsecret';
 
     if (!apiKey || !apiSecret) {
       throw new Error('LiveKit API credentials are not configured');

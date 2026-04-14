@@ -8,6 +8,7 @@ import {
 } from '@nestjs/common';
 import { ClientKafka } from '@nestjs/microservices';
 import { lastValueFrom } from 'rxjs/internal/lastValueFrom';
+import { SendImageDto } from './app/dto/send-image.dto.js';
 
 export interface BoardEventPayload {
   filename: string;
@@ -41,10 +42,7 @@ export class AppService implements OnModuleInit {
     return 'Hello World!';
   }
 
-  async send(
-    image: Express.Multer.File,
-    body: Record<string, unknown>,
-  ): Promise<object> {
+  async send(image: Express.Multer.File, body: SendImageDto): Promise<object> {
     if (!image) {
       throw new BadRequestException('file is required');
     }

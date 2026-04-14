@@ -1,14 +1,8 @@
 # Backend
 
-## Tips and commands
-
-To start the backend server:
-
-```bash
-cd backend
-yarn start
-```
-
+We use modern `yarn`. See [log](./log.md#Yarn)
+`ESNext` modules (not `nodenext`).
+[ESM setup](https://www.prisma.io/docs/prisma-orm/quickstart/postgresql#3-configure-esm-support)
 
 ### Test /send endpoint:
 
@@ -22,26 +16,52 @@ curl -X POST http://localhost:3000/send \
   -F "message=hello"
 ```
 
-<!-- {"success":true,"filename":"input.png","mimetype":"image/png","size":18441,"body":{"message":"hello"}}%  -->
+## Architecture
 
-### kafka
+TODO: adjust the diagram to reflect the current state of the backend
 
-announce topic
+```mermaid
+flowchart LR
+    client[Web / Mobile Client]
 
-```bash
-docker exec -it broker /opt/kafka/bin/kafka-topics.sh \
-  --create \
-  --topic boardEvent \
-  --bootstrap-server broker:29092 \
-  --partitions 1 \
-  --replication-factor 1
+    subgraph gateway[API Gateway Service - NestJS]
+        gatewayApi[REST API / Swagger]
+        gatewayGuard[JWT guard / route protection]
+        gatewayConference[Conference endpoints]
+        gatewayDocs[Context and upload endpoints]
+    end
+
+    subgraph auth[Authentication Microservice]
+        authApi[Auth handlers]
+        authLogic[Login / Register / Refresh / Logout]
+        authJwt[JWT access and refresh tokens]
+        authStore[(PostgreSQL <br/> Users + RefreshTokens)]
+    end
+
+    kafka[(Kafka event bus)]
+    ai[AI / ML services]
+    livekit[LiveKit]
+
+    client -->|HTTP / HTTPS| gatewayApi
+    gatewayApi --> gatewayGuard
+    gatewayApi --> gatewayConference
+    gatewayApi --> gatewayDocs
+
+    gatewayApi -->|/auth/*| authApi
+    gatewayGuard -->|token validation| authApi
+
+    authApi --> authLogic
+    authLogic --> authJwt
+    authLogic --> authStore
+
+    gatewayConference -->|conference events| kafka
+    gatewayDocs -->|context updates| kafka
+    kafka --> ai
+    gatewayConference --> livekit
 ```
 
-check topic
+Notes:
 
-```bash
-docker exec -it broker /opt/kafka/bin/kafka-topics.sh \
-  --describe \
-  --topic boardEvent \
-  --bootstrap-server broker:29092
-```
+- Current MVP implementation keeps gateway and auth in one NestJS app under `apps/backend`.
+- This schema shows the simplest next split: the API gateway exposes client-facing endpoints, and the auth service owns user lookup, password verification, JWT issuance, refresh rotation, and token revocation.
+- Auth data maps to the current Prisma models: `User` and `RefreshToken`.

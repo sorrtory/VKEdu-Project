@@ -1,27 +1,87 @@
 generator client {
-  provider = "prisma-client-js"
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
 }
 
 datasource db {
   provider = "postgresql"
-  url      = env("DATABASE_URL")
+}
+
+enum ConferenceRole {
+  host
+  participant
 }
 
 model User {
-  id            Int            @id @default(autoincrement())
-  email         String         @unique
-  password      String
-  name          String?
-  createdAt     DateTime       @default(now())
-  refreshTokens RefreshToken[]
+  // PK
+  userId String @id @default(uuid()) @map("user_id") @db.Uuid
+
+  // Main
+  email    String @unique
+  nickname String
+  passwordHash String @map("password_hash")
+
+  // Metadata
+  createdAt             DateTime         @default(now()) @map("created_at")
+  updatedAt             DateTime         @updatedAt @map("updated_at")
+  conferenceMemberships ConferenceUser[]
+  refreshTokens         RefreshToken[]
+
+  @@map("USER")
+}
+
+model Conference {
+  // PK
+  conferenceId String @id @default(uuid()) @map("conference_id") @db.Uuid
+
+  // Main
+  title       String
+  description String?
+  startedAt   DateTime? @map("started_at")
+  endedAt     DateTime? @map("ended_at")
+
+  // Metadata
+  createdAt    DateTime         @default(now()) @map("created_at")
+  updatedAt    DateTime         @updatedAt @map("updated_at")
+  participants ConferenceUser[]
+
+  @@map("CONFERENCE")
+}
+
+model ConferenceUser {
+  // PK
+  conferenceUsersId Int @id @default(autoincrement()) @map("conference_users_id")
+
+  // Main
+  userId       String         @map("user_id") @db.Uuid
+  conferenceId String         @map("conference_id") @db.Uuid
+  role         ConferenceRole
+
+  // Metadata
+  createdAt  DateTime   @default(now()) @map("created_at")
+  updatedAt  DateTime   @updatedAt @map("updated_at")
+  user       User       @relation(fields: [userId], references: [userId], onDelete: Cascade)
+  conference Conference @relation(fields: [conferenceId], references: [conferenceId], onDelete: Cascade)
+
+  @@unique([userId, conferenceId])
+  @@map("CONFERENCE_USERS")
 }
 
 model RefreshToken {
-  id        Int      @id @default(autoincrement())
+  // PK
+  refreshTokenId Int @id @default(autoincrement()) @map("refresh_token_id")
+
+  // Main
   token     String
-  revoked   Boolean  @default(false)
-  expiresAt DateTime?
-  user      User     @relation(fields: [userId], references: [id])
-  userId    Int
-  createdAt DateTime @default(now())
+  userId    String    @map("user_id") @db.Uuid
+  expiresAt DateTime? @map("expires_at")
+  revoked   Boolean   @default(false)
+
+  // Metadata
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+  user      User     @relation(fields: [userId], references: [userId], onDelete: Cascade)
+
+  @@index([userId, revoked])
+  @@map("REFRESH_TOKEN")
 }

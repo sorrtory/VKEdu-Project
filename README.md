@@ -26,8 +26,26 @@
 ## Быстрый старт
 
 ```bash
+# Подготовка окружения
+cp .env.example .env
+cp .env.example .env.production
+# Отредактируйте .env.production указав значения для докера
+
 # Запуск инфраструктуры (PostgreSQL, Redis, Kafka)
 docker compose --profile infra up --build -d
+
+# Запуск в режиме разработки (без докера)
+yarn install
+yarn workspace backend prestart:dev  # генерирует Prisma Client
+# yarn workspace backend seed # заполняет базу тестовыми данными # не работает
+yarn workspace backend start:dev # запускает NestJS с hot reload
+
+firefox http://localhost:3000/api # Swagger UI
+
+#############
+# Запуск в докере (пока сломано)
+# Убедитесь, что вы отредактировали .env.production и указали правильные значения для докера
+docker compose -f docker-compose.yml --profile infra --profile web up --build -d
 ```
 
 ## Наша команда

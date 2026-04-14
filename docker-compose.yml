@@ -1,26 +1,19 @@
 services:
   redis:
-    image: redis:7-alpine
-    container_name: livekit-redis
-    profiles: ["infra", "webapp", "ml"]
-    command: redis-server --appendonly yes
-    ports:
-      - "${LIVEKIT_REDIS_PORT}:${REDIS_CONTAINER_PORT}"
+    image: redis:alpine
+    container_name: BB_redis
+    profiles: ["infra"]
+    command: redis-server --appendonly yes # Enable data persistence
     volumes:
-      - redis-livekit-data:/data
-    healthcheck:
-      test: ["CMD", "redis-cli", "ping"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
+      - redis-data:/data
     restart: unless-stopped
     networks:
       - app-network
 
   livekit:
     image: livekit/livekit-server:latest
-    container_name: livekit-server
-    profiles: ["infra", "webapp"]
+    container_name: BB_livekit
+    profiles: ["infra"]
     command:
       - --config
       - /etc/livekit.yaml
@@ -30,59 +23,44 @@ services:
       - "${LIVEKIT_PORT}:${LIVEKIT_PORT}"
       - "${LIVEKIT_SIGNAL_PORT}:${LIVEKIT_SIGNAL_PORT}"
       - "${LIVEKIT_RTC_UDP_PORT}:${LIVEKIT_RTC_UDP_PORT}/udp"
-    depends_on:
-      redis:
-        condition: service_healthy
     restart: unless-stopped
     networks:
       - app-network
 
   broker:
     image: apache/kafka:latest
-    container_name: broker
+    container_name: BB_broker
     hostname: broker
-    profiles: ["infra", "webapp", "ml"]
-    ports:
-      - "${KAFKA_EXTERNAL_PORT}:${KAFKA_EXTERNAL_PORT}"
+    profiles: ["infra"]
     environment:
-      KAFKA_BROKER_ID: ${KAFKA_BROKER_ID}
-      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: ${KAFKA_LISTENER_SECURITY_PROTOCOL_MAP}
-      KAFKA_ADVERTISED_LISTENERS: ${KAFKA_ADVERTISED_LISTENERS}
-      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: ${KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR}
-      KAFKA_GROUP_INITIAL_REBALANCE_DELAY_MS: ${KAFKA_GROUP_INITIAL_REBALANCE_DELAY_MS}
-      KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: ${KAFKA_TRANSACTION_STATE_LOG_MIN_ISR}
-      KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: ${KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR}
-      KAFKA_PROCESS_ROLES: ${KAFKA_PROCESS_ROLES}
-      KAFKA_NODE_ID: ${KAFKA_NODE_ID}
-      KAFKA_CONTROLLER_QUORUM_VOTERS: ${KAFKA_CONTROLLER_QUORUM_VOTERS}
-      KAFKA_LISTENERS: ${KAFKA_LISTENERS}
-      KAFKA_INTER_BROKER_LISTENER_NAME: ${KAFKA_INTER_BROKER_LISTENER_NAME}
-      KAFKA_CONTROLLER_LISTENER_NAMES: ${KAFKA_CONTROLLER_LISTENER_NAMES}
-      KAFKA_LOG_DIRS: ${KAFKA_LOG_DIRS}
-      CLUSTER_ID: ${KAFKA_CLUSTER_ID}
+      KAFKA_NODE_ID: 1
+      KAFKA_PROCESS_ROLES: broker,controller
+      KAFKA_LISTENERS: PLAINTEXT://:9092,CONTROLLER://:9093
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://broker:9092
+      KAFKA_CONTROLLER_LISTENER_NAMES: CONTROLLER
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT,CONTROLLER:PLAINTEXT
+      KAFKA_CONTROLLER_QUORUM_VOTERS: 1@broker:9093
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
     restart: unless-stopped
     networks:
       - app-network
 
   postgres:
-    image: postgres:17
-    container_name: postgres
-    profiles: ["infra", "webapp"]
+    image: postgres:alpine
+    container_name: BB_postgres
+    profiles: ["infra"]
     environment:
-      POSTGRES_DB: ${POSTGRES_DB:-vkedu}
-      POSTGRES_USER: ${POSTGRES_USER:-vkedu}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-vkedu}
-      PGDATA: /var/lib/postgresql/data/pgdata
-    ports:
-      - "${POSTGRES_PORT:-5432}:5432"
+      POSTGRES_DB: ${POSTGRES_DB} # on a first run, it will create a database with this name
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-vkedu} -d ${POSTGRES_DB:-vkedu}"]
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
       interval: 10s
       timeout: 5s
       retries: 5
       start_period: 10s
     volumes:
-      - postgres-data:/var/lib/postgresql/data
+      - postgres-data:/var/lib/postgresql
     restart: unless-stopped
     networks:
       - app-network
@@ -93,16 +71,14 @@ services:
       context: ./services/ml/MLin
       dockerfile: Dockerfile
     environment:
-      KAFKA_BOOTSTRAP_SERVERS: broker:${KAFKA_INTERNAL_PORT}
+      KAFKA_BOOTSTRAP_SERVERS: ${KAFKA_BOOTSTRAP_SERVERS}
       KAFKA_GROUP_ID: ${MLIN_KAFKA_GROUP_ID}
       KAFKA_TOPICS: ${MLIN_KAFKA_TOPICS}
-      REDIS_HOST: redis
-      REDIS_PORT: ${REDIS_CONTAINER_PORT}
+      REDIS_HOST: ${REDIS_HOST}
+      REDIS_PORT: ${REDIS_PORT}
     depends_on:
-      broker:
-        condition: service_started
-      redis:
-        condition: service_healthy
+      - broker
+      - redis
     restart: unless-stopped
     networks:
       - app-network
@@ -113,33 +89,24 @@ services:
       context: ./services/ml/MLout
       dockerfile: Dockerfile
     environment:
-      KAFKA_BOOTSTRAP_SERVERS: broker:${KAFKA_INTERNAL_PORT}
+      KAFKA_BOOTSTRAP_SERVERS: ${KAFKA_BOOTSTRAP_SERVERS}
       KAFKA_GROUP_ID: ${MLOUT_KAFKA_GROUP_ID}
       KAFKA_TOPICS: ${MLOUT_KAFKA_TOPICS}
-      REDIS_HOST: redis
-      REDIS_PORT: ${REDIS_CONTAINER_PORT}
+      REDIS_HOST: ${REDIS_HOST}
+      REDIS_PORT: ${REDIS_PORT}
     depends_on:
-      broker:
-        condition: service_started
-      redis:
-        condition: service_healthy
+      - broker
+      - redis
     restart: unless-stopped
     networks:
       - app-network
 
   backend:
-    profiles: ["webapp"]
+    profiles: ["web"]
+    container_name: BB_backend
     build:
       context: .
       dockerfile: infra/docker/backend.Dockerfile
-    environment:
-      BACKEND_PORT: ${BACKEND_PORT}
-      KAFKA_BROKERS: broker:${KAFKA_INTERNAL_PORT}
-      KAFKA_CONSUMER_GROUP: ${KAFKA_CONSUMER_GROUP}
-      LIVEKIT_SERVER_URL: http://livekit:${LIVEKIT_PORT}
-      LIVEKIT_API_KEY: ${LIVEKIT_API_KEY}
-      LIVEKIT_API_SECRET: ${LIVEKIT_API_SECRET}
-      DATABASE_URL: ${DATABASE_URL:-postgresql://${POSTGRES_USER:-vkedu}:${POSTGRES_PASSWORD:-vkedu}@postgres:5432/${POSTGRES_DB:-vkedu}}
     ports:
       - "${BACKEND_PORT}:${BACKEND_PORT}"
     depends_on:
@@ -152,9 +119,13 @@ services:
     restart: unless-stopped
     networks:
       - app-network
+    env_file:
+      - .env
+      - .env.production
 
   frontend:
-    profiles: ["webapp"]
+    profiles: ["web"]
+    container_name: BB_frontend
     build:
       context: .
       dockerfile: infra/docker/frontend.Dockerfile
@@ -168,11 +139,13 @@ services:
     ports:
       - "${FRONTEND_PORT}:${FRONTEND_PORT}"
     depends_on:
-      backend:
-        condition: service_started
+      - backend
     restart: unless-stopped
     networks:
       - app-network
+    env_file:
+      - .env
+      - .env.production
 
 networks:
   app-network:
@@ -180,4 +153,4 @@ networks:
 
 volumes:
   postgres-data:
-  redis-livekit-data:
+  redis-data:

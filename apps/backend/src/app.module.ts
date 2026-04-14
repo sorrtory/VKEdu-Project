@@ -1,19 +1,30 @@
 import { Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
 import { ClientsModule, Transport } from '@nestjs/microservices';
-import { AppController } from './app.controller';
-import { AppService } from './app.service';
-import { ConferenceModule } from './conference/conference.module';
-import { PrismaModule } from './prisma/prisma.module';
-import { AuthModule } from './auth/auth.module';
-import { UsersModule } from './users/users.module';
-import { join } from 'path';
+import { AppController } from './app.controller.js';
+import { AppService } from './app.service.js';
+import { ConferenceModule } from './conference/conference.module.js';
+import { AuthModule } from './auth/auth.module.js';
+import { UsersModule } from './users/users.module.js';
+import { PrismaModule } from './prisma/prisma.module.js';
+import { getBackendEnvFilePaths } from './config/env-paths.js';
 
-// Make Kafka client registration optional. If no KAFKA_BROKERS env var is present
-// Kafka-related features will be disabled and the service will be undefined.
+function isEnabled(value?: string): boolean {
+  return value === '1' || value === 'true';
+}
+
+const isProduction = process.env.NODE_ENV === 'production';
 const kafkaEnabled =
-  typeof process.env.KAFKA_BROKERS === 'string' &&
-  process.env.KAFKA_BROKERS.length > 0;
+  process.env.BACKEND_KAFKA_ENABLED != null
+    ? isEnabled(process.env.BACKEND_KAFKA_ENABLED)
+    : isProduction &&
+      typeof process.env.BACKEND_KAFKA_HOST === 'string' &&
+      process.env.BACKEND_KAFKA_HOST.length > 0;
+
+const kafkaBrokers = kafkaEnabled
+  ? [`${process.env.BACKEND_KAFKA_HOST}:${process.env.KAFKA_PORT ?? '29092'}`]
+  : [];
+
 const kafkaClients = kafkaEnabled
   ? [
       ClientsModule.register([
@@ -22,8 +33,8 @@ const kafkaClients = kafkaEnabled
           transport: Transport.KAFKA,
           options: {
             client: {
-              clientId: 'nestjs-producer-client',
-              brokers: (process.env.KAFKA_BROKERS ?? 'broker:9092').split(','),
+              clientId: process.env.KAFKA_CLIENT_ID || 'nestjs-kafka-client',
+              brokers: kafkaBrokers,
             },
             producer: {
               allowAutoTopicCreation: true,
@@ -38,16 +49,17 @@ const kafkaClients = kafkaEnabled
     ]
   : [];
 
+if (isProduction && !kafkaEnabled) {
+  console.warn(
+    'Warning: Kafka is not enabled in production. Set BACKEND_KAFKA_ENABLED=true and configure BACKEND_KAFKA_HOST if Kafka is required.',
+  );
+}
+
 @Module({
   imports: [
     ConfigModule.forRoot({
       isGlobal: true,
-      // Load env file based on NODE_ENV (e.g. .env.dev or .env.prod),
-      // falling back to the root .env if the specific file isn't present.
-      envFilePath: [
-        join(__dirname, '..', '..', `.env.${process.env.NODE_ENV}`),
-        join(__dirname, '..', '..', '.env'),
-      ],
+      envFilePath: getBackendEnvFilePaths(process.env.NODE_ENV),
     }),
     ConferenceModule,
     PrismaModule,

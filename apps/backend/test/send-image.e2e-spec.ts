@@ -1,8 +1,9 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { INestApplication } from '@nestjs/common';
 import request from 'supertest';
+import type { Server } from 'http';
 import { of } from 'rxjs';
-import { AppModule } from '../src/app.module';
+import { AppModule } from '../src/app.module.js';
 
 describe('Send Endpoint (real e2e without AppService mock)', () => {
   let app: INestApplication;
@@ -30,9 +31,10 @@ describe('Send Endpoint (real e2e without AppService mock)', () => {
   });
 
   it('/send (POST) uploads file and returns success (real AppService)', async () => {
-    const res = await request(app.getHttpServer())
+    const httpServer = app.getHttpServer() as Server;
+    const res = await request(httpServer)
       .post('/send')
-      .field('meta', JSON.stringify({ foo: 'bar' }))
+      .field('metadata', JSON.stringify({ foo: 'bar' }))
       .attach('file', Buffer.from('pngdata'), 'test.png')
       .expect(201);
 
