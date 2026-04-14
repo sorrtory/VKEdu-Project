@@ -1,21 +1,20 @@
 services:
 
   nginx:
-      image: nginx:alpine
-      container_name: nginx
-      ports:
-        - "80:80"
-        - "443:443"
-      volumes:
-        - ./nginx/nginx.conf:/etc/nginx/nginx.conf
-        - ./certs:/etc/nginx/certs
-      networks:
-      - app-network
+    image: nginx:alpine
+    container_name: nginx
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf
+      - ./certs:/etc/nginx/certs
+    networks:
+    - app-network
 
   redis:
     image: redis:alpine
-    container_name: BB_redis
-    profiles: ["infra"]
+    container_name: redis
     command: redis-server --appendonly yes
     volumes:
       - redis-data:/data
@@ -26,15 +25,14 @@ services:
   livekit:
     image: livekit/livekit-server:latest
     container_name: livekit_server
-    profiles: ["infra"]
     command:
       - --config
       - /etc/livekit.yaml
     volumes:
       - ./livekit.yaml:/etc/livekit.yaml:ro
     ports:
-      - "${LIVEKIT_PORT}:${LIVEKIT_PORT}"
-      - "${LIVEKIT_SIGNAL_PORT}:${LIVEKIT_SIGNAL_PORT}"
+      - "${LIVEKIT_PORT}:${LIVEKIT_PORT}/tcp"
+      - "${LIVEKIT_SIGNAL_PORT}:${LIVEKIT_SIGNAL_PORT}/tcp"
       - "${LIVEKIT_RTC_UDP_PORT}:${LIVEKIT_RTC_UDP_PORT}/udp"
     restart: unless-stopped
     networks:
@@ -42,9 +40,8 @@ services:
 
   broker:
     image: apache/kafka:latest
-    container_name: BB_broker
+    container_name: broker
     hostname: broker
-    profiles: ["infra"]
     environment:
       KAFKA_NODE_ID: 1
       KAFKA_PROCESS_ROLES: broker,controller
@@ -61,7 +58,6 @@ services:
   postgres:
     image: postgres:alpine
     container_name: BB_postgres
-    profiles: ["infra"]
     environment:
       POSTGRES_DB: ${POSTGRES_DB} # on a first run, it will create a database with this name
       POSTGRES_USER: ${POSTGRES_USER}
@@ -79,7 +75,6 @@ services:
       - app-network
 
   mlin:
-    profiles: ["ml"]
     build:
       context: ./services/ml/MLin
       dockerfile: Dockerfile
@@ -97,7 +92,6 @@ services:
       - app-network
 
   mlout:
-    profiles: ["ml"]
     build:
       context: ./services/ml/MLout
       dockerfile: Dockerfile
@@ -115,7 +109,6 @@ services:
       - app-network
 
   backend:
-    profiles: ["web"]
     container_name: backend
     build:
       context: .
@@ -137,7 +130,6 @@ services:
       - .env.production
 
   frontend:
-    profiles: ["web"]
     container_name: frontend
     build:
       context: .
