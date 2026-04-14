@@ -163,7 +163,7 @@ services:
         NEXT_PUBLIC_API_URL: http://localhost:3000
     shm_size: 2gb
     environment:
-      - NEXT_PUBLIC_LIVEKIT_URL=ws://83.166.251.174:7880
+      - NEXT_PUBLIC_LIVEKIT_URL=wss://broadboard.ru/rtc
       - NEXT_PUBLIC_BACKEND_URL=http://localhost:3080
       - NODE_OPTIONS=--max_old_space_size=4096
     ports:
