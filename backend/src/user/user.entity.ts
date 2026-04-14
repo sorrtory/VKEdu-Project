@@ -1,24 +1,24 @@
 
-@Entity()
-export class User {
-  @PrimaryGeneratedColumn('uuid')
-  id: string;
+// @Entity()
+// export class User {
+//   @PrimaryGeneratedColumn('uuid')
+//   id: string;
 
-  @Column({ unique: true })
-  email: string;
+//   @Column({ unique: true })
+//   email: string;
 
-  @Column()
-  password: string;
+//   @Column()
+//   password: string;
 
-  @Column({ nullable: true })
-  name?: string;
+//   @Column({ nullable: true })
+//   name?: string;
 
-  @Column({ default: 'user' })
-  role: string;
+//   @Column({ default: 'user' })
+//   role: string;
 
-  @CreateDateColumn()
-  createdAt: Date;
+//   @CreateDateColumn()
+//   createdAt: Date;
 
-  @UpdateDateColumn()
-  updatedAt: Date;
-}
+//   @UpdateDateColumn()
+//   updatedAt: Date;
+// }
