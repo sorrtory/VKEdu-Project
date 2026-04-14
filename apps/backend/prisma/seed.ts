@@ -18,11 +18,11 @@ async function main() {
   const superuserHash = await bcrypt.hash(superuserPassword, 10);
   const superuser = await prisma.user.upsert({
     where: { email: "admin@broadboard.ru" }, // idempotent identifier
-    update: { password: superuserHash, nickname: "superuser" },
+    update: { passwordHash: superuserHash, nickname: "superuser" },
     create: {
       email: "admin@broadboard.ru",
       nickname: "superuser",
-      password: superuserHash,
+      passwordHash: superuserHash,
     },
   });
   console.log({ superuser });

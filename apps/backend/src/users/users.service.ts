@@ -41,7 +41,7 @@ export class UsersService {
       const user = await this.prisma.user.create({
         data: {
           email: data.email,
-          password: hashedPassword,
+          passwordHash: hashedPassword,
           nickname: data.nickname,
         },
       });
@@ -65,7 +65,7 @@ export class UsersService {
         data: {
           email: data.email,
           nickname: data.nickname,
-          ...(passwordHash ? { password: passwordHash } : {}),
+          ...(passwordHash ? { passwordHash } : {}),
         },
       });
 

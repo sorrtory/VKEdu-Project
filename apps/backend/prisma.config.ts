@@ -1,5 +1,5 @@
 import { defineConfig } from 'prisma/config';
-import { getOptionalDatasourceUrl } from './src/prisma/db-url.ts';
+import { getOptionalDatasourceUrl } from './src/prisma/db-url.js';
 
 const datasourceUrl = getOptionalDatasourceUrl();
 
