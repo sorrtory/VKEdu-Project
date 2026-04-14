@@ -33,7 +33,7 @@ export default function ConferenceRoomPage() {
 
       try {
         const params = new URLSearchParams({ room: roomName, username: userName });
-        const response = await fetch('/api/livekit/token', {
+        const response = await fetch('/api/conference/token', {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json'

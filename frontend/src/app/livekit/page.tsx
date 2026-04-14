@@ -29,7 +29,7 @@ export default function RoomPage() {
 
       try {
         const params = new URLSearchParams({ room: roomName, username });
-        const response = await fetch(`/api/livekit/token?${params}`, {
+        const response = await fetch(`/api/conference/token?${params}`, {
           signal: controller.signal,
         });
 
