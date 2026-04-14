@@ -41,7 +41,7 @@ export default function ConferenceConnectionModule({ isOpen, onClose }: Conferen
 
     setLoading(true);
 
-    router.push(`/conference?room=${encodeURIComponent(roomName.trim())}`);
+    router.push(`/conference/${encodeURIComponent(roomName.trim())}`);
 
     onClose();
     setLoading(false);
