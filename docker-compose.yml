@@ -46,6 +46,7 @@ services:
     restart: unless-stopped
     networks:
       - livekit-network
+      - ml-net
 
   egress:
     image: livekit/egress:latest
