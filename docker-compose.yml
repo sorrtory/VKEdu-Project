@@ -1,9 +1,22 @@
 services:
+
+  nginx:
+      image: nginx:alpine
+      container_name: nginx
+      ports:
+        - "80:80"
+        - "443:443"
+      volumes:
+        - ./nginx/nginx.conf:/etc/nginx/nginx.conf
+        - ./certs:/etc/nginx/certs
+      networks:
+      - app-network
+
   redis:
     image: redis:alpine
     container_name: BB_redis
     profiles: ["infra"]
-    command: redis-server --appendonly yes # Enable data persistence
+    command: redis-server --appendonly yes
     volumes:
       - redis-data:/data
     restart: unless-stopped
@@ -12,7 +25,7 @@ services:
 
   livekit:
     image: livekit/livekit-server:latest
-    container_name: BB_livekit
+    container_name: livekit_server
     profiles: ["infra"]
     command:
       - --config
@@ -103,7 +116,7 @@ services:
 
   backend:
     profiles: ["web"]
-    container_name: BB_backend
+    container_name: backend
     build:
       context: .
       dockerfile: infra/docker/backend.Dockerfile
@@ -125,7 +138,7 @@ services:
 
   frontend:
     profiles: ["web"]
-    container_name: BB_frontend
+    container_name: frontend
     build:
       context: .
       dockerfile: infra/docker/frontend.Dockerfile

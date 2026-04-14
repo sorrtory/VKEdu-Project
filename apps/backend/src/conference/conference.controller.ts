@@ -1,61 +1,47 @@
-import { Body, Controller, Post } from '@nestjs/common';
-import { ConferenceService } from './conference.service.js';
-import { IsNotEmpty, IsString } from 'class-validator';
-import {
-  ApiTags,
-  ApiOperation,
-  ApiResponse,
-  ApiProperty,
-} from '@nestjs/swagger';
+import { Body, Controller, Post } from "@nestjs/common";
+import { ConferenceService } from './conference.service'
 
-class TokenDto {
-  @ApiProperty()
-  @IsString()
-  @IsNotEmpty()
-  roomName!: string;
-
-  @ApiProperty()
-  @IsString()
-  @IsNotEmpty()
-  participantName!: string;
-}
-
-class RoomDto {
-  @ApiProperty()
-  @IsString()
-  @IsNotEmpty()
-  roomName!: string;
-}
 
 @Controller('conference')
-@ApiTags('Conference')
 export class ConferenceController {
-  constructor(private ConferenceService: ConferenceService) {}
+  constructor (private ConferenceService: ConferenceService) {}
+
+  @Post('create')
+  async createConference(@Body() body: {conferenceName: string}) {
+    await this.ConferenceService.createConference(body.conferenceName);
+    return {success: true};
+  }
 
   @Post('token')
-  @ApiOperation({ summary: 'Generate LiveKit token for a participant' })
-  @ApiResponse({
-    status: 200,
-    description: 'Returns a JWT token',
-    schema: { example: { token: '...' } },
-  })
-  async getToken(@Body() body: TokenDto) {
-    const token = await this.ConferenceService.generateToken(
-      body.roomName,
-      body.participantName,
-    );
-    return { token };
+  async generateToken(@Body() body: {conferenceName: string, participantName: string}) {
+    const token = await this.ConferenceService.generateToken(body.conferenceName, body.participantName, true);
+    return {token};
   }
 
-  @Post('room')
-  @ApiOperation({ summary: 'Create a LiveKit room' })
-  @ApiResponse({
-    status: 200,
-    description: 'Room created',
-    schema: { example: { success: true } },
-  })
-  async createRoom(@Body() body: RoomDto) {
-    await this.ConferenceService.createRoom(body.roomName);
-    return { success: true };
+  @Post('on/micro')
+  async onMicro(@Body() body: {conferenceName: string, callertName: string, targettName: string}) {
+    await this.ConferenceService.onMicro(body.conferenceName, body.callertName, body.targettName);
+    return {success: true};
   }
+
+  @Post('on/cam')
+  async onCam(@Body() body: {conferenceName: string, callertName: string, targettName: string}) {
+    await this.ConferenceService.onCam(body.conferenceName, body.callertName, body.targettName);
+    return {success: true};
+  }
+
+    @Post('off/micro')
+  async offMicro(@Body() body: {conferenceName: string, callertName: string, targettName: string}) {
+    await this.ConferenceService.offMicro(body.conferenceName, body.callertName, body.targettName);
+    return {success: true};
+  }
+
+  @Post('off/cam')
+  async offCam(@Body() body: {conferenceName: string, callertName: string, targettName: string}) {
+    await this.ConferenceService.offCam(body.conferenceName, body.callertName, body.targettName);
+    return {success: true};
+  }
+
+  
 }
+

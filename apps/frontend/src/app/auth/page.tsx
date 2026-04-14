@@ -3,6 +3,7 @@
 import Input from "@/src/components/ui/Input";
 import { useState } from "react";
 import { FaVk } from "react-icons/fa";
+import Image from 'next/image';
 
 export default function Auth() {
 
@@ -22,17 +23,32 @@ export default function Auth() {
 
     return (
 
-        <div className="relative w-full min-h-[calc(100vh-4rem)] overflow-hidden bg-white">
+        <div className="relative w-full min-h-[calc(100vh-4rem)] overflow-hidden bg-white flex">
+            {/* {mode === 'login' ? (
+                <Image 
+                src="/images/Logo.png"
+                alt="logo"
+                width={160}
+                height={160}
+                />           
+            ) : (
+                <h3 className="self-start text-sm md:text-base text-white/90 max-w-xl">Забудьте о неудобных конспектах в блокноте во время интернет лекций!</h3>
+            )} */}
+
             <div
-                className="absolute h-full inset-y-0 left-0 min-w-[80vw] bg-primary flex flex-col items-start justify-center p-10 gap-4 transition-transform duration-700 ease-in-out"
-                style={{ transform: mode === 'register' ? 'translateX(60vw)' : 'translateX(0)' }}
+                className="absolute h-full inset-y-0 left-0 min-w-[60vw] bg-primary flex flex-col items-start justify-center p-10 gap-4 transition-transform duration-700 ease-in-out"
+                style={{ transform: mode === 'register' ? 'translateX(40vw)' : 'translateX(0)' }}
             >
             {mode === 'login' ? (
                 <h1 className="self-start text-5xl md:text-6xl font-extrabold text-white">Логин</h1>
             ) : (
                 <h1 className="self-start text-5xl md:text-6xl font-extrabold text-white">Регистрация</h1>
             )}
-            <h3 className="self-start text-sm md:text-base text-white/90 max-w-xl">Broad Board. Для тех, кто готов посвятить 100% себя решению задачи.</h3>
+            {mode === 'login' ? (
+                <h3 className="self-start text-sm md:text-base text-white/90 max-w-xl">Broad Board. Для тех, кто готов посвятить 100% себя решению задачи.</h3>
+            ) : (
+                <h3 className="self-start text-sm md:text-base text-white/90 max-w-xl">Забудьте о неудобных конспектах в блокноте во время интернет лекций!</h3>
+            )}
             <form 
             onSubmit={handleSubmit}
             className='flex flex-col bg-white dark:bg-white rounded-4 p-4 w-full max-w-sm gap-3 mx-auto'>

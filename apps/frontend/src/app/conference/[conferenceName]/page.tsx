@@ -2,13 +2,16 @@
 
 import { useEffect, useMemo, useState } from 'react';
 import ConferenceRoom from '@/src/components/conference';
+import { useParams } from 'next/navigation';
 
 export default function ConferenceRoomPage() {
   const [token, setToken] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [reloadKey, setReloadKey] = useState(0);
 
-  const roomName = process.env.NEXT_PUBLIC_LIVEKIT_ROOM ?? 'my-room';
+  const params = useParams();
+  const roomName = params.conferenceName as string;
+  console.log(roomName)
 
   const userName = useMemo(() => {
     const randomSegment =
@@ -30,8 +33,16 @@ export default function ConferenceRoomPage() {
 
       try {
         const params = new URLSearchParams({ room: roomName, username: userName });
-        const response = await fetch(`/api/livekit/token?${params.toString()}`, {
-          signal: controller.signal,
+        const response = await fetch('/api/conference/token', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({
+            participantName: userName,
+            conferenceName: roomName,
+          })
+            
         });
 
         const rawBody = await response.text();
@@ -41,7 +52,6 @@ export default function ConferenceRoomPage() {
         }
 
         let payload: { token?: string } | null = null;
-
         try {
           payload = JSON.parse(rawBody);
         } catch {
@@ -56,10 +66,7 @@ export default function ConferenceRoomPage() {
           setToken(payload.token);
         }
       } catch (requestError) {
-        if (controller.signal.aborted) {
-          return;
-        }
-
+        if (controller.signal.aborted) return;
         if (isMounted) {
           setError(
             requestError instanceof Error
@@ -78,7 +85,7 @@ export default function ConferenceRoomPage() {
     };
   }, [reloadKey, roomName, userName]);
 
-  const serverUrl = 'http://localhost:7880';
+  const serverUrl = process.env.NEXT_PUBLIC_LIVEKIT_URL ?? 'wss://broadboard.ru';
 
   if (!serverUrl) {
     return (
