@@ -85,8 +85,8 @@ export default function ConferenceRoomPage() {
     };
   }, [reloadKey, roomName, userName]);
 
-  const serverUrl = process.env.NEXT_PUBLIC_LIVEKIT_URL ?? 'http://83.166.251.174:7880';
-
+  const serverUrl = process.env.NEXT_PUBLIC_LIVEKIT_URL ?? 'wss://broadboard.ru/rtc';
+  
   if (!serverUrl) {
     return (
       <div className="flex h-full items-center justify-center bg-slate-900 p-6 text-center text-sm text-white">
