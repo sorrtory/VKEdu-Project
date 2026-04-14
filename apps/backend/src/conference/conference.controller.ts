@@ -1,5 +1,6 @@
 import { Body, Controller, Post } from '@nestjs/common';
-import { ConferenceService } from './conference.service';
+import { ConferenceService } from './conference.service.js';
+import { IsNotEmpty, IsString } from 'class-validator';
 import {
   ApiTags,
   ApiOperation,
@@ -9,15 +10,21 @@ import {
 
 class TokenDto {
   @ApiProperty()
-  roomName: string;
+  @IsString()
+  @IsNotEmpty()
+  roomName!: string;
 
   @ApiProperty()
-  participantName: string;
+  @IsString()
+  @IsNotEmpty()
+  participantName!: string;
 }
 
 class RoomDto {
   @ApiProperty()
-  roomName: string;
+  @IsString()
+  @IsNotEmpty()
+  roomName!: string;
 }
 
 @Controller('conference')

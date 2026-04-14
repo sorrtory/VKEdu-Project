@@ -1,13 +1,14 @@
 import { Module } from '@nestjs/common';
-import { AuthService } from './auth.service';
-import { UsersModule } from '../users/users.module';
+import { AuthService } from './auth.service.js';
+import { UsersModule } from '../users/users.module.js';
 import { JwtModule } from '@nestjs/jwt';
 import { PassportModule } from '@nestjs/passport';
-import { LocalStrategy } from './local.strategy';
-import { JwtStrategy } from './jwt.strategy';
-import { AuthController } from './auth.controller';
-import { PrismaModule } from '../prisma/prisma.module';
+import { LocalStrategy } from './local.strategy.js';
+import { JwtStrategy } from './jwt.strategy.js';
+import { AuthController } from './auth.controller.js';
+import { PrismaModule } from '../prisma/prisma.module.js';
 import { ConfigModule, ConfigService } from '@nestjs/config';
+import { getJwtSecret } from './jwt-config.js';
 
 @Module({
   imports: [
@@ -18,9 +19,11 @@ import { ConfigModule, ConfigService } from '@nestjs/config';
     JwtModule.registerAsync({
       imports: [ConfigModule],
       inject: [ConfigService],
-      useFactory: async (config: ConfigService) => ({
-        secret: config.get('JWT_SECRET'),
-        signOptions: { expiresIn: config.get('JWT_EXPIRES_IN') || '15m' },
+      useFactory: (config: ConfigService) => ({
+        secret: getJwtSecret(),
+        signOptions: {
+          expiresIn: config.get('BACKEND_JWT_EXPIRES_IN') || '15m',
+        },
       }),
     }),
   ],

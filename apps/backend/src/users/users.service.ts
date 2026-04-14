@@ -1,7 +1,14 @@
-import { Injectable } from '@nestjs/common';
-import { PrismaService } from '../prisma/prisma.service';
-import { CreateUserDto } from './dto/create-user.dto';
+import {
+  ConflictException,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
+import { PrismaService } from '../prisma/prisma.service.js';
+import { CreateUserDto } from './dto/create-user.dto.js';
 import * as bcrypt from 'bcrypt';
+import { UpdateUserDto } from './dto/update-user.dto.js';
+import { Prisma } from '../generated/prisma/client.js';
+import { UserDto } from './dto/user.dto.js';
 
 @Injectable()
 export class UsersService {
@@ -11,14 +18,90 @@ export class UsersService {
     return this.prisma.user.findUnique({ where: { email } });
   }
 
-  async findById(id: number) {
-    return this.prisma.user.findUnique({ where: { id } });
+  async findById(id: string) {
+    return this.prisma.user.findUnique({ where: { userId: id } });
+  }
+
+  async findAll(): Promise<UserDto[]> {
+    const users = await this.prisma.user.findMany({
+      orderBy: { createdAt: 'desc' },
+    });
+
+    return users.map((user) => UserDto.fromModel(user));
+  }
+
+  async findOne(id: string): Promise<UserDto> {
+    const user = await this.findByIdOrThrow(id);
+    return UserDto.fromModel(user);
   }
 
   async create(data: CreateUserDto) {
-    const hashed = await bcrypt.hash(data.password, 10);
-    return this.prisma.user.create({
-      data: { email: data.email, password: hashed, name: data.name },
+    try {
+      const hashedPassword = await bcrypt.hash(data.password, 10);
+      const user = await this.prisma.user.create({
+        data: {
+          email: data.email,
+          password: hashedPassword,
+          nickname: data.nickname,
+        },
+      });
+
+      return UserDto.fromModel(user);
+    } catch (error) {
+      this.handleKnownRequestError(error);
+    }
+  }
+
+  async update(id: string, data: UpdateUserDto): Promise<UserDto> {
+    await this.findByIdOrThrow(id);
+
+    try {
+      const passwordHash = data.password
+        ? await bcrypt.hash(data.password, 10)
+        : undefined;
+
+      const user = await this.prisma.user.update({
+        where: { userId: id },
+        data: {
+          email: data.email,
+          nickname: data.nickname,
+          ...(passwordHash ? { password: passwordHash } : {}),
+        },
+      });
+
+      return UserDto.fromModel(user);
+    } catch (error) {
+      this.handleKnownRequestError(error);
+    }
+  }
+
+  async remove(id: string): Promise<UserDto> {
+    await this.findByIdOrThrow(id);
+
+    const user = await this.prisma.user.delete({
+      where: { userId: id },
     });
+
+    return UserDto.fromModel(user);
+  }
+
+  private async findByIdOrThrow(id: string) {
+    const user = await this.findById(id);
+    if (!user) {
+      throw new NotFoundException(`User with id ${id} not found`);
+    }
+
+    return user;
+  }
+
+  private handleKnownRequestError(error: unknown): never {
+    if (
+      error instanceof Prisma.PrismaClientKnownRequestError &&
+      error.code === 'P2002'
+    ) {
+      throw new ConflictException('User with this email already exists');
+    }
+
+    throw error;
   }
 }

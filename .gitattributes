@@ -1,0 +1,58 @@
+# Normalize text files in this JS/TS monorepo to LF across platforms.
+* text=auto eol=lf
+
+# Preserve Windows-native line endings for Windows shell scripts.
+*.bat text eol=crlf
+*.cmd text eol=crlf
+*.ps1 text eol=crlf
+
+# Keep common scripts and config files explicitly LF.
+*.sh text eol=lf
+*.bash text eol=lf
+*.zsh text eol=lf
+*.ts text eol=lf
+*.tsx text eol=lf
+*.js text eol=lf
+*.jsx text eol=lf
+*.mjs text eol=lf
+*.cjs text eol=lf
+*.json text eol=lf
+*.yml text eol=lf
+*.yaml text eol=lf
+*.md text eol=lf
+*.css text eol=lf
+*.scss text eol=lf
+*.html text eol=lf
+*.sql text eol=lf
+*.prisma text eol=lf
+*.env.example text eol=lf
+Dockerfile text eol=lf
+
+# Do not diff or rewrite binary/media assets.
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.webp binary
+*.ico binary
+*.pdf binary
+*.mp3 binary
+*.mp4 binary
+*.mov binary
+*.wav binary
+*.ogg binary
+*.zip binary
+*.gz binary
+*.7z binary
+*.ttf binary
+*.otf binary
+*.woff binary
+*.woff2 binary
+
+# SVG and Excalidraw files are text and benefit from diffs.
+*.svg text eol=lf
+*.excalidraw text eol=lf
+
+# Yarn Berry releases/plugins are committed artifacts and should stay binary.
+/.yarn/releases/** binary
+/.yarn/plugins/** binary

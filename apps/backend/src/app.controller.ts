@@ -14,7 +14,8 @@ import {
   ApiBody,
 } from '@nestjs/swagger';
 import { FileInterceptor } from '@nestjs/platform-express';
-import { AppService } from './app.service';
+import { AppService } from './app.service.js';
+import { SendImageDto } from './app/dto/send-image.dto.js';
 
 @Controller()
 @ApiTags('App')
@@ -44,7 +45,7 @@ export class AppController {
   })
   async send(
     @UploadedFile() image: Express.Multer.File,
-    @Body() body: any,
+    @Body() body: SendImageDto,
   ): Promise<object> {
     return this.appService.send(image, body);
   }

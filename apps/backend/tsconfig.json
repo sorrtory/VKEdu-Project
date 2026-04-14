@@ -1,7 +1,14 @@
 {
   "compilerOptions": {
+    // https://www.prisma.io/docs/prisma-orm/quickstart/postgresql#3-configure-esm-support
+    // that's for next.js setup
+    // "module": "ESNext", 
+    // "moduleResolution": "bundler",
     "module": "nodenext",
     "moduleResolution": "nodenext",
+    "target": "ES2023",
+    "strict": true,
+    //
     "resolvePackageJsonExports": true,
     "esModuleInterop": true,
     "isolatedModules": true,
@@ -10,16 +17,23 @@
     "emitDecoratorMetadata": true,
     "experimentalDecorators": true,
     "allowSyntheticDefaultImports": true,
-    "target": "ES2023",
     "sourceMap": true,
     "outDir": "./dist",
-    "baseUrl": "./",
     "incremental": true,
     "skipLibCheck": true,
     "strictNullChecks": true,
     "forceConsistentCasingInFileNames": true,
     "noImplicitAny": false,
     "strictBindCallApply": false,
-    "noFallthroughCasesInSwitch": false
+    "noFallthroughCasesInSwitch": false,
+    // https://github.com/DefinitelyTyped/DefinitelyTyped/issues/47780#issuecomment-1659960408
+    "types": [
+        "node",
+        "express",
+        "multer",
+        // Now tests are inside the resulting dist folder :(
+        // https://stackoverflow.com/questions/54139158/cannot-find-name-describe-do-you-need-to-install-type-definitions-for-a-test
+        "jest",
+      ]
   }
 }
