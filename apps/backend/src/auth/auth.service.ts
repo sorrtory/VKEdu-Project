@@ -1,20 +1,20 @@
-import { Injectable, UnauthorizedException } from '@nestjs/common';
-import { UsersService } from '../users/users.service.js';
-import { JwtService } from '@nestjs/jwt';
-import * as bcrypt from 'bcrypt';
-import { SignOptions } from 'jsonwebtoken';
-import { PrismaService } from '../prisma/prisma.service.js';
-import { CreateUserDto } from '../users/dto/create-user.dto.js';
-import { AuthUser } from './types/auth-user.type.js';
-import { JwtPayload } from './types/jwt-payload.type.js';
-import { getJwtSecret } from './jwt-config.js';
+import { Injectable, UnauthorizedException } from "@nestjs/common"
+import { UsersService } from "../users/users.service"
+import { JwtService } from "@nestjs/jwt"
+import * as bcrypt from "bcrypt"
+import { SignOptions } from "jsonwebtoken"
+import { PrismaService } from "../prisma/prisma.service"
+import { CreateUserDto } from "../users/dto/create-user.dto"
+import { AuthUser } from "./types/auth-user.type"
+import { JwtPayload } from "./types/jwt-payload.type"
+import { getJwtSecret } from "./jwt-config"
 
 type TokenPair = {
-  accessToken: string;
-  refreshToken: string;
-};
+  accessToken: string
+  refreshToken: string
+}
 
-type JwtExpiresIn = NonNullable<SignOptions['expiresIn']>;
+type JwtExpiresIn = NonNullable<SignOptions["expiresIn"]>
 
 @Injectable()
 export class AuthService {
@@ -25,106 +25,106 @@ export class AuthService {
   ) {}
 
   async validateUser(email: string, pass: string): Promise<AuthUser | null> {
-    const user = await this.usersService.findByEmail(email);
-    if (!user) return null;
-    const valid = await bcrypt.compare(pass, user.passwordHash);
+    const user = await this.usersService.findByEmail(email)
+    if (!user) return null
+    const valid = await bcrypt.compare(pass, user.passwordHash)
     if (valid) {
       return {
         userId: user.userId,
         email: user.email,
         nickname: user.nickname,
-      };
+      }
     }
-    return null;
+    return null
   }
 
   async login(user: AuthUser) {
-    const payload: JwtPayload = { sub: user.userId, email: user.email };
+    const payload: JwtPayload = { sub: user.userId, email: user.email }
 
-    return this.issueTokenPair(payload);
+    return this.issueTokenPair(payload)
   }
 
   async register(dto: CreateUserDto) {
-    const user = await this.usersService.create(dto);
-    return this.login(user);
+    const user = await this.usersService.create(dto)
+    return this.login(user)
   }
 
   async refresh(refreshToken: string) {
     try {
       const payload = this.jwtService.verify<JwtPayload>(refreshToken, {
         secret: getJwtSecret(),
-      });
-      const activeTokens = await this.findActiveRefreshTokens(payload.sub);
+      })
+      const activeTokens = await this.findActiveRefreshTokens(payload.sub)
 
       for (const storedToken of activeTokens) {
-        const match = await bcrypt.compare(refreshToken, storedToken.token);
+        const match = await bcrypt.compare(refreshToken, storedToken.token)
         if (match) {
-          await this.revokeRefreshToken(storedToken.refreshTokenId);
-          return this.issueTokenPair(payload);
+          await this.revokeRefreshToken(storedToken.refreshTokenId)
+          return this.issueTokenPair(payload)
         }
       }
 
-      throw new UnauthorizedException('Invalid refresh token');
+      throw new UnauthorizedException("Invalid refresh token")
     } catch {
-      throw new UnauthorizedException('Invalid refresh token');
+      throw new UnauthorizedException("Invalid refresh token")
     }
   }
 
   async logout(refreshToken: string) {
-    const activeTokens = await this.findActiveRefreshTokens();
+    const activeTokens = await this.findActiveRefreshTokens()
 
     for (const storedToken of activeTokens) {
-      const match = await bcrypt.compare(refreshToken, storedToken.token);
+      const match = await bcrypt.compare(refreshToken, storedToken.token)
       if (match) {
-        await this.revokeRefreshToken(storedToken.refreshTokenId);
-        return true;
+        await this.revokeRefreshToken(storedToken.refreshTokenId)
+        return true
       }
     }
 
-    return false;
+    return false
   }
 
   private async issueTokenPair(payload: JwtPayload): Promise<TokenPair> {
     const accessToken = this.signToken(
       payload,
-      this.getExpiresIn('BACKEND_JWT_EXPIRES_IN', '15m'),
-    );
+      this.getExpiresIn("BACKEND_JWT_EXPIRES_IN", "15m"),
+    )
     const refreshToken = this.signToken(
       payload,
-      this.getExpiresIn('BACKEND_JWT_REFRESH_EXPIRES_IN', '7d'),
-    );
+      this.getExpiresIn("BACKEND_JWT_REFRESH_EXPIRES_IN", "7d"),
+    )
 
-    await this.storeRefreshToken(payload.sub, refreshToken);
+    await this.storeRefreshToken(payload.sub, refreshToken)
 
-    return { accessToken, refreshToken };
+    return { accessToken, refreshToken }
   }
 
   private signToken(payload: JwtPayload, expiresIn: JwtExpiresIn): string {
-    return this.jwtService.sign(payload, { expiresIn });
+    return this.jwtService.sign(payload, { expiresIn })
   }
 
   private getExpiresIn(
-    envName: 'BACKEND_JWT_EXPIRES_IN' | 'BACKEND_JWT_REFRESH_EXPIRES_IN',
+    envName: "BACKEND_JWT_EXPIRES_IN" | "BACKEND_JWT_REFRESH_EXPIRES_IN",
     fallback: JwtExpiresIn,
   ): JwtExpiresIn {
-    const value = process.env[envName];
+    const value = process.env[envName]
     if (!value) {
-      return fallback;
+      return fallback
     }
 
-    const numericValue = Number(value);
+    const numericValue = Number(value)
     if (Number.isInteger(numericValue) && `${numericValue}` === value) {
-      return numericValue;
+      return numericValue
     }
 
-    return value as JwtExpiresIn;
+    return value as JwtExpiresIn
   }
 
   private async storeRefreshToken(
     userId: string,
     refreshToken: string,
   ): Promise<void> {
-    const hashedToken = await bcrypt.hash(refreshToken, 10);
+    const hashedToken = await bcrypt.hash(refreshToken, 10)
 
     await this.prisma.refreshToken.create({
       data: {
@@ -132,7 +132,7 @@ export class AuthService {
         userId,
         expiresAt: null,
       },
-    });
+    })
   }
 
   private findActiveRefreshTokens(userId?: string) {
@@ -141,13 +141,13 @@ export class AuthService {
         revoked: false,
         ...(userId ? { userId } : {}),
       },
-    });
+    })
   }
 
   private async revokeRefreshToken(refreshTokenId: number): Promise<void> {
     await this.prisma.refreshToken.update({
       where: { refreshTokenId },
       data: { revoked: true },
-    });
+    })
   }
 }

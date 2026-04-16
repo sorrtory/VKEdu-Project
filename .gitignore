@@ -22,3 +22,9 @@ API_KEY.py
 !.yarn/releases
 !.yarn/sdks
 !.yarn/versions
+
+# Node
+node_modules
+**/node_modules
+**/dist
+**/.next

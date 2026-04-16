@@ -3,3 +3,12 @@ dist
 .git
 .env
 *.log
+
+
+test/
+src/**/*.spec.ts
+src/**/*.test.ts
+
+.gitignore
+.github
+README.md

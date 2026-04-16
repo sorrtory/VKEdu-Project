@@ -12,7 +12,7 @@ Note: If having trouble with VS code errors. [Restart](https://stackoverflow.com
 ```bash
 npm install -g corepack
 corepack enable
-yarn set version stable
+yarn set version stable # to add version to package.json
 yarn dlx @yarnpkg/sdks base vscode
 # VS code: Cmd + Shift + P -> Type "Select TypeScript version" -> Select "Use workspace version"
 # or select vs code prompt to use workspace version of typescript when prompted.

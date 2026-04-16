@@ -1,17 +1,17 @@
-import { Test, TestingModule } from '@nestjs/testing';
-import { AppController } from './app.controller.js';
-import { AppService } from './app.service.js';
+import { Test, TestingModule } from "@nestjs/testing"
+import { AppController } from "./app.controller"
+import { AppService } from "./app.service"
 
-describe('AppController', () => {
-  let appController: AppController;
+describe("AppController", () => {
+  let appController: AppController
   const mockAppService = {
-    getHello: jest.fn().mockReturnValue('Hello World!'),
+    getHello: jest.fn().mockReturnValue("Hello World!"),
     send: jest.fn().mockResolvedValue({
       success: true,
-      message: 'Image sent to Kafka',
-      filename: 'unit-test.png',
+      message: "Image sent to Kafka",
+      filename: "unit-test.png",
     }),
-  } as Partial<AppService>;
+  } as Partial<AppService>
 
   beforeEach(async () => {
     const app: TestingModule = await Test.createTestingModule({
@@ -22,33 +22,33 @@ describe('AppController', () => {
           useValue: mockAppService,
         },
       ],
-    }).compile();
+    }).compile()
 
-    appController = app.get<AppController>(AppController);
-  });
+    appController = app.get<AppController>(AppController)
+  })
 
-  describe('root', () => {
+  describe("root", () => {
     it('should return "Hello World!"', () => {
-      expect(appController.getHello()).toBe('Hello World!');
-    });
-  });
+      expect(appController.getHello()).toBe("Hello World!")
+    })
+  })
 
-  describe('send', () => {
-    it('should call AppService.send and return its result', async () => {
+  describe("send", () => {
+    it("should call AppService.send and return its result", async () => {
       const fakeImage = {
-        originalname: 'unit-test.png',
-        mimetype: 'image/png',
+        originalname: "unit-test.png",
+        mimetype: "image/png",
         size: 10,
-        buffer: Buffer.from('data'),
-      } as Express.Multer.File;
+        buffer: Buffer.from("data"),
+      } as Express.Multer.File
 
-      const res = await appController.send(fakeImage, { meta: 'x' });
+      const res = await appController.send(fakeImage, { metadata: "x" })
       expect(res).toEqual({
         success: true,
-        message: 'Image sent to Kafka',
-        filename: 'unit-test.png',
-      });
-      expect(mockAppService.send).toHaveBeenCalled();
-    });
-  });
-});
+        message: "Image sent to Kafka",
+        filename: "unit-test.png",
+      })
+      expect(mockAppService.send).toHaveBeenCalled()
+    })
+  })
+})

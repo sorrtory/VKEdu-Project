@@ -5,41 +5,41 @@ import {
   Body,
   UploadedFile,
   UseInterceptors,
-} from '@nestjs/common';
+} from "@nestjs/common"
 import {
   ApiTags,
   ApiOperation,
   ApiResponse,
   ApiConsumes,
   ApiBody,
-} from '@nestjs/swagger';
-import { FileInterceptor } from '@nestjs/platform-express';
-import { AppService } from './app.service.js';
-import { SendImageDto } from './app/dto/send-image.dto.js';
+} from "@nestjs/swagger"
+import { FileInterceptor } from "@nestjs/platform-express"
+import { AppService } from "./app.service"
+import { SendImageDto } from "./app/dto/send-image.dto"
 
 @Controller()
-@ApiTags('App')
+@ApiTags("App")
 export class AppController {
   constructor(private readonly appService: AppService) {}
 
   @Get()
-  @ApiOperation({ summary: 'Root hello' })
-  @ApiResponse({ status: 200, description: 'Returns Hello World string' })
+  @ApiOperation({ summary: "Root hello" })
+  @ApiResponse({ status: 200, description: "Returns Hello World string" })
   getHello(): string {
-    return this.appService.getHello();
+    return this.appService.getHello()
   }
 
-  @Post('send')
-  @UseInterceptors(FileInterceptor('file'))
-  @ApiOperation({ summary: 'Send an image to Kafka' })
-  @ApiConsumes('multipart/form-data')
+  @Post("send")
+  @UseInterceptors(FileInterceptor("file"))
+  @ApiOperation({ summary: "Send an image to Kafka" })
+  @ApiConsumes("multipart/form-data")
   @ApiBody({
-    description: 'Image file and optional metadata',
+    description: "Image file and optional metadata",
     schema: {
-      type: 'object',
+      type: "object",
       properties: {
-        file: { type: 'string', format: 'binary' },
-        metadata: { type: 'string' },
+        file: { type: "string", format: "binary" },
+        metadata: { type: "string" },
       },
     },
   })
@@ -47,6 +47,6 @@ export class AppController {
     @UploadedFile() image: Express.Multer.File,
     @Body() body: SendImageDto,
   ): Promise<object> {
-    return this.appService.send(image, body);
+    return this.appService.send(image, body)
   }
 }

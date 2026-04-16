@@ -17,12 +17,16 @@ docker compose up -d postgres
 
 # Change to backend app directory
 cd apps/backend
+# Check prisma configuration
+yarn prisma validate
+# Check database connection
+yarn prisma db pull
 # Create migration (set name to something meaningful, e.g. "init")
-yarn dlx prisma migrate dev --name init
-# Generate prisma client (broken? see yarn prebuild)
-yarn dlx prisma generate
+yarn prisma migrate dev --name init
+# Generate prisma client
+yarn prisma:generate
 # Seed database
-yarn dlx prisma db seed
+yarn prisma db seed
 ```
 
 ## Checks

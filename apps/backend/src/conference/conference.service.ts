@@ -1,35 +1,35 @@
-import { Injectable } from '@nestjs/common';
-import { AccessToken, RoomServiceClient } from 'livekit-server-sdk';
+import { Injectable } from "@nestjs/common"
+import { AccessToken, RoomServiceClient } from "livekit-server-sdk"
 
 @Injectable()
 export class ConferenceService {
-  private readonly roomService: RoomServiceClient;
-  private readonly apiKey: string;
-  private readonly apiSecret: string;
+  private readonly roomService: RoomServiceClient
+  private readonly apiKey: string
+  private readonly apiSecret: string
 
   constructor() {
     const host =
       process.env.LIVEKIT_SERVER_URL ??
       process.env.LIVEKIT_HOST ??
-      'http://localhost:7880';
+      "http://localhost:7880"
     // TODO: remove this neuroshit
-    const apiKey = process.env.LIVEKIT_API_KEY ?? 'devkey';
-    const apiSecret = process.env.LIVEKIT_API_SECRET || 'devsecret';
+    const apiKey = process.env.LIVEKIT_API_KEY ?? "devkey"
+    const apiSecret = process.env.LIVEKIT_API_SECRET || "devsecret"
 
     if (!apiKey || !apiSecret) {
-      throw new Error('LiveKit API credentials are not configured');
+      throw new Error("LiveKit API credentials are not configured")
     }
 
-    this.apiKey = apiKey;
-    this.apiSecret = apiSecret;
+    this.apiKey = apiKey
+    this.apiSecret = apiSecret
 
-    this.roomService = new RoomServiceClient(host, apiKey, apiSecret);
+    this.roomService = new RoomServiceClient(host, apiKey, apiSecret)
   }
 
   async createRoom(roomName: string) {
     await this.roomService.createRoom({
       name: roomName,
-    });
+    })
   }
 
   async generateToken(
@@ -39,15 +39,15 @@ export class ConferenceService {
     const accessToken = new AccessToken(this.apiKey, this.apiSecret, {
       identity: participantName,
       name: participantName,
-    });
+    })
 
     accessToken.addGrant({
       room: roomName,
       roomJoin: true,
       canPublish: true,
       canSubscribe: true,
-    });
+    })
 
-    return accessToken.toJwt();
+    return accessToken.toJwt()
   }
 }

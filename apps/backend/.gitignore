@@ -4,6 +4,7 @@
 /build
 /generated
 src/generated
+src/metadata.ts
 
 # Logs
 logs
