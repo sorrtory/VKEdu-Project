@@ -25,28 +25,72 @@
 
 ## Быстрый старт
 
+Из-за ограничений `livekit` развернуть локальный сервер не получится,
+поэтому для разработки и тестирования нужно использовать удаленный сервер.
+
+Имеется ввиду, что `docker` нужно использовать для развертывания.
+А разработка бекенда, фронтенда и ИИ сервисов может происходить локально.
+
+### Установка зависимостей
+
+```bash
+# Клонируем репозиторий
+git clone git@github.com:sorrtory/VKEdu-Project.git
+
+# Обновляем систему
+sudo apt update -y && sudo apt upgrade -y
+
+## Установка Node.js и modern Yarn
+curl -o- https://fnm.vercel.app/install | bash
+fnm install 22
+corepack enable yarn
+
+## Установка Docker
+curl -fsSL https://get.docker.com -o get-docker.sh | sh
+
+## Для запуска через docker: git-crypt для работы с зашифрованными секретами
+sudo apt install git-crypt
+mkdir -p ~/.local/share/git-crypt && chmod 700 ~/.local/share/git-crypt
+### Скопируйте файл broadboard.key в ~/.local/share/git-crypt
+### Например, с помощью scp:
+scp ~/.local/share/git-crypt/broadboard.key user@host:~/.local/share/git-crypt/
+chmod 600 ~/.local/share/git-crypt/broadboard.key
+cd VKEdu-Project
+git-crypt unlock ~/.local/share/git-crypt/broadboard.key
+```
+
+### Запуск в режиме разработки
+
 ```bash
 # Подготовка окружения
 cp .env.example .env
-cp .env.example .env.production
-# Отредактируйте .env.production указав значения для докера
 
 # Запуск инфраструктуры (PostgreSQL, Redis, Kafka)
 docker compose --profile infra up --build -d
 
 # Запуск в режиме разработки (без докера)
 yarn install
+
+## Бекенд
 yarn workspace backend prestart:dev  # генерирует Prisma Client
-# yarn workspace backend seed # заполняет базу тестовыми данными # не работает
-yarn workspace backend start:dev # запускает NestJS с hot reload
+yarn workspace backend seed          # заполняет базу тестовыми данными
+yarn workspace backend start:dev     # запускает NestJS с hot reload
+firefox http://localhost:3000/api    # Swagger UI
 
-firefox http://localhost:3000/api # Swagger UI
+## Фронтенд
+yarn workspace frontend build
+yarn workspace frontend start
+```
 
-#############
+### Запуск в продакшене (через Docker)
+
+```bash
 # Запуск в докере
-
+cp .env.example .env
+# Отредактируйте .env.production указав значения для докера (есть шаблон в .env.example)
+cp .env.example .env.production
 # Убедитесь, что вы отредактировали .env.production и указали правильные значения для докера
-docker compose --env-file .env --env-file .env.production -f docker-compose.yml --profile infra --profile web up --build -d
+yarn prod
 ```
 
 ## Наша команда
@@ -56,6 +100,6 @@ BroadBoard Team
 | Роль  | Имя                                              |
 | ----- | ------------------------------------------------ |
 | Фронт | [Яковлев Сергей](https://github.com/StrayDog31)  |
-| Бек   | [Марышев Иван](https://github.com/ivanmaryshev)  |
+| Бек ✝ | [Марышев Иван](https://github.com/ivanmaryshev)  |
 | ИИ    | [Носков Алексей](https://github.com/eulerspoon)  |
 | ПМ    | [Федуков Александр](https://github.com/sorrtory) |

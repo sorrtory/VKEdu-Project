@@ -32,7 +32,7 @@ services:
   livekit-redis:
     image: redis:7-alpine
     container_name: BB_livekit_redis
-    profiles: ["infra", "livekit"]
+    profiles: ["livekit"]
     command: redis-server --appendonly yes
     volumes:
       - redis-livekit-data:/data
@@ -46,7 +46,7 @@ services:
   livekit:
     image: livekit/livekit-server:latest
     container_name: BB_livekit
-    profiles: ["infra", "livekit"]
+    profiles: ["livekit"]
     command:
       - --node-ip=83.166.251.174
       - --config
@@ -68,7 +68,7 @@ services:
   egress:
     image: livekit/egress:latest
     container_name: BB_egress
-    profiles: ["infra", "livekit"]
+    profiles: ["livekit"]
     environment:
       EGRESS_CONFIG_FILE: /etc/egress.yaml
     volumes:
@@ -165,8 +165,6 @@ services:
     ports:
       - "${BACKEND_PORT}:${BACKEND_PORT}"
     depends_on:
-      livekit:
-        condition: service_started
       broker:
         condition: service_started
       postgres:
@@ -193,6 +191,7 @@ services:
       NEXT_PUBLIC_LIVEKIT_URL: ${NEXT_PUBLIC_LIVEKIT_URL}
       NEXT_PUBLIC_LIVEKIT_ROOM: ${NEXT_PUBLIC_LIVEKIT_ROOM}
       NODE_OPTIONS: ${NODE_OPTIONS}
+      PORT: ${FRONTEND_PORT}
     ports:
       - "${FRONTEND_PORT}:${FRONTEND_PORT}"
     depends_on:
