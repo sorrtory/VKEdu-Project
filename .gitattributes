@@ -58,6 +58,6 @@ Dockerfile text eol=lf
 /.yarn/plugins/** binary
 
 # Git-crypt
-nginx/certs/*.crt filter=git-crypt diff=git-crypt
-nginx/certs/*.key filter=git-crypt diff=git-crypt
-nginx/certs/*.pem filter=git-crypt diff=git-crypt
+infra/nginx/certs/*.crt filter=git-crypt diff=git-crypt
+infra/nginx/certs/*.key filter=git-crypt diff=git-crypt
+infra/nginx/certs/*.pem filter=git-crypt diff=git-crypt
