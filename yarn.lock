@@ -8373,6 +8373,7 @@ __metadata:
     "@types/node": "npm:^25.5.0"
     "@types/react": "npm:^19.2.14"
     "@types/react-dom": "npm:^19.2.3"
+    cross-env: "npm:^10.1.0"
     eslint: "npm:^9"
     eslint-config-next: "npm:16.2.1"
     livekit-client: "npm:^2.17.3"

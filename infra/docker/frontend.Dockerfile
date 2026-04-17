@@ -11,6 +11,7 @@ RUN yarn workspaces focus frontend
 
 COPY apps/frontend ./apps/frontend
 
+# TODO: remove these vars
 ARG NEXT_PUBLIC_LIVEKIT_URL=ws://localhost:7880
 ARG NEXT_PUBLIC_LIVEKIT_ROOM=my-room
 
@@ -19,6 +20,7 @@ ENV NEXT_TELEMETRY_DISABLED=1
 ENV NEXT_PUBLIC_LIVEKIT_URL=$NEXT_PUBLIC_LIVEKIT_URL
 ENV NEXT_PUBLIC_LIVEKIT_ROOM=$NEXT_PUBLIC_LIVEKIT_ROOM
 
+ENV BUILD_STANDALONE=true
 RUN yarn workspace frontend build
 
 FROM node:22-slim AS runner
@@ -28,6 +30,7 @@ WORKDIR /app
 ENV NODE_ENV=production
 ENV HOSTNAME=0.0.0.0
 ENV NEXT_TELEMETRY_DISABLED=1
+# PORT is set by runtime .env (3001 by default)
 
 RUN addgroup --system --gid 1001 nodejs && \
     adduser --system --uid 1001 nextjs

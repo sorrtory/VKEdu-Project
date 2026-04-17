@@ -44,10 +44,11 @@ yarn dlx @yarnpkg/sdks base vscode
 
 13. `yarn add @nestjs/passport passport passport-local passport-jwt`
 14. `yarn add -D @types/passport-local @types/passport-jwt`
-15. `yarn add bcrypt` 
+15. `yarn add bcrypt`
 16. `yarn add -D @types/bcrypt`
 
 ### swc
+
 17. `yarn add -D @swc/core @swc/helpers @swc/cli chokidar`
 18. nescli + builder flag
 19. `.swcrc`
@@ -57,6 +58,8 @@ yarn dlx @yarnpkg/sdks base vscode
 1. `yarn add next react react-dom`
 2. `yarn add -D typescript @types/node @types/react @types/react-dom`
 3. `yarn add livekit-client @livekit/components-react @livekit/components-styles`
+4. ` yarn workspace frontend add -D cross-env`
+5. `next.config.ts` - for standalone build and dev server proxy rewrite
 
 ## Services
 

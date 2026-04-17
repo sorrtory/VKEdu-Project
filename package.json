@@ -6,7 +6,7 @@
   ],
   "scripts": {
     "dev:frontend": "yarn workspace frontend dev",
-    "dev:backend": "yarn workspace backend start:dev",
+    "dev:backend": "yarn workspace backend dev",
     "dev:ml:livekit": "cd services/livekit && uv run main.py",
     "dev:ml:in": "cd services/ml/MLin && source venv/bin/activate && python main.py",
     "dev:ml:out": "cd services/ml/MLout && source venv/bin/activate && python main.py",
@@ -16,6 +16,7 @@
     "ml:prod": "docker compose --env-file .env --env-file .env.production --profile infra --profile ml -f docker-compose.yml up -d --build",
     "infra:": "docker compose --env-file .env --env-file .env.production -f docker-compose.yml --profile infra up --build -d",
     "prod": "docker compose --env-file .env --env-file .env.production -f docker-compose.yml --profile infra --profile livekit --profile web --profile ml up -d --build",
+    "prod:down": "docker compose --env-file .env --env-file .env.production -f docker-compose.yml --profile infra --profile livekit --profile web --profile ml down",
     "lint:frontend": "yarn workspace frontend lint",
     "lint:backend": "yarn workspace backend lint",
     "test:backend": "yarn workspace backend test",

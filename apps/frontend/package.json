@@ -4,9 +4,11 @@
   "private": true,
   "packageManager": "yarn@4.13.0",
   "scripts": {
-    "dev": "next dev -p 3001",
+    "dev": "cross-env NODE_ENV=development next dev -p 3001",
     "build": "next build",
+    "build:standalone": "cross-env BUILD_STANDALONE=true next build",
     "start": "next start -p 3001",
+    "start:standalone": "node .next/standalone/server.js",
     "lint": "eslint",
     "test": "echo 'No frontend tests configured'"
   },
@@ -28,6 +30,7 @@
     "@types/node": "^25.5.0",
     "@types/react": "^19.2.14",
     "@types/react-dom": "^19.2.3",
+    "cross-env": "^10.1.0",
     "eslint": "^9",
     "eslint-config-next": "16.2.1",
     "tailwindcss": "^4",

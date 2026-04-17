@@ -10,7 +10,7 @@ export default function ConferenceRoomPage() {
   const [reloadKey, setReloadKey] = useState(0);
 
   const params = useParams();
-  const roomName = params.conferenceName as string;
+  const roomName = params.roomName as string;
   console.log(roomName)
 
   const userName = useMemo(() => {
@@ -40,7 +40,7 @@ export default function ConferenceRoomPage() {
           },
           body: JSON.stringify({
             participantName: userName,
-            conferenceName: roomName,
+            roomName: roomName,
           })
             
         });

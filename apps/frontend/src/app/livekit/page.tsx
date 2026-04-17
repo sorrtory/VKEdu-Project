@@ -28,9 +28,12 @@ export default function RoomPage() {
       setToken(null);
 
       try {
-        const params = new URLSearchParams({ room: roomName, username });
+        // const params = new URLSearchParams({ roomNameParam, usernameParam });
+        // TODO: switch to up to date API endpoint and remove query params
+        console.log(`Requesting token for room "${roomName}" as "${username}"...`);
         const response = await fetch(`/api/conference/token?${params}`, {
           signal: controller.signal,
+          
         });
 
         const rawBody = await response.text();
