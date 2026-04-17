@@ -1,5 +1,5 @@
 import { Injectable } from "@nestjs/common"
-import { AccessToken, RoomServiceClient } from "livekit-server-sdk"
+import { AccessToken, RoomServiceClient, TrackSource } from "livekit-server-sdk"
 
 @Injectable()
 export class ConferenceService {
@@ -11,7 +11,7 @@ export class ConferenceService {
     const host =
       process.env.LIVEKIT_SERVER_URL ??
       process.env.LIVEKIT_HOST ??
-      "http://localhost:7880"
+      "http://livekit:7880"
     // TODO: remove this neuroshit
     const apiKey = process.env.LIVEKIT_API_KEY ?? "devkey"
     const apiSecret = process.env.LIVEKIT_API_SECRET || "devsecret"
@@ -32,9 +32,14 @@ export class ConferenceService {
     })
   }
 
+  async createConference(conferenceName: string) {
+    await this.createRoom(conferenceName)
+  }
+
   async generateToken(
     roomName: string,
     participantName: string,
+    isAdmin = true,
   ): Promise<string> {
     const accessToken = new AccessToken(this.apiKey, this.apiSecret, {
       identity: participantName,
@@ -46,8 +51,91 @@ export class ConferenceService {
       roomJoin: true,
       canPublish: true,
       canSubscribe: true,
+      roomAdmin: isAdmin,
     })
 
     return accessToken.toJwt()
+  }
+
+  async manageTrack(
+    conferenceName: string,
+    _callerName: string,
+    targetName: string,
+    trackSource: TrackSource,
+    muted: boolean,
+  ) {
+    const participant = await this.roomService.getParticipant(
+      conferenceName,
+      targetName,
+    )
+
+    for (const track of participant.tracks) {
+      if (track.source === trackSource) {
+        await this.roomService.mutePublishedTrack(
+          conferenceName,
+          targetName,
+          track.sid,
+          muted,
+        )
+      }
+    }
+
+    return { success: true }
+  }
+
+  async onMicro(
+    conferenceName: string,
+    callerName: string,
+    targetName: string,
+  ) {
+    return this.manageTrack(
+      conferenceName,
+      callerName,
+      targetName,
+      TrackSource.MICROPHONE,
+      true,
+    )
+  }
+
+  async offMicro(
+    conferenceName: string,
+    callerName: string,
+    targetName: string,
+  ) {
+    return this.manageTrack(
+      conferenceName,
+      callerName,
+      targetName,
+      TrackSource.MICROPHONE,
+      false,
+    )
+  }
+
+  async onCam(
+    conferenceName: string,
+    callerName: string,
+    targetName: string,
+  ) {
+    return this.manageTrack(
+      conferenceName,
+      callerName,
+      targetName,
+      TrackSource.CAMERA,
+      true,
+    )
+  }
+
+  async offCam(
+    conferenceName: string,
+    callerName: string,
+    targetName: string,
+  ) {
+    return this.manageTrack(
+      conferenceName,
+      callerName,
+      targetName,
+      TrackSource.CAMERA,
+      false,
+    )
   }
 }

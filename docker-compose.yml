@@ -1,8 +1,26 @@
 services:
+
+  nginx:
+    image: nginx:alpine
+    container_name: nginx
+    profiles: ["infra"]
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./infra/nginx/nginx.conf:/etc/nginx/templates/nginx.conf.template
+      - ./infra/nginx/certs:/etc/nginx/certs
+    networks:
+      - app-network
+    restart: unless-stopped
+    env_file:
+      - .env
+      - .env.production
+
   redis:
     image: redis:alpine
     container_name: BB_redis
-    profiles: ["infra"]
+    profiles: ["infra", "livekit"]
     command: redis-server --appendonly yes # Enable data persistence
     volumes:
       - redis-data:/data
@@ -10,22 +28,59 @@ services:
     networks:
       - app-network
 
+  # TODO: Do we need this? Does livekit depends on redis? 
+  livekit-redis:
+    image: redis:7-alpine
+    container_name: BB_livekit_redis
+    profiles: ["infra", "livekit"]
+    command: redis-server --appendonly yes
+    volumes:
+      - redis-livekit-data:/data
+    ports:
+      - "6380:6380"
+      - "6379:6379" 
+    restart: unless-stopped
+    networks:
+      - livekit-network
+
   livekit:
     image: livekit/livekit-server:latest
     container_name: BB_livekit
-    profiles: ["infra"]
+    profiles: ["infra", "livekit"]
     command:
+      - --node-ip=83.166.251.174
       - --config
       - /etc/livekit.yaml
     volumes:
-      - ./livekit.yaml:/etc/livekit.yaml:ro
+      - ./infra/livekit/livekit.yaml:/etc/livekit.yaml:ro
     ports:
-      - "${LIVEKIT_PORT}:${LIVEKIT_PORT}"
-      - "${LIVEKIT_SIGNAL_PORT}:${LIVEKIT_SIGNAL_PORT}"
-      - "${LIVEKIT_RTC_UDP_PORT}:${LIVEKIT_RTC_UDP_PORT}/udp"
+      - "7880:7880"
+      - "7881:7881"
+      - "7882:7882/udp"
+      - "8000-8010:8000-8010/udp"
+    depends_on:
+      - livekit-redis
     restart: unless-stopped
     networks:
+      - livekit-network
       - app-network
+
+  egress:
+    image: livekit/egress:latest
+    container_name: BB_egress
+    profiles: ["infra", "livekit"]
+    environment:
+      EGRESS_CONFIG_FILE: /etc/egress.yaml
+    volumes:
+      - ./infra/livekit/egress.yaml:/etc/egress.yaml
+      - ./infra/livekit/recordings:/recordings
+    cap_add:
+      - SYS_ADMIN
+    depends_on:
+      - livekit
+    restart: unless-stopped
+    networks:
+      - livekit-network
 
   broker:
     image: apache/kafka:latest
@@ -152,7 +207,10 @@ services:
 networks:
   app-network:
     driver: bridge
+  livekit-network:
+    driver: bridge
 
 volumes:
   postgres-data:
   redis-data:
+  redis-livekit-data:

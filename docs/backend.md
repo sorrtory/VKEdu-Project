@@ -43,7 +43,7 @@ curl localhost:3000
 ### Docker
 
 ```bash
-docker compose --env-file .env --env-file .env.production --profile infra --profile web up --build -d backend
+docker compose --env-file .env --env-file .env.production --profile infra --profile web up --build backend
 docker compose --profile infra --profile web stop backend
 ```
 

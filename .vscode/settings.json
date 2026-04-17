@@ -8,5 +8,8 @@
   "editor.defaultFormatter": "esbenp.prettier-vscode",
   "[prisma]": {
     "editor.defaultFormatter": "Prisma.prisma"
+  },
+  "[nginx]": {
+    "editor.defaultFormatter": "ahmadalli.vscode-nginx-conf"
   }
 }

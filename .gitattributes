@@ -56,3 +56,8 @@ Dockerfile text eol=lf
 # Yarn Berry releases/plugins are committed artifacts and should stay binary.
 /.yarn/releases/** binary
 /.yarn/plugins/** binary
+
+# Git-crypt
+nginx/certs/*.crt filter=git-crypt diff=git-crypt
+nginx/certs/*.key filter=git-crypt diff=git-crypt
+nginx/certs/*.pem filter=git-crypt diff=git-crypt

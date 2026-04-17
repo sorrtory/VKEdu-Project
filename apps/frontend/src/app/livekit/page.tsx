@@ -29,7 +29,7 @@ export default function RoomPage() {
 
       try {
         const params = new URLSearchParams({ room: roomName, username });
-        const response = await fetch(`/api/livekit/token?${params}`, {
+        const response = await fetch(`/api/conference/token?${params}`, {
           signal: controller.signal,
         });
 
@@ -77,7 +77,7 @@ export default function RoomPage() {
     };
   }, [reloadKey, roomName, username]);
 
-  const livekitUrl = 'http://localhost:7880';
+  const livekitUrl = 'http://83.166.251.174:7880';
 
   if (!livekitUrl) {
     return (
