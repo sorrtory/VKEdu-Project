@@ -20,7 +20,7 @@
         "lint": "yarn workspaces run lint",
         "test": "yarn workspaces run test"
     },
-    "packageManager": "yarn@4.13.0",
+    "packageManager": "yarn@1.22.22",
     "devDependencies": {
         "typescript": "^6.0.2"
     },
