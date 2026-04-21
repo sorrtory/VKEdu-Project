@@ -79,13 +79,13 @@ export default function RoomPage() {
 
   const livekitUrl = 'http://83.166.251.174:7880';
 
-  if (!livekitUrl) {
-    return (
-      <div className="flex h-full items-center justify-center bg-slate-900 p-6 text-center text-sm text-white">
-        Укажите переменную окружения NEXT_PUBLIC_LIVEKIT_URL с адресом LiveKit.
-      </div>
-    );
-  }
+  // if (!livekitUrl) {
+  //   return (
+  //     <div className="flex h-full items-center justify-center bg-slate-900 p-6 text-center text-sm text-white">
+  //       Укажите переменную окружения NEXT_PUBLIC_LIVEKIT_URL с адресом LiveKit.
+  //     </div>
+  //   );
+  // }
 
   if (error) {
     return (

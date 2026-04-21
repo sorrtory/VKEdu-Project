@@ -85,7 +85,7 @@ export default function ConferenceRoomPage() {
     };
   }, [reloadKey, roomName, userName]);
 
-  const serverUrl = process.env.NEXT_PUBLIC_LIVEKIT_URL ?? 'wss://broadboard.ru';
+  const serverUrl = 'wss://broadboard.ru';
 
   if (!serverUrl) {
     return (
