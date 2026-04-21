@@ -1,5 +1,5 @@
 import { Body, Controller, Post } from "@nestjs/common";
-import { ConferenceService } from "./conference.service";
+import { ConferenceService } from "./conference.service.js";
 
 
 @Controller('conference')
