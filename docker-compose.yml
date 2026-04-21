@@ -1,4 +1,16 @@
 services:
+
+  nginx:
+    image: nginx:alpine
+    container_name: nginx
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf
+      - ./certs:/etc/nginx/certs
+    networks:
+      - ml-net
   redis:
     image: redis:alpine
     container_name: BB_redis
@@ -115,6 +127,8 @@ services:
         POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-BB_password}
     ports:
       - "${BACKEND_PORT}:${BACKEND_PORT}"
+    environment:
+      - APP_ROOT=/app
     depends_on:
       livekit:
         condition: service_started
