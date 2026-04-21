@@ -14,7 +14,7 @@ COPY apps/frontend/package.json apps/frontend/package.json
 
 RUN yarn install --immutable
 
-RUN yarn workspace backend build
+RUN yarn workspace apps/backend build
 
 FROM node:22-bookworm-slim
 
@@ -32,4 +32,4 @@ COPY --from=builder /app/apps/backend ./apps/backend
 
 EXPOSE 3000
 
-CMD ["yarn", "workspace", "backend", "start:prod"]
+CMD ["yarn", "workspace", "apps/backend", "start:prod"]
