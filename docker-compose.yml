@@ -10,7 +10,7 @@ services:
       - ./nginx/nginx.conf:/etc/nginx/nginx.conf
       - ./certs:/etc/nginx/certs
     networks:
-      - ml-net
+      - app-network
   redis:
     image: redis:alpine
     container_name: BB_redis
