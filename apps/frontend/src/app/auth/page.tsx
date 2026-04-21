@@ -57,6 +57,8 @@ export default function Auth() {
         e.preventDefault();
         setError(null);
 
+        console.log('Form submitted!', { mode, email, password, nickname });
+
         if (mode === 'register' && password !== confirmPassword) {
             setError('Пароли не совпадают');
             return;
