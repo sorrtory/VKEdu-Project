@@ -4,20 +4,24 @@ import { useEffect, useMemo, useState } from 'react';
 import { LiveKitRoom } from '@livekit/components-react';
 import { VideoConference } from '@livekit/components-react/prefabs';
 import '@livekit/components-styles';
+import { useUser } from '@/src/contexts/UserContext';
 
 export default function RoomPage() {
   const [token, setToken] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [reloadKey, setReloadKey] = useState(0);
+  const { user } = useUser();
 
   const roomName = process.env.NEXT_PUBLIC_LIVEKIT_ROOM ?? 'my-room';
-  const username = useMemo(() => {
+  const fallbackUserName = useMemo(() => {
     const randomSegment =
       typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function'
         ? crypto.randomUUID().slice(0, 8)
         : Math.random().toString(36).slice(2, 10);
     return `user-${randomSegment}`;
   }, []);
+
+  const username = user?.nickname?.trim() || fallbackUserName;
 
   useEffect(() => {
     let isMounted = true;

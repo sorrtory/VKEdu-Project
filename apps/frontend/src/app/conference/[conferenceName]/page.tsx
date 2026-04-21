@@ -3,23 +3,26 @@
 import { useEffect, useMemo, useState } from 'react';
 import ConferenceRoom from '@/src/components/conference';
 import { useParams } from 'next/navigation';
+import { useUser } from '@/src/contexts/UserContext';
 
 export default function ConferenceRoomPage() {
   const [token, setToken] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [reloadKey, setReloadKey] = useState(0);
+  const { user } = useUser();
 
   const params = useParams();
   const roomName = params.conferenceName as string;
-  console.log(roomName)
 
-  const userName = useMemo(() => {
+  const fallbackUserName = useMemo(() => {
     const randomSegment =
       typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function'
         ? crypto.randomUUID().slice(0, 8)
         : Math.random().toString(36).slice(2, 10);
     return `user-${randomSegment}`;
   }, []);
+
+  const userName = user?.nickname?.trim() || fallbackUserName;
 
   const userId = userName;
 
@@ -32,7 +35,6 @@ export default function ConferenceRoomPage() {
       setToken(null);
 
       try {
-        const params = new URLSearchParams({ room: roomName, username: userName });
         const response = await fetch('/api/conference/token', {
           method: 'POST',
           headers: {

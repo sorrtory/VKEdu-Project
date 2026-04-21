@@ -15,6 +15,11 @@ interface AuthTokens {
     refreshToken: string;
 }
 
+interface AuthErrorResponse {
+    message?: string | string[];
+    error?: string;
+}
+
 interface UserContextValue {
     user: User | null;
     accessToken: string | null;
@@ -43,6 +48,15 @@ async function getCurrentUser(accessToken: string): Promise<User | null> {
     return (await response.json()) as User;
 }
 
+function isAuthTokens(payload: unknown): payload is AuthTokens {
+    if (!payload || typeof payload !== 'object') {
+        return false;
+    }
+
+    const maybeTokens = payload as Partial<AuthTokens>;
+    return typeof maybeTokens.accessToken === 'string' && typeof maybeTokens.refreshToken === 'string';
+}
+
 export function UserProvider({ children }: { children: React.ReactNode }) {
     const [user, setUser] = React.useState<User | null>(null);
     const [accessToken, setAccessToken] = React.useState<string | null>(null);
@@ -60,14 +74,36 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
         }
     }, []);
 
-    const loginWithTokens = React.useCallback(async (tokens: AuthTokens) => {
+    const storeTokens = React.useCallback((tokens: AuthTokens) => {
+        setAccessToken(tokens.accessToken);
+        setRefreshToken(tokens.refreshToken);
+
         if (typeof window !== 'undefined') {
             window.localStorage.setItem(ACCESS_TOKEN_STORAGE_KEY, tokens.accessToken);
             window.localStorage.setItem(REFRESH_TOKEN_STORAGE_KEY, tokens.refreshToken);
         }
+    }, []);
 
-        setAccessToken(tokens.accessToken);
-        setRefreshToken(tokens.refreshToken);
+    const refreshAccessTokens = React.useCallback(async (currentRefreshToken: string): Promise<AuthTokens | null> => {
+        const response = await fetch('/api/auth/refresh', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ refreshToken: currentRefreshToken }),
+        });
+
+        const payload = (await response.json()) as AuthTokens | AuthErrorResponse;
+        if (!response.ok || !isAuthTokens(payload)) {
+            return null;
+        }
+
+        storeTokens(payload);
+        return payload;
+    }, [storeTokens]);
+
+    const loginWithTokens = React.useCallback(async (tokens: AuthTokens) => {
+        storeTokens(tokens);
 
         const me = await getCurrentUser(tokens.accessToken);
         if (!me) {
@@ -76,7 +112,7 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
         }
 
         setUser(me);
-    }, [clearAuthState]);
+    }, [clearAuthState, storeTokens]);
 
     const logout = React.useCallback(async () => {
         if (refreshToken) {
@@ -110,7 +146,17 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
             setAccessToken(storedAccessToken);
             setRefreshToken(storedRefreshToken);
 
-            const me = await getCurrentUser(storedAccessToken);
+            let activeAccessToken = storedAccessToken;
+            let me = await getCurrentUser(activeAccessToken);
+
+            if (!me) {
+                const refreshedTokens = await refreshAccessTokens(storedRefreshToken);
+                if (refreshedTokens) {
+                    activeAccessToken = refreshedTokens.accessToken;
+                    me = await getCurrentUser(activeAccessToken);
+                }
+            }
+
             if (me) {
                 setUser(me);
             } else {
@@ -121,7 +167,7 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
         };
 
         void initializeAuth();
-    }, [clearAuthState]);
+    }, [clearAuthState, refreshAccessTokens]);
 
     const value = React.useMemo<UserContextValue>(() => ({
         user,
