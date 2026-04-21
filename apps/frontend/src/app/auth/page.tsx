@@ -3,23 +3,98 @@
 import Input from "@/src/components/ui/Input";
 import { useState } from "react";
 import { FaVk } from "react-icons/fa";
-import Image from 'next/image';
+import { useUser } from "@/src/contexts/UserContext";
+import { useRouter } from "next/navigation";
+
+interface AuthTokens {
+    accessToken: string;
+    refreshToken: string;
+}
+
+interface AuthErrorResponse {
+    message?: string | string[];
+    error?: string;
+}
+
+function getErrorMessage(payload: AuthErrorResponse): string {
+    if (Array.isArray(payload.message)) {
+        return payload.message.join(', ');
+    }
+
+    if (typeof payload.message === 'string') {
+        return payload.message;
+    }
+
+    if (payload.error) {
+        return payload.error;
+    }
+
+    return 'Произошла ошибка. Попробуйте снова.';
+}
 
 export default function Auth() {
+    const router = useRouter();
+    const { loginWithTokens } = useUser();
 
-    var [mode, setMode] = useState<'login' | 'register'>('login');
+    const [mode, setMode] = useState<'login' | 'register'>('login');
+    const [email, setEmail] = useState('');
+    const [password, setPassword] = useState('');
+    const [nickname, setNickname] = useState('');
+    const [confirmPassword, setConfirmPassword] = useState('');
+    const [error, setError] = useState<string | null>(null);
+    const [isSubmitting, setIsSubmitting] = useState(false);
 
     const handleMode = () => {
         setMode(prev => prev === 'login' ? 'register' : 'login');
+        setError(null);
 
         if (typeof window !== 'undefined') {
             window.scrollTo({ top: 0, behavior: 'auto' });
         }
-    }
+    };
 
-    const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
-        e.preventDefault()
-    }
+    const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
+        e.preventDefault();
+        setError(null);
+
+        if (mode === 'register' && password !== confirmPassword) {
+            setError('Пароли не совпадают');
+            return;
+        }
+
+        setIsSubmitting(true);
+
+        try {
+            const endpoint = mode === 'login' ? '/api/auth/login' : '/api/auth/register';
+            const payload = mode === 'login'
+                ? { email, password }
+                : { email, password, nickname };
+
+            const response = await fetch(endpoint, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify(payload),
+            });
+
+            const data = (await response.json()) as AuthTokens | AuthErrorResponse;
+
+            if (!response.ok) {
+                setError(getErrorMessage(data as AuthErrorResponse));
+                setIsSubmitting(false);
+                return;
+            }
+
+            await loginWithTokens(data as AuthTokens);
+            router.push('/');
+            router.refresh();
+        } catch {
+            setError('Не удалось выполнить запрос. Проверьте подключение к сети.');
+        } finally {
+            setIsSubmitting(false);
+        }
+    };
 
     return (
 
@@ -52,19 +127,61 @@ export default function Auth() {
             <form 
             onSubmit={handleSubmit}
             className='flex flex-col bg-white dark:bg-white rounded-4 p-4 w-full max-w-sm gap-3 mx-auto'>
-                <Input label="Email" />
-                <Input label="Пароль" type="password"/>
+                <Input
+                    label="Email"
+                    type="email"
+                    value={email}
+                    onChange={(event) => setEmail(event.target.value)}
+                    autoComplete="email"
+                    required
+                />
+                <Input
+                    label="Пароль"
+                    type="password"
+                    value={password}
+                    onChange={(event) => setPassword(event.target.value)}
+                    autoComplete={mode === 'login' ? 'current-password' : 'new-password'}
+                    required
+                />
                 {mode === 'register' && (
                     <div className="fade-in-up">
-                        <Input label="Подтвердить пароль" type="password"/>
+                        <Input
+                            label="Никнейм"
+                            value={nickname}
+                            onChange={(event) => setNickname(event.target.value)}
+                            minLength={2}
+                            maxLength={50}
+                            required
+                        />
+                        <div className="mt-3">
+                            <Input
+                                label="Подтвердить пароль"
+                                type="password"
+                                value={confirmPassword}
+                                onChange={(event) => setConfirmPassword(event.target.value)}
+                                autoComplete="new-password"
+                                required
+                            />
+                        </div>
                     </div>
                 )}
+                {error && (
+                    <p className="text-sm text-error">
+                        {error}
+                    </p>
+                )}
                 {mode === 'login' ? (
-                    <button className="bg-primary hover:bg-primary-hover text-white rounded-4 h-12 px-4 transition focus:outline-none hover:ring-4 hover:ring-primary/30">
+                    <button
+                        disabled={isSubmitting}
+                        className="bg-primary hover:bg-primary-hover text-white rounded-4 h-12 px-4 transition focus:outline-none hover:ring-4 hover:ring-primary/30 disabled:opacity-70"
+                    >
                         Войти
                     </button>
                 ) : (
-                    <button className="bg-primary hover:bg-primary-hover text-white rounded-4 h-12 px-4 transition focus:outline-none hover:ring-4 hover:ring-secondary/30">
+                    <button
+                        disabled={isSubmitting}
+                        className="bg-primary hover:bg-primary-hover text-white rounded-4 h-12 px-4 transition focus:outline-none hover:ring-4 hover:ring-secondary/30 disabled:opacity-70"
+                    >
                         Зарегистрироваться
                     </button>
                 )}
@@ -72,9 +189,9 @@ export default function Auth() {
                 <div className='flex text-primary items-center justify-center'>
                     <div className="flex-grow border-1 border-primary"></div>
                     {mode === 'login' ? (
-                        <span className="m-2">Уже есть аккаунт?</span>
-                    ) : (
                         <span className="m-2">Нет аккаунта?</span>
+                    ) : (
+                        <span className="m-2">Уже есть аккаунт?</span>
                     )}
                     <div className="flex-grow border-1 border-primary"></div>
                 </div>
@@ -98,7 +215,7 @@ export default function Auth() {
                         <span className="m-2"> Или же... </span>
                     <div className="flex-grow border-1 border-primary"></div>
                 </div>
-                <button className='bg-blue-600 hover:bg-blue-700 text-white flex items-center justify-center gap-3 px-4 py-2 rounded-4 h-12 transition hover:ring-4 hover:ring-blue-200'>
+                <button type="button" className='bg-blue-600 hover:bg-blue-700 text-white flex items-center justify-center gap-3 px-4 py-2 rounded-4 h-12 transition hover:ring-4 hover:ring-blue-200'>
                     <FaVk size={24}/>
                     <span>Войти через ВК</span>
                 </button>
