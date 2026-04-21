@@ -8,6 +8,7 @@ COPY .yarn ./.yarn
 COPY .pnp.cjs ./.pnp.cjs
 COPY .pnp.loader.mjs ./.pnp.loader.mjs
 COPY .env.example ./.env.example
+COPY .env ./.env
 COPY package.json yarn.lock ./
 COPY apps/backend apps/backend
 COPY apps/frontend/package.json apps/frontend/package.json
