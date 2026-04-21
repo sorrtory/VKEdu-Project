@@ -18,7 +18,6 @@ COPY apps/frontend/package.json ./apps/frontend/
 RUN yarn install --no-immutable
 
 COPY .env.example ./.env.example
-COPY .env ./.env
 COPY apps/backend ./apps/backend
 COPY apps/frontend ./apps/frontend
 

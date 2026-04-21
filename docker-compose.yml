@@ -107,6 +107,12 @@ services:
     build:
       context: .
       dockerfile: infra/docker/backend.Dockerfile
+      args:
+        BACKEND_DATABASE_HOST: ${BACKEND_DATABASE_HOST:-postgres}
+        POSTGRES_PORT: ${POSTGRES_PORT:-5432}
+        POSTGRES_DB: ${POSTGRES_DB:-BB_db}
+        POSTGRES_USER: ${POSTGRES_USER:-BB_user}
+        POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-BB_password}
     ports:
       - "${BACKEND_PORT}:${BACKEND_PORT}"
     depends_on:
