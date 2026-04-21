@@ -21,7 +21,7 @@ COPY .env.example ./.env.example
 COPY apps/backend ./apps/backend
 COPY apps/frontend ./apps/frontend
 
-RUN yarn workspace frontend build
+RUN yarn workspace bb-front build
 
 FROM node:22-bookworm-slim
 
@@ -45,4 +45,4 @@ EXPOSE 3001
 
 WORKDIR /app/apps/frontend
 
-CMD ["yarn", "workspace", "frontend", "start"]
+CMD ["yarn", "workspace", "bb-front", "start"]
