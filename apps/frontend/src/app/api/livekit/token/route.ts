@@ -1,60 +1,34 @@
 import { NextRequest, NextResponse } from "next/server";
 
-// Жёстко указываем адрес сервиса backend внутри docker-compose-сети.
-// Снаружи фронт доступен по IP, но из контейнера проще ходить по имени сервиса.
-const LIVEKIT_TOKEN_URL = "http://backend:3000/livekit/token";
+const LIVEKIT_TOKEN_URL = "http://backend:3000/conference/token";
 
-export async function GET(request: NextRequest) {
+export async function POST(request: NextRequest) {
   try {
-    const { searchParams } = new URL(request.url);
-    const room = searchParams.get("room");
-    const username = searchParams.get("username");
+    
+    const {conferenceName, participantName} = await request.json() 
 
-    if (!room || !username) {
-      return NextResponse.json(
-        { message: "Параметры room и username обязательны" },
-        { status: 400 }
-      );
-    }
+    const response = await fetch(LIVEKIT_TOKEN_URL, {
 
-    const targetUrl = new URL(LIVEKIT_TOKEN_URL);
-    targetUrl.searchParams.set("room", room);
-    // backend ожидает параметр identity, используем username как identity
-    targetUrl.searchParams.set("identity", username);
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
 
-    const backendResponse = await fetch(targetUrl.toString());
-    const rawBody = await backendResponse.text();
+        conferenceName: conferenceName,
+        participantName: participantName
+      })
+    });
 
-    if (!backendResponse.ok) {
-      return NextResponse.json(
-        { message: "Бэкэнд вернул ошибку при получении токена", details: rawBody },
-        { status: backendResponse.status }
-      );
-    }
+    const result = await response.json();
+    
+    return NextResponse.json({token: result.token})
 
-    let payload: { token?: string } | null = null;
-    try {
-      payload = JSON.parse(rawBody);
-    } catch {
-      return NextResponse.json(
-        { message: "Некорректный ответ бэкэнда", details: rawBody },
-        { status: 502 }
-      );
-    }
-
-    if (!payload?.token) {
-      return NextResponse.json(
-        { message: "Ответ бэкэнда не содержит token" },
-        { status: 502 }
-      );
-    }
-
-    return NextResponse.json({ token: payload.token });
   } catch (error) {
-    console.error("LiveKit token proxy error", error);
+
     return NextResponse.json(
-      { message: "Не удалось получить токен", details: `${error}` },
-      { status: 500 }
+      { error: 'Ошибка при получении токена' },
+      { status: 500}
     );
   }
 }
