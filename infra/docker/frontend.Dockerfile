@@ -5,7 +5,7 @@ ARG NEXT_PUBLIC_LIVEKIT_ROOM=my-room
 ENV NEXT_PUBLIC_LIVEKIT_URL=$NEXT_PUBLIC_LIVEKIT_URL
 ENV NEXT_PUBLIC_LIVEKIT_ROOM=$NEXT_PUBLIC_LIVEKIT_ROOM
 
-RUN npm install -g --force corepack@latest && corepack enable
+#RUN npm install -g --force corepack@latest && corepack enable
 
 WORKDIR /app
 

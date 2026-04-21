@@ -2,7 +2,7 @@ FROM node:22-bookworm-slim AS builder
 
 WORKDIR /app
 
-RUN npm install -g --force corepack@latest && corepack enable
+#RUN npm install -g --force corepack@latest && corepack enable
 
 COPY .yarn ./.yarn
 COPY .pnp.cjs ./.pnp.cjs
