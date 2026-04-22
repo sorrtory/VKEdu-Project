@@ -126,7 +126,7 @@ services:
     depends_on:
       - livekit
     networks:
-      - livekit-network
+      - app-network
     restart: unless-stopped
 
   backend:
