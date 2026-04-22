@@ -31,3 +31,5 @@ node_modules
 
 # Livekit
 infra/livekit/recordings
+
+services/ml/whisper-service/test_audio/
