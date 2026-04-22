@@ -113,6 +113,22 @@ services:
     networks:
       - app-network
 
+  agent:
+    profiles: ["ml"]
+    build:
+      context: ./services/ml/agent
+      dockerfile: Dockerfile
+    container_name: BB_agent
+    environment:
+      LIVEKIT_URL: ws://livekit:7880
+      LIVEKIT_API_KEY: ${LIVEKIT_API_KEY}
+      LIVEKIT_API_SECRET: ${LIVEKIT_API_SECRET}
+    depends_on:
+      - livekit
+    networks:
+      - livekit-network
+    restart: unless-stopped
+
   backend:
     profiles: ["web"]
     container_name: BB_backend
