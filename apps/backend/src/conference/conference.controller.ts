@@ -14,8 +14,8 @@ export class ConferenceController {
 
   @Post('token')
   async generateToken(@Body() body: {conferenceName: string, participantName: string}) {
-    const token = await this.ConferenceService.generateToken(body.conferenceName, body.participantName, true);
-    return {token};
+    const result = await this.ConferenceService.generateToken(body.conferenceName, body.participantName, true);
+    return result;
   }
 
   @Post('on/micro')

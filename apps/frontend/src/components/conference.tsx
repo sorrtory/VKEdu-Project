@@ -1,16 +1,13 @@
 'use client';
 
-import { useEffect, useState } from 'react';
 import {
   LiveKitRoom,
   VideoConference,
-  ControlBar,
   RoomAudioRenderer,
-  useTracks,
-  PreJoin,
 } from '@livekit/components-react';
 import '@livekit/components-styles';
 import { useRouter } from 'next/navigation';
+import ExcalidrawBoard from './excalidraw';
 
 interface ConferenceRoomProps {
   roomName: string;
@@ -18,6 +15,7 @@ interface ConferenceRoomProps {
   userId: string;
   serverUrl: string;
   token: string;
+  creatorId: string;
 }
 
 export default function ConferenceRoom({
@@ -26,16 +24,13 @@ export default function ConferenceRoom({
   userId,
   serverUrl,
   token,
+  creatorId,
 }: ConferenceRoomProps) {
-    const router = useRouter();
+  const router = useRouter();
 
-    // const tracks = useTracks(
-
-    // )
-
-    const handleDisconnect = ()=> {
-        router.push('/')
-    }
+  const handleDisconnect = () => {
+    router.push('/');
+  };
 
   return (
     <div className="conference-wrapper" style={{ height: '100vh', width: '100vw' }}>
@@ -48,8 +43,16 @@ export default function ConferenceRoom({
         data-lk-theme="default"
         onDisconnected={handleDisconnect}
       >
-        <VideoConference />
-        <RoomAudioRenderer />
+        <div style={{ display: 'flex', height: '100%' }}>
+          <div style={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
+            <VideoConference />
+            <RoomAudioRenderer />
+          </div>
+          
+          <div style={{ width: '600px', borderLeft: '2px solid #ccc', padding: '10px' }}>
+            <ExcalidrawBoard creatorIdentity={creatorId} />
+          </div>
+        </div>
       </LiveKitRoom>
     </div>
   );

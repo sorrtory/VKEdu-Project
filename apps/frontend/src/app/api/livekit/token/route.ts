@@ -21,9 +21,9 @@ export async function POST(request: NextRequest) {
       })
     });
 
-    const result = await response.json();
-    
-    return NextResponse.json({token: result.token})
+    const result: { token?: string; creatorId?: string } = await response.json();
+
+    return NextResponse.json({ token: result.token, creatorId: result.creatorId })
 
   } catch (error) {
 

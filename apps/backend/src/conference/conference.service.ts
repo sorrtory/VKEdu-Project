@@ -12,6 +12,7 @@ export class ConferenceService {
     private readonly API_KEY: string;
     private readonly API_Secret: string;
     private readonly LK_HOST: string;
+    private readonly conferenceCreators = new Map<string, string>();
 
     constructor() {
         this.LK_HOST = 'http://livekit:7880';
@@ -35,7 +36,11 @@ export class ConferenceService {
         }
     }
 
-    async generateToken(conferenceName: string, participantName: string, isAdmin: boolean): Promise<string> {
+    async generateToken(
+        conferenceName: string,
+        participantName: string,
+        isAdmin: boolean,
+    ): Promise<{ token: string; creatorId: string }> {
         console.log(`[generateToken] Processing request for room: ${conferenceName}, participant: ${participantName}`);
         
         // 1. Проверяем, существует ли комната (SDK v2.x: listRooms принимает массив имён)
@@ -61,7 +66,13 @@ export class ConferenceService {
             // ttl: 3600, // опционально: время жизни токена в секундах
         });
 
-        // 3. Если комната создаётся впервые — добавляем конфигурацию с агентом
+        // 3. Назначаем создателя комнаты один раз на первую выдачу токена
+        if (!this.conferenceCreators.has(conferenceName)) {
+            this.conferenceCreators.set(conferenceName, participantName);
+        }
+        const creatorId = this.conferenceCreators.get(conferenceName) ?? participantName;
+
+        // 4. Если комната создаётся впервые — добавляем конфигурацию с агентом
         if (!roomExists) {
             console.log(`[generateToken] Setting roomConfig with agent: default-agent`);
             token.roomConfig = {
@@ -76,7 +87,7 @@ export class ConferenceService {
             };
         }
 
-        // 4. Добавляем права доступа (гранты)
+        // 5. Добавляем права доступа (гранты)
         token.addGrant({
             roomJoin: true,
             room: conferenceName,
@@ -87,13 +98,13 @@ export class ConferenceService {
             // canUpdateOwnMetadata: true, // опционально
         });
 
-        // 5. Генерируем и возвращаем JWT
+        // 6. Генерируем и возвращаем JWT + identity создателя комнаты
         const jwt = await token.toJwt();
         console.log(`[generateToken] Token generated successfully for ${participantName}`);
         
         console.log('[generateToken] roomConfig:', JSON.stringify(token.roomConfig, null, 2));
         
-        return jwt;
+        return { token: jwt, creatorId };
     }
 
 
