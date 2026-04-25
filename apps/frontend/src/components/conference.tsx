@@ -101,7 +101,21 @@ export default function ConferenceRoom({
               );
             })}
           </div>
+
+          <div style={{ minHeight: 0, borderRadius: '10px', overflow: 'hidden' }}>
+            <ExcalidrawBoard creatorIdentity={creatorId} />
           </div>
+
+          <div style={{ borderTop: '1px solid rgba(255,255,255,0.1)', paddingTop: '8px' }}>
+            <ControlBar
+              controls={{
+                chat: false,
+                screenShare: true,
+                leave: true,
+              }}
+            />
+          </div>
+        </div>
 
         <RoomAudioRenderer />
       </LiveKitRoom>
