@@ -22,3 +22,5 @@ API_KEY.py
 !.yarn/releases
 !.yarn/sdks
 !.yarn/versions
+
+test_audio/
