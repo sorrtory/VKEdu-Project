@@ -1,6 +1,7 @@
 'use client';
 
 import {
+  Chat,
   ControlBar,
   LiveKitRoom,
   ParticipantTile,
@@ -11,9 +12,6 @@ import '@livekit/components-styles';
 import ExcalidrawBoard from '@/src/components/excalidraw';
 import { useRouter } from 'next/navigation';
 import { Track } from 'livekit-client';
-import type { ComponentProps } from 'react';
-
-type ParticipantTrackRef = ComponentProps<typeof ParticipantTile>['trackRef'];
 
 interface ConferenceRoomProps {
   roomName: string;
@@ -73,16 +71,36 @@ function RoomContent({ creatorId }: { creatorId: string }) {
         })}
       </div>
 
-      {/* Excalidraw */}
-      <div style={{ minHeight: 0, borderRadius: '10px', overflow: 'hidden' }}>
-        <ExcalidrawBoard creatorIdentity={creatorId} />
+      <div
+        style={{
+          minHeight: 0,
+          display: 'grid',
+          gridTemplateColumns: 'minmax(0, 1fr) 300px',
+          gap: '10px',
+        }}
+      >
+        <div style={{ minHeight: 0, borderRadius: '10px', overflow: 'hidden' }}>
+          <ExcalidrawBoard creatorIdentity={creatorId} />
+        </div>
+
+        <div
+          style={{
+            minHeight: 0,
+            borderRadius: '10px',
+            overflow: 'hidden',
+            border: '1px solid rgba(255,255,255,0.1)',
+            background: '#0b1220',
+          }}
+        >
+          <Chat />
+        </div>
       </div>
 
       {/* Controls */}
       <div style={{ borderTop: '1px solid rgba(255,255,255,0.1)', paddingTop: '8px' }}>
         <ControlBar
           controls={{
-            chat: false,
+            chat: true,
             screenShare: true,
             leave: true,
           }}
