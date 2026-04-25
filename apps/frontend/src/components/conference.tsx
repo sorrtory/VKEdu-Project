@@ -81,37 +81,27 @@ export default function ConferenceRoom({
               paddingBottom: '4px',
             }}
           >
-            {cameraTracks.map((trackRef, index) => (
-              <div
-                key={`${trackRef.participant.identity}-${trackRef.publication?.trackSid ?? trackRef.source ?? index}`}
-                style={{
-                  flex: '0 0 180px',
-                  height: '110px',
-                  borderRadius: '10px',
-                  overflow: 'hidden',
-                  border: '1px solid rgba(255,255,255,0.12)',
-                  background: '#111827',
-                }}
-              >
-                <ParticipantTile trackRef={trackRef} />
-              </div>
-            ))}
+            {cameraTracks.map((trackRef, index) => {
+              if (!trackRef) return null;
+              
+              return (
+                <div
+                  key={`${trackRef.participant.identity}-${trackRef.publication?.trackSid ?? trackRef.source ?? index}`}
+                  style={{
+                    flex: '0 0 180px',
+                    height: '110px',
+                    borderRadius: '10px',
+                    overflow: 'hidden',
+                    border: '1px solid rgba(255,255,255,0.12)',
+                    background: '#111827',
+                  }}
+                >
+                  <ParticipantTile trackRef={trackRef} />
+                </div>
+              );
+            })}
           </div>
-
-          <div style={{ minHeight: 0, borderRadius: '10px', overflow: 'hidden' }}>
-            <ExcalidrawBoard creatorIdentity={creatorId} />
           </div>
-
-          <div style={{ borderTop: '1px solid rgba(255,255,255,0.1)', paddingTop: '8px' }}>
-            <ControlBar
-              controls={{
-                chat: false,
-                screenShare: true,
-                leave: true,
-              }}
-            />
-          </div>
-        </div>
 
         <RoomAudioRenderer />
       </LiveKitRoom>
