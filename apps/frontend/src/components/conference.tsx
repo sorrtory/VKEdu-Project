@@ -3,9 +3,11 @@
 import {
   Chat,
   ControlBar,
+  LayoutContextProvider,
   LiveKitRoom,
   ParticipantTile,
   RoomAudioRenderer,
+  useCreateLayoutContext,
   useTracks,
 } from '@livekit/components-react';
 import '@livekit/components-styles';
@@ -24,23 +26,25 @@ interface ConferenceRoomProps {
 
 // 👇 Внутренний компонент — здесь безопасно использовать useTracks
 function RoomContent({ creatorId }: { creatorId: string }) {
+  const layoutContext = useCreateLayoutContext();
   const cameraTracks = useTracks(
     [{ source: Track.Source.Camera, withPlaceholder: true }],
     { onlySubscribed: false },
   );
 
   return (
-    <div
-      style={{
-        display: 'grid',
-        gridTemplateRows: '120px minmax(0, 1fr) auto',
-        gap: '10px',
-        height: '100%',
-        width: '100%',
-        padding: '10px',
-        boxSizing: 'border-box',
-      }}
-    >
+    <LayoutContextProvider value={layoutContext}>
+      <div
+        style={{
+          display: 'grid',
+          gridTemplateRows: '120px minmax(0, 1fr) auto',
+          gap: '10px',
+          height: '100%',
+          width: '100%',
+          padding: '10px',
+          boxSizing: 'border-box',
+        }}
+      >
       {/* Thumbnails */}
       <div
         style={{
@@ -96,17 +100,18 @@ function RoomContent({ creatorId }: { creatorId: string }) {
         </div>
       </div>
 
-      {/* Controls */}
-      <div style={{ borderTop: '1px solid rgba(255,255,255,0.1)', paddingTop: '8px' }}>
-        <ControlBar
-          controls={{
-            chat: true,
-            screenShare: true,
-            leave: true,
-          }}
-        />
+        {/* Controls */}
+        <div style={{ borderTop: '1px solid rgba(255,255,255,0.1)', paddingTop: '8px' }}>
+          <ControlBar
+            controls={{
+              chat: true,
+              screenShare: true,
+              leave: true,
+            }}
+          />
+        </div>
       </div>
-    </div>
+    </LayoutContextProvider>
   );
 }
 
