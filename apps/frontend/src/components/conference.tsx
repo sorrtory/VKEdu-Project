@@ -1,9 +1,20 @@
 'use client';
 
-import { LiveKitRoom, RoomAudioRenderer, VideoConference } from '@livekit/components-react';
+import {
+  ControlBar,
+  LiveKitRoom,
+  ParticipantTile,
+  RoomAudioRenderer,
+  TrackLoop,
+  useTracks,
+} from '@livekit/components-react';
 import '@livekit/components-styles';
 import ExcalidrawBoard from '@/src/components/excalidraw';
 import { useRouter } from 'next/navigation';
+import { Track } from 'livekit-client';
+import type { ComponentProps } from 'react';
+
+type ParticipantTileTrackRef = ComponentProps<typeof ParticipantTile>['trackRef'];
 
 interface ConferenceRoomProps {
   roomName: string;
@@ -23,13 +34,25 @@ export default function ConferenceRoom({
   creatorId,
 }: ConferenceRoomProps) {
   const router = useRouter();
+  const cameraTracks = useTracks(
+    [{ source: Track.Source.Camera, withPlaceholder: true }],
+    { onlySubscribed: false },
+  );
 
   const handleDisconnect = () => {
     router.push('/');
   };
 
   return (
-    <div className="conference-wrapper" style={{ height: '100vh', width: '100vw', overflow: 'hidden' }}>
+    <div
+      className="conference-wrapper"
+      style={{
+        position: 'fixed',
+        inset: 0,
+        overflow: 'hidden',
+        background: '#0f172a',
+      }}
+    >
       <LiveKitRoom
         serverUrl={serverUrl}
         token={token}
@@ -39,16 +62,59 @@ export default function ConferenceRoom({
         data-lk-theme="default"
         onDisconnected={handleDisconnect}
       >
-        <div style={{ display: 'flex', flexDirection: 'column', height: '100%', width: '100%' }}>
-          <div style={{ flex: '0 0 auto' }}>
-            <VideoConference />
+        <div
+          style={{
+            display: 'grid',
+            gridTemplateRows: '120px minmax(0, 1fr) auto',
+            gap: '10px',
+            height: '100%',
+            width: '100%',
+            padding: '10px',
+            boxSizing: 'border-box',
+          }}
+        >
+          <div
+            style={{
+              display: 'flex',
+              gap: '10px',
+              overflowX: 'auto',
+              overflowY: 'hidden',
+              paddingBottom: '4px',
+            }}
+          >
+            <TrackLoop tracks={cameraTracks}>
+              {(trackRef: ParticipantTileTrackRef) => (
+                <div
+                  style={{
+                    flex: '0 0 180px',
+                    height: '110px',
+                    borderRadius: '10px',
+                    overflow: 'hidden',
+                    border: '1px solid rgba(255,255,255,0.12)',
+                    background: '#111827',
+                  }}
+                >
+                  <ParticipantTile trackRef={trackRef} />
+                </div>
+              )}
+            </TrackLoop>
           </div>
-          
-          <div style={{ flex: 1, margin: '10px', borderRadius: '8px', overflow: 'hidden' }}>
+
+          <div style={{ minHeight: 0, borderRadius: '10px', overflow: 'hidden' }}>
             <ExcalidrawBoard creatorIdentity={creatorId} />
           </div>
+
+          <div style={{ borderTop: '1px solid rgba(255,255,255,0.1)', paddingTop: '8px' }}>
+            <ControlBar
+              controls={{
+                chat: false,
+                screenShare: true,
+                leave: true,
+              }}
+            />
+          </div>
         </div>
-        
+
         <RoomAudioRenderer />
       </LiveKitRoom>
     </div>

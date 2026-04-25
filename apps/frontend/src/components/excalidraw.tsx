@@ -85,7 +85,7 @@ export default function ExcalidrawBoard({ creatorIdentity }: ExcalidrawBoardProp
   }, []);
 
   return (
-    <div className="excalidraw-container" style={{ height: '600px', border: '1px solid #ccc', position: 'relative' }}>
+    <div className="excalidraw-container" style={{ height: '100%', border: '1px solid #ccc', position: 'relative' }}>
       {!canEdit && (
         <div style={{ 
           position: 'absolute', 
