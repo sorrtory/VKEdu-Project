@@ -18,7 +18,24 @@ export class ConferenceService {
 
     // Генерит входной токен для конфы
     async generateToken(conferenceName: string, participantName: string, isAdmin: boolean) {
+        console.log(`[generateToken] Creating room ${conferenceName} with agent default-agent`);
+        try {
+            console.log("[generateToken] try block entered")
+            await this.roomService.createRoom({
+                name: conferenceName,
+                agentName: 'default-agent',
+            });
+            console.log(`[generateToken] Room ${conferenceName} created`);
 
+        } catch (error: any) {
+            if (error?.status === 409) {
+                console.log(`[generateToken] Room ${conferenceName} already exists, agent may not be assigned`);
+            } else {
+                console.error(`[generateToken] Error creating room`, error);
+                throw error;
+            }
+        }
+        console.log(`[generateToken] Creating token...`);
         const token = new AccessToken(this.API_KEY, this.API_Secret, 
             {identity: participantName, name: participantName}
         )
@@ -39,7 +56,12 @@ export class ConferenceService {
 
     // + конфа
     async createConference(conferenceName: string) {
-        await this.roomService.createRoom({name: conferenceName});
+        console.log(`[createConference] called`);
+        await this.roomService.createRoom({
+                name: conferenceName,
+                agentName: "default-agent"
+        });
+        console.log("here");
     }
 
 

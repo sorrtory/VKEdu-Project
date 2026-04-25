@@ -2,7 +2,8 @@ FROM python:3.10-slim
 
 WORKDIR /app
 
-RUN pip intsall --no-cache-dir livekit-agents
+
+RUN pip install livekit-agents
 # COPY requirements.txt .
 # RUN pip install --no-cache-dir -r requirements.txt
 

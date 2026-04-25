@@ -16,7 +16,8 @@ export async function POST(request: NextRequest) {
       body: JSON.stringify({
 
         conferenceName: conferenceName,
-        participantName: participantName
+        participantName: participantName,
+        agentName: "default-agent"
       })
     });
 
