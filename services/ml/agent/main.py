@@ -24,17 +24,18 @@ async def entrypoint(ctx: JobContext):
     await ctx.connect(auto_subscribe=AutoSubscribe.AUDIO_ONLY)
     logger.info(f"✅ Joined room {ctx.room.name}.")
 
+    agent_identity = ctx.agent.identity  # например, "default-agent"
+
     # Ждём первого участника, не являющегося агентом
     logger.info("⏳ Waiting for room creator (first participant)...")
     creator = None
     while True:
         participant = await ctx.wait_for_participant()
-        if participant.identity != ctx.local_participant.identity:
+        if participant.identity != agent_identity:
             creator = participant
             break
     logger.info(f"👤 Creator identified: {creator.identity}")
 
-    # Проверяем, есть ли у создателя уже аудиотрек
     audio_track = None
     for pub in creator.tracks.values():
         if pub.track and pub.track.kind == "audio":
