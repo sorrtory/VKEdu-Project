@@ -14,17 +14,19 @@ logger = logging.getLogger("livekit-agent")
 WHISPER_URL = "http://whisper:8000/transcribe"
 
 # Параметры VAD
-RMS_THRESHOLD = 500          # порог громкости
-SILENCE_DURATION = 0.5       # секунд тишины после речи перед отправкой
-SAMPLE_RATE = 16000          # ожидаемая частота дискретизации
+RMS_THRESHOLD = 500
+SILENCE_DURATION = 0.5
+SAMPLE_RATE = 16000
 NUM_CHANNELS = 1
+
 
 async def entrypoint(ctx: JobContext):
     logger.info(f"🔗 Joining room {ctx.room.name}...")
     await ctx.connect(auto_subscribe=AutoSubscribe.AUDIO_ONLY)
     logger.info(f"✅ Joined room {ctx.room.name}.")
 
-    agent_identity = ctx.agent.identity  # например, "default-agent"
+    # Идентификатор самого агента
+    agent_identity = ctx.agent.identity  # "default-agent"
 
     # Ждём первого участника, не являющегося агентом
     logger.info("⏳ Waiting for room creator (first participant)...")
@@ -36,23 +38,17 @@ async def entrypoint(ctx: JobContext):
             break
     logger.info(f"👤 Creator identified: {creator.identity}")
 
-    audio_track = None
-    for pub in creator.tracks.values():
-        if pub.track and pub.track.kind == "audio":
-            audio_track = pub.track
-            break
+    # Синхронный обработчик появления аудиотрека создателя
+    def on_track_subscribed(track, publication, participant):
+        if participant.identity == creator.identity and track.kind == "audio":
+            logger.info(f"🎤 Audio track from creator arrived, starting processing...")
+            # Снимаем обработчик, чтобы не запустить второй раз
+            ctx.room.off("track_subscribed", on_track_subscribed)
+            asyncio.create_task(process_audio_track(track))
 
-    if audio_track:
-        logger.info("🎤 Creator already has an audio track, starting processing...")
-        asyncio.create_task(process_audio_track(audio_track))
-    else:
-        logger.info("⏳ Waiting for creator's audio track...")
-        def on_track_subscribed(track, publication, participant):
-            if participant.identity == creator.identity and track.kind == "audio":
-                logger.info(f"🎤 Audio track from creator arrived, starting processing...")
-                asyncio.create_task(process_audio_track(track))
-        ctx.room.on("track_subscribed", on_track_subscribed)
+    ctx.room.on("track_subscribed", on_track_subscribed)
 
+    # Держим задание активным
     await asyncio.Event().wait()
 
 
@@ -60,13 +56,13 @@ async def process_audio_track(track):
     """Читает аудиофреймы, нарезает по VAD и отправляет в Whisper."""
     stream = AudioStream(track, sample_rate=SAMPLE_RATE, num_channels=NUM_CHANNELS)
 
-    frames = []
+    frames = bytearray()
     speaking = False
     silence_frames = 0
-    silence_threshold = int(SILENCE_DURATION * SAMPLE_RATE / 480)  # примерное количество фреймов при 480 сэмплах
+    # Примерное количество фреймов при длительности кадра 480 сэмплов
+    silence_threshold = int(SILENCE_DURATION * SAMPLE_RATE / 480)
 
     async for frame in stream:
-        # frame.data — bytes (PCM 16-bit little-endian)
         pcm_data = frame.data
         rms = calculate_rms(pcm_data)
 
