@@ -25,7 +25,7 @@ async def entrypoint(ctx: JobContext):
 
     agent_identity = ctx.agent.identity
 
-    # Ждём создателя комнаты
+
     logger.info("⏳ Waiting for room creator...")
     creator = None
     while True:
@@ -37,26 +37,35 @@ async def entrypoint(ctx: JobContext):
         if participant.identity != agent_identity:
             creator = participant
             break
+
     logger.info(f"👤 Creator identified: {creator.identity}")
 
-
-    track_ready = asyncio.Event()
+    # Пытаемся сразу получить аудиотрек из существующих публикаций
     audio_track = None
+    for pub in creator.tracks.values():
+        if pub.track and pub.track.kind == "audio":
+            audio_track = pub.track
+            logger.info(f"🎤 Found existing audio track from creator")
+            break
 
-    def on_track_subscribed(track, publication, participant):
-        nonlocal audio_track
-        if participant.identity == creator.identity and track.kind == "audio":
-            logger.info(f"🎤 Audio track from creator arrived")
-            audio_track = track
-            track_ready.set()
+    if not audio_track:
+        # Если трека ещё нет — ждём его появления через событие (как раньше)
+        track_ready = asyncio.Event()
 
-    ctx.room.on("track_subscribed", on_track_subscribed)
+        def on_track_subscribed(track, publication, participant):
+            nonlocal audio_track
+            if participant.identity == creator.identity and track.kind == "audio":
+                logger.info(f"🎤 Audio track from creator arrived (subscribed)")
+                audio_track = track
+                track_ready.set()
 
-    try:
-        await asyncio.wait_for(track_ready.wait(), timeout=30)
-    except asyncio.TimeoutError:
-        logger.error("❌ Timed out waiting for audio track")
-        return
+        ctx.room.on("track_subscribed", on_track_subscribed)
+
+        try:
+            await asyncio.wait_for(track_ready.wait(), timeout=30)
+        except asyncio.TimeoutError:
+            logger.error("❌ Timed out waiting for audio track")
+            return
 
     if not audio_track:
         logger.error("❌ No audio track obtained")
