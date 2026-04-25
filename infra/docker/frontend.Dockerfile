@@ -1,53 +1,48 @@
 FROM node:22-bookworm-slim AS builder
 
-WORKDIR /app
+ARG NEXT_PUBLIC_LIVEKIT_URL=ws://localhost:7880
+ARG NEXT_PUBLIC_LIVEKIT_ROOM=my-room
+ENV NEXT_PUBLIC_LIVEKIT_URL=$NEXT_PUBLIC_LIVEKIT_URL
+ENV NEXT_PUBLIC_LIVEKIT_ROOM=$NEXT_PUBLIC_LIVEKIT_ROOM
 
 #RUN npm install -g --force corepack@latest && corepack enable
 
-ENV BACKEND_DATABASE_HOST=postgres \
-    POSTGRES_PORT=5432 \
-    POSTGRES_DB=BB_db \
-    POSTGRES_USER=BB_user \
-    POSTGRES_PASSWORD=BB_password \
-    DATABASE_URL=postgresql://BB_user:BB_password@postgres:5432/BB_db?schema=public
+WORKDIR /app
 
-
+COPY package.json yarn.lock .yarnrc.yml ./
 COPY .yarn ./.yarn
-COPY .pnp.cjs ./.pnp.cjs
-COPY .pnp.loader.mjs ./.pnp.loader.mjs
+
+COPY apps/backend/package.json ./apps/backend/
+COPY apps/frontend/package.json ./apps/frontend/
+
+RUN yarn install --no-immutable
+
 COPY .env.example ./.env.example
-COPY package.json yarn.lock ./
-COPY apps/backend apps/backend
-COPY apps/frontend/package.json apps/frontend/package.json
+COPY apps/backend ./apps/backend
+COPY apps/frontend ./apps/frontend
 
-
-RUN yarn install --immutable
-
-RUN yarn workspace backend build
+RUN yarn workspace bb-front build
 
 FROM node:22-bookworm-slim
 
 WORKDIR /app
+
 ENV NODE_ENV=production
 
 RUN npm install -g --force corepack@latest && corepack enable
 
-
-COPY --from=builder /app/.env.example ./.env.example
-COPY --from=builder /app/package.json ./package.json
-COPY --from=builder /app/apps/backend/package.json ./apps/backend/package.json
-
-
 COPY --from=builder /app/.yarn ./.yarn
-COPY --from=builder /app/.pnp.cjs ./.pnp.cjs
-COPY --from=builder /app/.pnp.loader.mjs ./.pnp.loader.mjs
 COPY --from=builder /app/package.json ./package.json
 COPY --from=builder /app/yarn.lock ./yarn.lock
+
+# Копируем собранный frontend
+COPY --from=builder /app/apps/frontend/.next ./apps/frontend/.next
+COPY --from=builder /app/apps/frontend/public ./apps/frontend/public
+COPY --from=builder /app/apps/frontend/package.json ./apps/frontend/
 COPY --from=builder /app/node_modules ./node_modules
-COPY --from=builder /app/apps/backend ./apps/backend
-COPY --from=builder /app/package.json /app/package.json
 
+EXPOSE 3001
 
-EXPOSE 3000
+WORKDIR /app/apps/frontend
 
-CMD ["yarn", "workspace", "backend", "start:prod"]
+CMD ["yarn", "workspace", "bb-front", "start"]
