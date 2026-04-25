@@ -53,6 +53,7 @@ async def entrypoint(ctx: JobContext):
                 "max_delay": 3.0,
             },
         ),
+        participant=creator
     )
 
     @session.on("user_speech_committed")
@@ -62,7 +63,7 @@ async def entrypoint(ctx: JobContext):
 
     logger.info("🎤 Starting AgentSession...")
     session_task = asyncio.create_task(
-        session.start(room=ctx.room, participant=creator)
+        session.start(room=ctx.room)
     )
 
     try:
