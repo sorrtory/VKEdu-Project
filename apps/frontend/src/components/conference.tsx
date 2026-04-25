@@ -5,7 +5,6 @@ import {
   LiveKitRoom,
   ParticipantTile,
   RoomAudioRenderer,
-  TrackLoop,
   useTracks,
 } from '@livekit/components-react';
 import '@livekit/components-styles';
@@ -14,7 +13,7 @@ import { useRouter } from 'next/navigation';
 import { Track } from 'livekit-client';
 import type { ComponentProps } from 'react';
 
-type ParticipantTileTrackRef = ComponentProps<typeof ParticipantTile>['trackRef'];
+type ParticipantTrackRef = ComponentProps<typeof ParticipantTile>['trackRef'];
 
 interface ConferenceRoomProps {
   roomName: string;
@@ -34,7 +33,7 @@ export default function ConferenceRoom({
   creatorId,
 }: ConferenceRoomProps) {
   const router = useRouter();
-  const cameraTracks = useTracks(
+  const cameraTracks: ParticipantTrackRef[] = useTracks(
     [{ source: Track.Source.Camera, withPlaceholder: true }],
     { onlySubscribed: false },
   );
@@ -82,22 +81,21 @@ export default function ConferenceRoom({
               paddingBottom: '4px',
             }}
           >
-            <TrackLoop tracks={cameraTracks}>
-              {(trackRef: ParticipantTileTrackRef) => (
-                <div
-                  style={{
-                    flex: '0 0 180px',
-                    height: '110px',
-                    borderRadius: '10px',
-                    overflow: 'hidden',
-                    border: '1px solid rgba(255,255,255,0.12)',
-                    background: '#111827',
-                  }}
-                >
-                  <ParticipantTile trackRef={trackRef} />
-                </div>
-              )}
-            </TrackLoop>
+            {cameraTracks.map((trackRef, index) => (
+              <div
+                key={`${trackRef.participant.identity}-${trackRef.publication?.trackSid ?? trackRef.source ?? index}`}
+                style={{
+                  flex: '0 0 180px',
+                  height: '110px',
+                  borderRadius: '10px',
+                  overflow: 'hidden',
+                  border: '1px solid rgba(255,255,255,0.12)',
+                  background: '#111827',
+                }}
+              >
+                <ParticipantTile trackRef={trackRef} />
+              </div>
+            ))}
           </div>
 
           <div style={{ minHeight: 0, borderRadius: '10px', overflow: 'hidden' }}>
