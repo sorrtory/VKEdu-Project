@@ -52,8 +52,7 @@ async def entrypoint(ctx: JobContext):
                 "min_delay": SILENCE_DURATION,
                 "max_delay": 3.0,
             },
-        ),
-        participant=creator
+        )
     )
 
     @session.on("user_speech_committed")
