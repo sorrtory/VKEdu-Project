@@ -1,8 +1,7 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
-import { Excalidraw } from '@excalidraw/excalidraw';
-import type { ExcalidrawImperativeAPI } from '@excalidraw/excalidraw/types';
+import { Excalidraw, type ExcalidrawElement } from '@excalidraw/excalidraw';
 import type { ExcalidrawElement } from '@excalidraw/excalidraw/types/element/types';
 import { RoomEvent } from 'livekit-client';
 import { useLocalParticipant, useRoomContext } from '@livekit/components-react';
