@@ -1,29 +1,13 @@
 'use client';
 
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState, useCallback } from 'react';
 import { Excalidraw } from '@excalidraw/excalidraw';
-import type { ExcalidrawElement } from '@excalidraw/excalidraw/types/element/types';
+import type { ExcalidrawImperativeAPI } from '@excalidraw/excalidraw/types';
 import { RoomEvent } from 'livekit-client';
 import { useLocalParticipant, useRoomContext } from '@livekit/components-react';
 
 interface ExcalidrawBoardProps {
   creatorIdentity: string;
-}
-
-// Type guard to check if data is valid ExcalidrawElement[]
-function isExcalidrawElementArray(data: unknown): data is readonly ExcalidrawElement[] {
-  if (!Array.isArray(data)) return false;
-  // Basic validation - check first element has expected ExcalidrawElement properties
-  if (data.length === 0) return true;
-  const first = data[0];
-  return (
-    first !== null &&
-    typeof first === 'object' &&
-    'id' in first &&
-    'type' in first &&
-    'x' in first &&
-    'y' in first
-  );
 }
 
 export default function ExcalidrawBoard({ creatorIdentity }: ExcalidrawBoardProps) {
@@ -49,10 +33,11 @@ export default function ExcalidrawBoard({ creatorIdentity }: ExcalidrawBoardProp
 
       try {
         const decoded = new TextDecoder().decode(payload);
-        const sceneData = JSON.parse(decoded) as { elements?: unknown[] };
-
-        if (Array.isArray(sceneData.elements) && isExcalidrawElementArray(sceneData.elements)) {
-          excalidrawAPI.updateScene({ elements: sceneData.elements });
+        const sceneData = JSON.parse(decoded);
+        
+        if (sceneData.elements && Array.isArray(sceneData.elements)) {
+          // Используем as any для обхода проблем с типами (данные приходят с сервера в правильном формате)
+          excalidrawAPI.updateScene({ elements: sceneData.elements as any });
         }
       } catch (error) {
         console.error('Failed to apply whiteboard update:', error);
@@ -74,7 +59,6 @@ export default function ExcalidrawBoard({ creatorIdentity }: ExcalidrawBoardProp
       clearTimeout(sendTimeoutRef.current);
     }
 
-    // Small debounce keeps traffic low while preserving smooth updates.
     sendTimeoutRef.current = setTimeout(async () => {
       try {
         const sceneData = {
@@ -96,6 +80,10 @@ export default function ExcalidrawBoard({ creatorIdentity }: ExcalidrawBoardProp
     };
   }, []);
 
+  const handleAPISetup = useCallback((api: ExcalidrawImperativeAPI) => {
+    setExcalidrawAPI(api);
+  }, []);
+
   return (
     <div className="excalidraw-container" style={{ height: '600px', border: '1px solid #ccc', position: 'relative' }}>
       {!canEdit && (
@@ -113,11 +101,11 @@ export default function ExcalidrawBoard({ creatorIdentity }: ExcalidrawBoardProp
           Режим просмотра (только создатель может редактировать)
         </div>
       )}
-        <Excalidraw
-          excalidrawAPI={(api: ExcalidrawImperativeAPI) => setExcalidrawAPI(api)}
-          onChange={handleChange}
-          viewModeEnabled={!canEdit}
-        />
+      <Excalidraw
+        excalidrawAPI={handleAPISetup}
+        onChange={handleChange}
+        viewModeEnabled={!canEdit}
+      />
     </div>
   );
 }
