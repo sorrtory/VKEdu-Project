@@ -23,12 +23,15 @@ export class ConferenceService {
     // 🔍 Вспомогательный метод: проверка существования комнаты
     private async roomExists(roomName: string): Promise<boolean> {
         try {
-            await this.roomService.getRoom(roomName);
-            return true;
+            // Передаём имя в массиве — вернёт только эту комнату, если она есть
+            const rooms = await this.roomService.listRooms([roomName]);
+            return rooms.length > 0;
         } catch (error: any) {
-            if (error?.status === 404) return false;
-            // Другие ошибки (сеть, авторизация) — пробрасываем дальше
-            throw error;
+            if (error?.status === 401 || error?.status === 403) {
+                throw error; // критичная ошибка авторизации
+            }
+            console.log(`[roomExists] here was some warn`);
+            return false;
         }
     }
 
