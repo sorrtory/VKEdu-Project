@@ -66,7 +66,7 @@ export class ConferenceService {
             console.log(`[generateToken] Setting roomConfig with agent: default-agent`);
             token.roomConfig = {
                 agents: [{
-                    name: 'default-agent', 
+                    agent_name: 'default-agent', 
                     metadata: JSON.stringify({ 
                         initiator: participantName,
                         createdAt: new Date().toISOString(),
