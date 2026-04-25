@@ -40,22 +40,20 @@ async def entrypoint(ctx: JobContext):
 
     logger.info(f"👤 Creator identified: {creator.identity}")
 
-    # Пытаемся сразу получить аудиотрек из существующих публикаций
     audio_track = None
-    for pub in creator.tracks.values():
+    for pub in creator.track_publications.values():
         if pub.track and pub.track.kind == "audio":
             audio_track = pub.track
-            logger.info(f"🎤 Found existing audio track from creator")
+            logger.info("🎤 Found existing audio track from creator")
             break
 
     if not audio_track:
-        # Если трека ещё нет — ждём его появления через событие (как раньше)
         track_ready = asyncio.Event()
 
         def on_track_subscribed(track, publication, participant):
             nonlocal audio_track
             if participant.identity == creator.identity and track.kind == "audio":
-                logger.info(f"🎤 Audio track from creator arrived (subscribed)")
+                logger.info("🎤 Audio track from creator arrived (subscribed)")
                 audio_track = track
                 track_ready.set()
 
@@ -71,25 +69,22 @@ async def entrypoint(ctx: JobContext):
         logger.error("❌ No audio track obtained")
         return
 
-    # Загружаем Whisper STT (CPU, small, int8)
     whisper_stt = FasterWhisperSTT(
         model_size="small",
         device="cpu",
         compute_type="int8",
-        language="ru"   # или None для автоопределения
+        language="ru"
     )
 
-    # Запускаем обработку: VAD + отправка в Whisper
     logger.info("🎤 Starting audio processing with built-in VAD...")
     await process_with_vad(audio_track, whisper_stt)
 
 
 async def process_with_vad(track, stt_plugin):
     stream = AudioStream(track, sample_rate=SAMPLE_RATE, num_channels=NUM_CHANNELS)
-    vad = VAD()  # использует Silero VAD по умолчанию
+    vad = VAD()
     vad_stream = vad.stream()
 
-    # Асинхронно читаем аудиофреймы и передаём в VAD
     async def audio_feeder():
         async for frame in stream:
             vad_stream.push_frame(frame)
@@ -97,21 +92,18 @@ async def process_with_vad(track, stt_plugin):
 
     feeder_task = asyncio.create_task(audio_feeder())
 
-    # Обрабатываем события VAD
     speech_buffer = bytearray()
     async for event in vad_stream:
         if event.type == VADEventType.START_OF_SPEECH:
             logger.debug("🔊 Speech started")
             speech_buffer.clear()
         elif event.type == VADEventType.INFERENCE_DONE:
-            # Речевой сегмент закончен, отправляем в STT
             if speech_buffer:
                 text = await transcribe_audio(bytes(speech_buffer), stt_plugin)
                 if text:
                     logger.info(f"📝 Recognized: {text}")
                 speech_buffer.clear()
         elif event.type == VADEventType.SPEAKING:
-            # Просто накапливаем аудиоданные
             speech_buffer.extend(event.samples.data)
 
     await feeder_task
