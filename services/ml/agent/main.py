@@ -21,8 +21,9 @@ async def entrypoint(ctx: JobContext):
 if __name__ == "__main__":
     cli.run_app(
         WorkerOptions(
-            entrypoint=entrypoint,
+            entrypoint_fnc=entrypoint,
             worker_type=WorkerType.ROOM,
             agent_name="default-agent",
+            api_url="http://agent:8081",
         )
     )
