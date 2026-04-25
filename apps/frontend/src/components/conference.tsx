@@ -1,13 +1,9 @@
 'use client';
 
-import {
-  LiveKitRoom,
-  VideoConference,
-  RoomAudioRenderer,
-} from '@livekit/components-react';
+import { LiveKitRoom, RoomAudioRenderer, VideoConference } from '@livekit/components-react';
 import '@livekit/components-styles';
+import ExcalidrawBoard from '@/src/components/excalidraw';
 import { useRouter } from 'next/navigation';
-import ExcalidrawBoard from './excalidraw';
 
 interface ConferenceRoomProps {
   roomName: string;
@@ -33,7 +29,7 @@ export default function ConferenceRoom({
   };
 
   return (
-    <div className="conference-wrapper" style={{ height: '100vh', width: '100vw' }}>
+    <div className="conference-wrapper" style={{ height: '100vh', width: '100vw', overflow: 'hidden' }}>
       <LiveKitRoom
         serverUrl={serverUrl}
         token={token}
@@ -43,16 +39,17 @@ export default function ConferenceRoom({
         data-lk-theme="default"
         onDisconnected={handleDisconnect}
       >
-        <div style={{ display: 'flex', height: '100%' }}>
-          <div style={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
+        <div style={{ display: 'flex', flexDirection: 'column', height: '100%', width: '100%' }}>
+          <div style={{ flex: '0 0 auto' }}>
             <VideoConference />
-            <RoomAudioRenderer />
           </div>
           
-          <div style={{ width: '600px', borderLeft: '2px solid #ccc', padding: '10px' }}>
+          <div style={{ flex: 1, margin: '10px', borderRadius: '8px', overflow: 'hidden' }}>
             <ExcalidrawBoard creatorIdentity={creatorId} />
           </div>
         </div>
+        
+        <RoomAudioRenderer />
       </LiveKitRoom>
     </div>
   );
