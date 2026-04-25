@@ -10,8 +10,7 @@ class FasterWhisperSTT(stt.STT):
     def __init__(self, model_size: str = "small", device: str = "cpu", compute_type: str = "int8", language: str | None = None):
         capabilities = stt.STTCapabilities(
             streaming=False,
-            interim_results=False,
-            auto_detect_language=(language is None)
+            interim_results=False
         )
         super().__init__(capabilities=capabilities)
         self._model = WhisperModel(model_size, device=device, compute_type=compute_type)
