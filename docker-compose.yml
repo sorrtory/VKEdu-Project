@@ -113,19 +113,30 @@ services:
     networks:
       - app-network
 
-  agent:                                                                                                                                                      
+  agent:
     build:                                                                                                                                                    
-      context: ./services/ml/agent                                                                                                                            
-      dockerfile: Dockerfile                                                                                                                                  
-    container_name: BB_agent                                                                                                                                  
-    environment:                                                                                                                                              
-      LIVEKIT_URL: ws://livekit:7880                                                                                                                          
-      LIVEKIT_API_KEY: ${LIVEKIT_API_KEY}                                                                                                                     
-      LIVEKIT_API_SECRET: ${LIVEKIT_API_SECRET}                                                                                                               
-      LIVEKIT_AGENT_HOST: agent                                                                                                                               
-      LIVEKIT_AGENT_PORT: 8081                                                                                                                                
-    networks:                                                                                                                                                 
-      - app-network                                                                                                                                           
+      context: ./services/ml/agent
+      dockerfile: Dockerfile
+    container_name: BB_agent
+    environment:
+      LIVEKIT_URL: ws://livekit:7880
+      LIVEKIT_API_KEY: ${LIVEKIT_API_KEY}
+      LIVEKIT_API_SECRET: ${LIVEKIT_API_SECRET}
+      LIVEKIT_AGENT_HOST: agent
+      LIVEKIT_AGENT_PORT: 8081
+    networks:
+      - app-network
+    restart: unless-stopped
+  
+  whisper:
+    build:
+      context: ./services/ml/whisper-service
+      dockerfile: Dockerfile
+    container_name: BB_whisper
+    ports:
+      - "${WHISPER_PORT}:${WHISPER_PORT}"
+    networks:
+      - app-network
     restart: unless-stopped
 
   backend:
