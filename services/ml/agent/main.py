@@ -7,7 +7,7 @@ from typing import Optional
 import aiohttp
 
 from livekit.agents import AutoSubscribe, JobContext, WorkerOptions, cli, WorkerType
-from livekit.agents.audio import AudioStream, AudioFrame
+from livekit.rtc import AudioStream, AudioFrame
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger("livekit-agent")
