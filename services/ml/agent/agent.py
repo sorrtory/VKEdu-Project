@@ -1,4 +1,3 @@
-import asyncio
 import logging
 
 from livekit.agents import (
@@ -18,7 +17,7 @@ from faster_whisper_stt import FasterWhisperSTT
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger("livekit-agent")
 
-SILENCE_DURATION = 0.5  # seconds
+SILENCE_DURATION = 0.5
 
 
 async def entrypoint(ctx: JobContext):
@@ -70,10 +69,7 @@ async def entrypoint(ctx: JobContext):
         if event.is_final:
             logger.info(f"✅ FINAL SPEECH: {text}")
             last_partial = ""
-            return
-
-        # Current / interim speech
-        if text != last_partial:
+        elif text != last_partial:
             logger.info(f"… CURRENT SPEECH: {text}")
             last_partial = text
 
@@ -100,8 +96,6 @@ async def entrypoint(ctx: JobContext):
         )
     except Exception:
         logger.exception("Session error")
-
-    logger.info("Agent session finished.")
 
 
 if __name__ == "__main__":
