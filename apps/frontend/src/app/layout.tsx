@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import Script from 'next/script';
+import '@excalidraw/excalidraw/index.css';
 import "./globals.css";
 import ThemeProvider from "../components/theme-provider";
 import Header from "../components/common/header";
