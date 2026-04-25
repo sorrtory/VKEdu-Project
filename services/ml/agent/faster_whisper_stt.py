@@ -1,11 +1,10 @@
 import asyncio
 import logging
-import wave
-import tempfile
 import os
+import tempfile
+import wave
 from typing import Optional
 
-import numpy as np
 from faster_whisper import WhisperModel
 
 from livekit.agents import stt, utils
@@ -30,15 +29,22 @@ class FasterWhisperSTT(stt.STT):
             )
         )
 
-        self.language = language
-        self.model = WhisperModel(
+        self._language = language
+
+        # IMPORTANT:
+        # Do not call this self.model.
+        # livekit.agents.stt.STT already has a read-only `model` property.
+        self._model = WhisperModel(
             model_size,
             device=device,
             compute_type=compute_type,
         )
 
         logger.info(
-            f"✅ Whisper model '{model_size}' loaded on {device.upper()} ({compute_type})"
+            "✅ Whisper model '%s' loaded on %s (%s)",
+            model_size,
+            device.upper(),
+            compute_type,
         )
 
     async def _recognize_impl(
@@ -48,27 +54,17 @@ class FasterWhisperSTT(stt.STT):
         language: NotGivenOr[str] = NOT_GIVEN,
         conn_options=None,
     ) -> stt.SpeechEvent:
-        """
-        IMPORTANT:
-        This function must RETURN a SpeechEvent.
-        Do not use `yield` here.
-        """
-
-        selected_language = self.language
+        selected_language = self._language
         if language is not NOT_GIVEN:
             selected_language = language
 
         audio = utils.merge_frames(buffer)
 
-        sample_rate = audio.sample_rate
-        num_channels = audio.num_channels
-        pcm_data = audio.data
-
         text = await asyncio.to_thread(
             self._transcribe_pcm,
-            pcm_data,
-            sample_rate,
-            num_channels,
+            audio.data,
+            audio.sample_rate,
+            audio.num_channels,
             selected_language,
         )
 
@@ -102,15 +98,18 @@ class FasterWhisperSTT(stt.STT):
                 wf.setframerate(sample_rate)
                 wf.writeframes(pcm_data)
 
-            segments, _info = self.model.transcribe(
+            segments, _info = self._model.transcribe(
                 wav_path,
                 language=language,
                 beam_size=5,
                 vad_filter=False,
             )
 
-            text = " ".join(segment.text.strip() for segment in segments).strip()
-            return text
+            return " ".join(
+                segment.text.strip()
+                for segment in segments
+                if segment.text.strip()
+            ).strip()
 
         except Exception:
             logger.exception("Whisper transcription failed")
