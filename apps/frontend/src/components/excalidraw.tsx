@@ -3,11 +3,28 @@
 import { useEffect, useRef, useState } from 'react';
 import { Excalidraw } from '@excalidraw/excalidraw';
 import type { ExcalidrawImperativeAPI } from '@excalidraw/excalidraw/types';
+import type { ExcalidrawElement } from '@excalidraw/excalidraw/types/element/types';
 import { RoomEvent } from 'livekit-client';
 import { useLocalParticipant, useRoomContext } from '@livekit/components-react';
 
 interface ExcalidrawBoardProps {
   creatorIdentity: string;
+}
+
+// Type guard to check if data is valid ExcalidrawElement[]
+function isExcalidrawElementArray(data: unknown): data is readonly ExcalidrawElement[] {
+  if (!Array.isArray(data)) return false;
+  // Basic validation - check first element has expected ExcalidrawElement properties
+  if (data.length === 0) return true;
+  const first = data[0];
+  return (
+    first !== null &&
+    typeof first === 'object' &&
+    'id' in first &&
+    'type' in first &&
+    'x' in first &&
+    'y' in first
+  );
 }
 
 export default function ExcalidrawBoard({ creatorIdentity }: ExcalidrawBoardProps) {
@@ -35,7 +52,7 @@ export default function ExcalidrawBoard({ creatorIdentity }: ExcalidrawBoardProp
         const decoded = new TextDecoder().decode(payload);
         const sceneData = JSON.parse(decoded) as { elements?: unknown[] };
 
-        if (Array.isArray(sceneData.elements)) {
+        if (Array.isArray(sceneData.elements) && isExcalidrawElementArray(sceneData.elements)) {
           excalidrawAPI.updateScene({ elements: sceneData.elements });
         }
       } catch (error) {
@@ -97,11 +114,11 @@ export default function ExcalidrawBoard({ creatorIdentity }: ExcalidrawBoardProp
           Режим просмотра (только создатель может редактировать)
         </div>
       )}
-      <Excalidraw
-        excalidrawAPI={(api) => setExcalidrawAPI(api)}
-        onChange={handleChange}
-        viewModeEnabled={!canEdit}
-      />
+        <Excalidraw
+          excalidrawAPI={(api: ExcalidrawImperativeAPI) => setExcalidrawAPI(api)}
+          onChange={handleChange}
+          viewModeEnabled={!canEdit}
+        />
     </div>
   );
 }
