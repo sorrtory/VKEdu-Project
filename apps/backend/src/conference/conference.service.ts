@@ -35,50 +35,67 @@ export class ConferenceService {
         }
     }
 
-    async generateToken(conferenceName: string, participantName: string, isAdmin: boolean) {
-        console.log(`[generateToken] Processing request for room: ${conferenceName}`);
+    async generateToken(conferenceName: string, participantName: string, isAdmin: boolean): Promise<string> {
+        console.log(`[generateToken] Processing request for room: ${conferenceName}, participant: ${participantName}`);
         
-        // 1. Проверяем, существует ли комната
-        const exists = await this.roomExists(conferenceName);
-        console.log(`[generateToken] Room ${conferenceName} exists: ${exists}`);
-        
-        // 2. Если комнаты нет — готовим конфигурацию с агентом
-        let roomConfig: RoomConfiguration | undefined;
-        if (!exists) {
-            console.log(`[generateToken] Room will be created with agent: default-agent`);
-            roomConfig = new RoomConfiguration({
-                agents: [
-                    new RoomAgentDispatch({
-                        agentName: 'default-agent',
-                        meta: JSON.stringify({ 
-                            initiator: participantName,
-                            createdAt: new Date().toISOString()
-                        })
-                    })
-                ]
-            });
+        // 1. Проверяем, существует ли комната (SDK v2.x: listRooms принимает массив имён)
+        let roomExists = false;
+        try {
+            const rooms = await this.roomService.listRooms([conferenceName]);
+            roomExists = rooms.length > 0;
+            console.log(`[generateToken] Room ${conferenceName} exists: ${roomExists}`);
+        } catch (error: any) {
+            if (error?.status === 401 || error?.status === 403) {
+                console.error(`[generateToken] Auth error checking room:`, error.message);
+                throw error;
+            }
+            console.warn(`[generateToken] Could not check room existence:`, error.message);
+            // При ошибке сети считаем, что комнаты нет — агент диспатчится при создании
+            roomExists = false;
         }
 
-        // 3. Генерируем токен
+        // 2. Создаём AccessToken
         const token = new AccessToken(this.API_KEY, this.API_Secret, {
-            identity: participantName, 
-            name: participantName
-        }, {
-            roomConfig: roomConfig  // передаём конфиг (может быть undefined)
+            identity: participantName,
+            name: participantName,
+            // ttl: 3600, // опционально: время жизни токена в секундах
         });
 
-        const grant: VideoGrant = {
+        // 3. Если комната создаётся впервые — добавляем конфигурацию с агентом
+        if (!roomExists) {
+            console.log(`[generateToken] Setting roomConfig with agent: default-agent`);
+            token.roomConfig = {
+                agents: [{
+                    name: 'default-agent', 
+                    metadata: JSON.stringify({ 
+                        initiator: participantName,
+                        createdAt: new Date().toISOString(),
+                        conference: conferenceName
+                    })
+                }]
+            };
+        }
+
+        // 4. Добавляем права доступа (гранты)
+        token.addGrant({
             roomJoin: true,
             room: conferenceName,
             canPublish: true,
             canSubscribe: true,
+            canPublishData: true,
             roomAdmin: isAdmin,
-        };
-        token.addGrant(grant);
+            // canUpdateOwnMetadata: true, // опционально
+        });
 
-        console.log(`[generateToken] Token generated for ${participantName}`);
-        return token.toJwt();
+        // 5. Генерируем и возвращаем JWT
+        const jwt = await token.toJwt();
+        console.log(`[generateToken] Token generated successfully for ${participantName}`);
+        
+        console.log('[generateToken] roomConfig:', JSON.stringify(token.roomConfig, null, 2));
+        
+        return jwt;
     }
+
 
     // Опционально: явное создание комнаты без участника (агент НЕ прикрепится)
     async createConference(conferenceName: string) {
