@@ -2,3 +2,4 @@ livekit-agents[silero]
 faster-whisper
 numpy
 soundfile
+confluent_kafka
