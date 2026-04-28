@@ -72,10 +72,12 @@ async def entrypoint(ctx: JobContext):
     @ctx.room.on("data_received")
     def on_data_received(dp: DataPacket):
         try:
-            text = dp.data.decode('utf-8') if isinstance(dp.data, bytes) else str(dp.data)
-            logger.info(f"📥 RAW DATA RECEIVED: topic={dp.topic}, data={text[:200]}")
+            data = json.loads(dp.data)
         except Exception:
-            logger.info(f"📥 RAW DATA RECEIVED: topic={dp.topic}, bytes len={len(dp.data)}")
+            return
+
+        if isinstance(data, dict) and "message" in data:
+            logger.info(f"CHAT MESSAGE RECEIVED: topic={dp.topic}, data={data}")
 
     logger.info(f"Joined room {ctx.room.name}.")
     logger.info("Waiting for participant...")
