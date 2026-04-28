@@ -16,9 +16,8 @@ export default function CustomChat() {
   const [inputValue, setInputValue] = useState('');
   const [agentMessages, setAgentMessages] = useState<AgentMessage[]>([]);
   
-  const AGENT_IDENTITY = 'ml-agent';
+  const AGENT_IDENTITY = 'default-agent';
 
-  // Фильтруем сообщения для общего чата (исключая агента)
   const generalMessages = chatMessages.filter((msg) => {
     const isFromAgent = msg.from?.identity === AGENT_IDENTITY;
     return !isFromAgent;
@@ -28,10 +27,8 @@ export default function CustomChat() {
     if (!inputValue.trim()) return;
 
     if (activeTab === 'general') {
-      // Отправка в общий чат
       await send(inputValue);
     } else {
-      // Отправка агенту
       try {
         await send(inputValue, { destinationIdentities: [AGENT_IDENTITY] });
         
@@ -47,7 +44,6 @@ export default function CustomChat() {
     setInputValue('');
   };
 
-  // Получаем сообщения от агента
   useEffect(() => {
     const agentMsgs = chatMessages.filter(msg => msg.from?.identity === AGENT_IDENTITY);
     agentMsgs.forEach(msg => {
@@ -177,7 +173,7 @@ export default function CustomChat() {
       </div>
 
       {/* Поле ввода */}
-      <div style={{ padding: '16px', borderTop: '1px solid rgba(255,255,255,0.1)' }}>
+      <div style={{ padding: '16px', width: '100%', borderTop: '1px solid rgba(255,255,255,0.1)' }}>
         <div style={{ display: 'flex', gap: '8px' }}>
           <input
             type="text"
