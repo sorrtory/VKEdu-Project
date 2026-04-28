@@ -1,9 +1,9 @@
 'use client';
 
-import React, { useContext, useEffect, useState } from 'react';
-import { useChat, RoomContext } from '@livekit/components-react';
+import React, { useEffect, useState } from 'react';
+import { useChat, useRoomContext } from '@livekit/components-react';
 import type { ReceivedChatMessage } from '@livekit/components-react';
-import { DataPacket_Kind, Room } from 'livekit-client';
+import { DataPacket_Kind, RoomEvent } from 'livekit-client';
 
 interface AgentMessage {
   text: string;
@@ -13,8 +13,7 @@ interface AgentMessage {
 
 export default function CustomChat() {
   const { chatMessages, send } = useChat();
-  const room = useContext(RoomContext) as Room | null; // RoomContext сам является комнатой
-  
+  const room = useRoomContext(); // 👈 как в вашем примере
   const [activeTab, setActiveTab] = useState<'general' | 'agent'>('general');
   const [inputValue, setInputValue] = useState('');
   const [agentMessages, setAgentMessages] = useState<AgentMessage[]>([]);
@@ -32,15 +31,18 @@ export default function CustomChat() {
       return false;
     }
 
-    const agent = room.participants.get(AGENT_IDENTITY);
+    // Поиск агента среди участников комнаты
+    const agent = Array.from(room.remoteParticipants.values()).find(
+      p => p.identity === AGENT_IDENTITY
+    );
+    
     if (!agent) {
       console.error('Agent not found in room');
       return false;
     }
 
     try {
-      const localParticipant = room.localParticipant;
-      await localParticipant.publishData(
+      await room.localParticipant.publishData(
         JSON.stringify({ type: 'agent_message', message }),
         DataPacket_Kind.RELIABLE,
         [agent.identity]
@@ -73,14 +75,14 @@ export default function CustomChat() {
     setInputValue('');
   };
 
-  // Слушаем data channel сообщения от агента
+  // Слушаем data channel сообщения от агента (как в Excalidraw примере)
   useEffect(() => {
     if (!room) return;
 
-    const handleDataReceived = (payload: Uint8Array, participant: any) => {
+    const onDataReceived = (payload: Uint8Array, participant?: { identity?: string }) => {
       try {
         const data = JSON.parse(new TextDecoder().decode(payload));
-        if (data.type === 'agent_message' && participant.identity === AGENT_IDENTITY) {
+        if (data.type === 'agent_message' && participant?.identity === AGENT_IDENTITY) {
           setAgentMessages(prev => {
             if (prev.some(msg => msg.text === data.message)) {
               return prev;
@@ -93,14 +95,14 @@ export default function CustomChat() {
           });
         }
       } catch (e) {
-        // Не JSON сообщение
+        // Не JSON сообщение или не от агента
       }
     };
 
-    room.on('dataReceived', handleDataReceived);
+    room.on(RoomEvent.DataReceived, onDataReceived);
     
     return () => {
-      room.off('dataReceived', handleDataReceived);
+      room.off(RoomEvent.DataReceived, onDataReceived);
     };
   }, [room, AGENT_IDENTITY]);
 
@@ -136,6 +138,7 @@ export default function CustomChat() {
 
   return (
     <div style={{ height: '100%', display: 'flex', flexDirection: 'column', background: '#0b1220' }}>
+      {/* Вкладки переключения */}
       <div style={{ display: 'flex', borderBottom: '1px solid rgba(255,255,255,0.1)' }}>
         <button
           onClick={() => setActiveTab('general')}
@@ -167,6 +170,7 @@ export default function CustomChat() {
         </button>
       </div>
 
+      {/* Область сообщений */}
       <div style={{ flex: 1, overflowY: 'auto', padding: '16px', display: 'flex', flexDirection: 'column', gap: '12px' }}>
         {getCurrentMessages().map((msg, idx) => {
           const isUserMessage = isReceivedChatMessage(msg) 
@@ -231,6 +235,7 @@ export default function CustomChat() {
         )}
       </div>
 
+      {/* Поле ввода */}
       <div style={{ padding: '16px', borderTop: '1px solid rgba(255,255,255,0.1)' }}>
         <div style={{ display: 'flex', gap: '8px', width: '100%' }}>
           <input
