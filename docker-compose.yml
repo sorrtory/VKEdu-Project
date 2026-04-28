@@ -115,6 +115,23 @@ services:
     restart: unless-stopped
     networks:
       - app-network
+  
+  ollama:
+    image: ollama/ollama:latest
+    container_name: BB_ollama
+    profiles: ["ml"]
+    restart: unless-stopped
+    volumes:
+      - ollama_data:/root/.ollama
+    networks:
+      - app-network
+    entrypoint: ["/bin/sh", "-c"]
+    command:
+      - |
+        ollama serve &
+        sleep 5
+        ollama pull qwen2.5:0.5b
+        tail -f /dev/null
 
   agent:
     build:                                                                                                                                                    

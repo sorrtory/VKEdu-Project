@@ -11,7 +11,7 @@ from livekit.agents import (
     Agent,
     TurnHandlingOptions,
 )
-from livekit.plugins import silero
+from livekit.plugins import silero, openai
 from faster_whisper_stt import FasterWhisperSTT
 import time
 
@@ -57,6 +57,11 @@ async def entrypoint(ctx: JobContext):
 
     session = AgentSession(
         stt=whisper_stt,
+        llm=openai.LLM.with_ollama(
+            model="qwen2.5:0.5b",
+            base_url="http://ollama:11434/v1",
+            temperature=0.6,
+        ),
         vad=silero.VAD.load(),
         turn_handling=TurnHandlingOptions(
             turn_detection="vad",
