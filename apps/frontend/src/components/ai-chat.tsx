@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useEffect, useState } from 'react';
-import { useChat, useRoomContext } from '@livekit/components-react';
+import { useChat } from '@livekit/components-react';
 import type { ReceivedChatMessage } from '@livekit/components-react';
 
 interface AgentMessage {
@@ -12,14 +12,12 @@ interface AgentMessage {
 
 export default function CustomChat() {
   const { chatMessages, send } = useChat();
-  const room = useRoomContext();
   const [activeTab, setActiveTab] = useState<'general' | 'agent'>('general');
   const [inputValue, setInputValue] = useState('');
   const [agentMessages, setAgentMessages] = useState<AgentMessage[]>([]);
   
   const AGENT_IDENTITY = 'default-agent';
 
-  // Фильтруем сообщения для общего чата (исключая агента)
   const generalMessages = chatMessages.filter((msg) => {
     const isFromAgent = msg.from?.identity === AGENT_IDENTITY;
     return !isFromAgent;
@@ -29,13 +27,10 @@ export default function CustomChat() {
     if (!inputValue.trim()) return;
 
     if (activeTab === 'general') {
-      // Отправка в общий чат (видят все)
       await send(inputValue);
     } else {
-      // Отправка только агенту через стандартный chat
       await send(inputValue, { destinationIdentities: [AGENT_IDENTITY] });
       
-      // Добавляем сообщение в локальный список для вкладки агента
       setAgentMessages(prev => [...prev, {
         text: inputValue,
         timestamp: Date.now(),
@@ -45,12 +40,10 @@ export default function CustomChat() {
     setInputValue('');
   };
 
-  // Слушаем сообщения от агента (через стандартный chat)
   useEffect(() => {
     const agentMsgs = chatMessages.filter(msg => msg.from?.identity === AGENT_IDENTITY);
     agentMsgs.forEach(msg => {
-      // Проверяем, нет ли уже такого сообщения в agentMessages
-      if (!agentMessages.some(agentMsg => agentMsg.text === msg.message && agentMsg.timestamp === msg.timestamp)) {
+      if (!agentMessages.some(agentMsg => agentMsg.timestamp === msg.timestamp)) {
         setAgentMessages(prev => [...prev, {
           text: msg.message,
           timestamp: msg.timestamp,
@@ -58,7 +51,7 @@ export default function CustomChat() {
         }]);
       }
     });
-  }, [chatMessages, agentMessages, AGENT_IDENTITY]);
+  }, [chatMessages, agentMessages]);
 
   const getCurrentMessages = (): (ReceivedChatMessage | AgentMessage)[] => {
     if (activeTab === 'general') {
@@ -78,7 +71,6 @@ export default function CustomChat() {
 
   return (
     <div style={{ height: '100%', display: 'flex', flexDirection: 'column', background: '#0b1220' }}>
-      {/* Вкладки переключения */}
       <div style={{ display: 'flex', borderBottom: '1px solid rgba(255,255,255,0.1)' }}>
         <button
           onClick={() => setActiveTab('general')}
@@ -110,7 +102,6 @@ export default function CustomChat() {
         </button>
       </div>
 
-      {/* Область сообщений */}
       <div style={{ flex: 1, overflowY: 'auto', padding: '16px', display: 'flex', flexDirection: 'column', gap: '12px' }}>
         {getCurrentMessages().map((msg, idx) => {
           const isUserMessage = isReceivedChatMessage(msg) 
@@ -175,7 +166,6 @@ export default function CustomChat() {
         )}
       </div>
 
-      {/* Поле ввода */}
       <div style={{ padding: '16px', borderTop: '1px solid rgba(255,255,255,0.1)' }}>
         <div style={{ display: 'flex', gap: '8px', width: '100%' }}>
           <input
