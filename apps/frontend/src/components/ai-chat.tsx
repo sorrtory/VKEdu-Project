@@ -3,7 +3,7 @@
 import React, { useContext, useEffect, useState } from 'react';
 import { useChat, RoomContext } from '@livekit/components-react';
 import type { ReceivedChatMessage } from '@livekit/components-react';
-import { DataPacket_Kind } from 'livekit-client';
+import { DataPacket_Kind, Room } from 'livekit-client';
 
 interface AgentMessage {
   text: string;
@@ -13,8 +13,7 @@ interface AgentMessage {
 
 export default function CustomChat() {
   const { chatMessages, send } = useChat();
-  const roomContext = useContext(RoomContext);
-  const room = roomContext?.room || null;
+  const room = useContext(RoomContext) as Room | null; // RoomContext сам является комнатой
   
   const [activeTab, setActiveTab] = useState<'general' | 'agent'>('general');
   const [inputValue, setInputValue] = useState('');
@@ -27,7 +26,6 @@ export default function CustomChat() {
     return !isFromAgent;
   });
 
-  // Отправка сообщения агенту через data channel
   const sendToAgent = async (message: string) => {
     if (!room) {
       console.error('Room not available');
@@ -58,13 +56,10 @@ export default function CustomChat() {
     if (!inputValue.trim()) return;
 
     if (activeTab === 'general') {
-      // Отправка в общий чат
       await send(inputValue);
     } else {
-      // Отправка агенту
       const success = await sendToAgent(inputValue);
       
-      // Добавляем сообщение в локальный список (оптимистичное обновление)
       setAgentMessages(prev => [...prev, {
         text: inputValue,
         timestamp: Date.now(),
@@ -87,8 +82,7 @@ export default function CustomChat() {
         const data = JSON.parse(new TextDecoder().decode(payload));
         if (data.type === 'agent_message' && participant.identity === AGENT_IDENTITY) {
           setAgentMessages(prev => {
-            // Проверяем, нет ли уже такого сообщения
-            if (prev.some(msg => msg.text === data.message && msg.timestamp === data.timestamp)) {
+            if (prev.some(msg => msg.text === data.message)) {
               return prev;
             }
             return [...prev, {
@@ -99,8 +93,7 @@ export default function CustomChat() {
           });
         }
       } catch (e) {
-        // Не JSON сообщение или не от агента
-        console.debug('Received non-agent message via data channel');
+        // Не JSON сообщение
       }
     };
 
@@ -111,11 +104,11 @@ export default function CustomChat() {
     };
   }, [room, AGENT_IDENTITY]);
 
-  // Также слушаем обычные chat сообщения от агента (на случай если агент использует обычный чат)
+  // Также слушаем обычные chat сообщения от агента
   useEffect(() => {
     const agentMsgs = chatMessages.filter(msg => msg.from?.identity === AGENT_IDENTITY);
     agentMsgs.forEach(msg => {
-      if (!agentMessages.some(agentMsg => agentMsg.text === msg.message && agentMsg.timestamp === msg.timestamp)) {
+      if (!agentMessages.some(agentMsg => agentMsg.text === msg.message)) {
         setAgentMessages(prev => [...prev, {
           text: msg.message,
           timestamp: msg.timestamp,
@@ -143,7 +136,6 @@ export default function CustomChat() {
 
   return (
     <div style={{ height: '100%', display: 'flex', flexDirection: 'column', background: '#0b1220' }}>
-      {/* Вкладки переключения */}
       <div style={{ display: 'flex', borderBottom: '1px solid rgba(255,255,255,0.1)' }}>
         <button
           onClick={() => setActiveTab('general')}
@@ -175,7 +167,6 @@ export default function CustomChat() {
         </button>
       </div>
 
-      {/* Область сообщений */}
       <div style={{ flex: 1, overflowY: 'auto', padding: '16px', display: 'flex', flexDirection: 'column', gap: '12px' }}>
         {getCurrentMessages().map((msg, idx) => {
           const isUserMessage = isReceivedChatMessage(msg) 
@@ -207,7 +198,6 @@ export default function CustomChat() {
                   {senderName !== 'Вы' && senderName !== 'Агент' && `${senderName}: `}
                   {senderName === 'Агент' && 'AI Агент: '}
                   {isUserMessage && 'Вы: '}
-                  {!isUserMessage && senderName === AGENT_IDENTITY && 'AI Агент: '}
                 </div>
                 <div>{messageText}</div>
                 <div style={{ fontSize: '10px', opacity: 0.7, marginTop: '4px' }}>
@@ -241,7 +231,6 @@ export default function CustomChat() {
         )}
       </div>
 
-      {/* Поле ввода */}
       <div style={{ padding: '16px', borderTop: '1px solid rgba(255,255,255,0.1)' }}>
         <div style={{ display: 'flex', gap: '8px', width: '100%' }}>
           <input
