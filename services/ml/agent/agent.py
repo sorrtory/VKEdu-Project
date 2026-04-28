@@ -12,7 +12,6 @@ from livekit.agents import (
     TurnHandlingOptions,
     ConversationItemAddedEvent
 )
-from livekit.rtc import DataPacket
 from livekit.agents.llm import ChatMessage
 from livekit.plugins.openai import LLM as OpenAILLM
 from livekit.plugins import silero, openai
@@ -56,15 +55,6 @@ async def entrypoint(ctx: JobContext):
     logger.info(f"Joining room {ctx.room.name}...")
 
     await ctx.connect(auto_subscribe=AutoSubscribe.AUDIO_ONLY)
-
-    @ctx.room.on("data_packet_sent")
-    def on_data_sent(dp: DataPacket):
-        try:
-            if dp.topic == "lk.chat":
-                data = dp.data.decode('utf-8')
-                logger.info(f"AGENT SENT TO CHAT: {data}")
-        except Exception:
-            pass
 
     logger.info(f"Joined room {ctx.room.name}.")
     logger.info("Waiting for participant...")
