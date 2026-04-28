@@ -10,13 +10,15 @@ interface CustomChatProps {
 
 export const CustomChat: React.FC<CustomChatProps> = ({ agentIdentity }) => {
   const { chatMessages, send } = useChat();
-  const [activeTab, setActiveTab] = useState<'room' | 'agent'>('room');
+  const [activeTab, setActiveTab] = useState<'room' | 'agent'>('agent');
   const [inputValue, setInputValue] = useState('');
   const [agentMessages, setAgentMessages] = useState<{ text: string; timestamp: number; isFromUser: boolean }[]>([]);
 
+  // 1. Вычисляем сообщения для общего чата, отфильтровывая только нужные
   const roomMessages = chatMessages.filter((msg) => {
     if (activeTab === 'agent') return false;
     const isFromAgent = msg.from?.identity === agentIdentity;
+    // Если это не сообщение агенту и не от агента в общем канале — показываем
     return !isFromAgent;
   });
 
@@ -24,13 +26,15 @@ export const CustomChat: React.FC<CustomChatProps> = ({ agentIdentity }) => {
     if (!inputValue.trim()) return;
 
     if (activeTab === 'room') {
+      // 2. Отправка в общий чат комнаты
       await send(inputValue);
     } else {
+      // 3. Отправка приватного сообщения агенту (НЕ в общий чат)
       const agentParticipant = chatMessages.find(msg => msg.from?.identity === agentIdentity)?.from;
       
       if (agentParticipant) {
-        // Используем participantIdentity для отправки только агенту
-        await send(inputValue, { destinationIdentity: agentIdentity });
+        // ✅ ИСПРАВЛЕНО: используем destinationIdentities (массив)
+        await send(inputValue, { destinationIdentities: [agentIdentity] });
         
         // Добавляем сообщение в локальный стейт для вкладки агента
         setAgentMessages(prev => [...prev, {
@@ -40,48 +44,32 @@ export const CustomChat: React.FC<CustomChatProps> = ({ agentIdentity }) => {
         }]);
       } else {
         console.warn('Agent not found in the room yet');
+        // Можно всё равно отправить, даже если агент не найден
+        await send(inputValue, { destinationIdentities: [agentIdentity] });
+        setAgentMessages(prev => [...prev, {
+          text: inputValue,
+          timestamp: Date.now(),
+          isFromUser: true
+        }]);
       }
     }
     setInputValue('');
   };
 
-  // Функция для получения ответов от агента (нужно подключить через отдельный data channel)
-  // Это упрощенный пример — в реальности нужно слушать сообщения от агента
+  // Функция для получения ответов от агента
   React.useEffect(() => {
-    // Подписка на сообщения от агента через отдельный канал
-    const handleAgentMessage = (msg: ReceivedChatMessage) => {
-      if (msg.from?.identity === agentIdentity && activeTab === 'agent') {
+    // Подписка на сообщения от агента
+    const agentMsgs = chatMessages.filter(msg => msg.from?.identity === agentIdentity);
+    agentMsgs.forEach(msg => {
+      if (!agentMessages.some(agentMsg => agentMsg.timestamp === msg.timestamp)) {
         setAgentMessages(prev => [...prev, {
           text: msg.message,
           timestamp: msg.timestamp,
           isFromUser: false
         }]);
       }
-    };
-
-    // Используем существующие сообщения для демонстрации
-    const agentMsgHandler = (msg: ReceivedChatMessage) => {
-      if (msg.from?.identity === agentIdentity) {
-        handleAgentMessage(msg);
-      }
-    };
-
-    // Добавляем слушателя к существующим сообщениям
-    const checkForAgentMessages = () => {
-      const agentMsgs = chatMessages.filter(msg => msg.from?.identity === agentIdentity);
-      agentMsgs.forEach(msg => {
-        if (!agentMessages.some(agentMsg => agentMsg.timestamp === msg.timestamp)) {
-          setAgentMessages(prev => [...prev, {
-            text: msg.message,
-            timestamp: msg.timestamp,
-            isFromUser: false
-          }]);
-        }
-      });
-    };
-
-    checkForAgentMessages();
-  }, [chatMessages, agentIdentity, agentMessages, activeTab]);
+    });
+  }, [chatMessages, agentIdentity, agentMessages]);
 
   const getCurrentMessages = () => {
     if (activeTab === 'room') {
