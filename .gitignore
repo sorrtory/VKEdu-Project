@@ -23,4 +23,7 @@ API_KEY.py
 !.yarn/sdks
 !.yarn/versions
 
+node_modules/
+package-lock.json
+
 test_audio/

@@ -1,63 +1,43 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useChat } from '@livekit/components-react';
 import type { ReceivedChatMessage } from '@livekit/components-react';
 
-interface CustomChatProps {
-  agentIdentity: string;
-}
-
-// Определяем тип для локального сообщения агента
 interface AgentMessage {
   text: string;
   timestamp: number;
   isFromUser: boolean;
 }
 
-export const CustomChat: React.FC<CustomChatProps> = ({ agentIdentity }) => {
+export default function CustomChat() {
   const { chatMessages, send } = useChat();
-  const [activeTab, setActiveTab] = useState<'room' | 'agent'>('agent');
   const [inputValue, setInputValue] = useState('');
   const [agentMessages, setAgentMessages] = useState<AgentMessage[]>([]);
-
-  // 1. Вычисляем сообщения для общего чата, отфильтровывая только нужные
-  const roomMessages = chatMessages.filter((msg) => {
-    if (activeTab === 'agent') return false;
-    const isFromAgent = msg.from?.identity === agentIdentity;
-    // Если это не сообщение агенту и не от агента в общем канале — показываем
-    return !isFromAgent;
-  });
+  
+  const AGENT_IDENTITY = 'ml-agent';
 
   const handleSendMessage = async () => {
     if (!inputValue.trim()) return;
 
-    if (activeTab === 'room') {
-      // 2. Отправка в общий чат комнаты
-      await send(inputValue);
-    } else {
-      // 3. Отправка приватного сообщения агенту (НЕ в общий чат)
-      try {
-        // Используем destinationIdentities (массив)
-        await send(inputValue, { destinationIdentities: [agentIdentity] });
-        
-        // Добавляем сообщение в локальный стейт для вкладки агента
-        setAgentMessages(prev => [...prev, {
-          text: inputValue,
-          timestamp: Date.now(),
-          isFromUser: true
-        }]);
-      } catch (error) {
-        console.error('Failed to send message to agent:', error);
-      }
+    try {
+      await send(inputValue, { destinationIdentities: [AGENT_IDENTITY] });
+      
+      setAgentMessages(prev => [...prev, {
+        text: inputValue,
+        timestamp: Date.now(),
+        isFromUser: true
+      }]);
+    } catch (error) {
+      console.error('Failed to send message to agent:', error);
     }
+    
     setInputValue('');
   };
 
-  // Функция для получения ответов от агента
-  React.useEffect(() => {
-    // Подписка на сообщения от агента
-    const agentMsgs = chatMessages.filter(msg => msg.from?.identity === agentIdentity);
+  useEffect(() => {
+    // Получаем сообщения от агента
+    const agentMsgs = chatMessages.filter(msg => msg.from?.identity === AGENT_IDENTITY);
     agentMsgs.forEach(msg => {
       if (!agentMessages.some(agentMsg => agentMsg.timestamp === msg.timestamp)) {
         setAgentMessages(prev => [...prev, {
@@ -67,72 +47,29 @@ export const CustomChat: React.FC<CustomChatProps> = ({ agentIdentity }) => {
         }]);
       }
     });
-  }, [chatMessages, agentIdentity, agentMessages]);
-
-  const getCurrentMessages = (): (ReceivedChatMessage | AgentMessage)[] => {
-    if (activeTab === 'room') {
-      return roomMessages;
-    } else {
-      return agentMessages;
-    }
-  };
+  }, [chatMessages, agentMessages]);
 
   const formatTime = (timestamp: number) => {
     return new Date(timestamp).toLocaleTimeString([], { hour: '2-digit', minute:'2-digit' });
   };
 
-  // Type guard для проверки типа сообщения
-  const isReceivedChatMessage = (msg: ReceivedChatMessage | AgentMessage): msg is ReceivedChatMessage => {
-    return 'from' in msg;
-  };
-
-  const isAgentMessage = (msg: ReceivedChatMessage | AgentMessage): msg is AgentMessage => {
-    return 'isFromUser' in msg;
-  };
-
   return (
     <div style={{ height: '100%', display: 'flex', flexDirection: 'column', background: '#0b1220' }}>
-      {/* Вкладки */}
-      <div style={{ display: 'flex', borderBottom: '1px solid rgba(255,255,255,0.1)' }}>
-        <button
-          onClick={() => setActiveTab('room')}
-          style={{
-            flex: 1,
-            padding: '12px',
-            background: activeTab === 'room' ? '#1e293b' : 'transparent',
-            border: 'none',
-            color: 'white',
-            cursor: 'pointer',
-            fontWeight: activeTab === 'room' ? 'bold' : 'normal'
-          }}
-        >
-          Общий чат
-        </button>
-        <button
-          onClick={() => setActiveTab('agent')}
-          style={{
-            flex: 1,
-            padding: '12px',
-            background: activeTab === 'agent' ? '#1e293b' : 'transparent',
-            border: 'none',
-            color: 'white',
-            cursor: 'pointer',
-            fontWeight: activeTab === 'agent' ? 'bold' : 'normal'
-          }}
-        >
-          ML Агент
-        </button>
+      <div style={{ 
+        padding: '12px', 
+        borderBottom: '1px solid rgba(255,255,255,0.1)',
+        backgroundColor: '#0f172a',
+        color: 'white',
+        fontWeight: 'bold',
+        fontSize: '14px'
+      }}>
+        Чат с AI агентом
       </div>
 
-      {/* Область сообщений */}
       <div style={{ flex: 1, overflowY: 'auto', padding: '16px', display: 'flex', flexDirection: 'column', gap: '12px' }}>
-        {getCurrentMessages().map((msg, idx) => {
-          // Используем type guard для определения типа сообщения
-          const isUserMessage = isReceivedChatMessage(msg) 
-            ? msg.from?.identity === 'You' 
-            : msg.isFromUser;
-          
-          const messageText = isReceivedChatMessage(msg) ? msg.message : msg.text;
+        {agentMessages.map((msg, idx) => {
+          const isUserMessage = msg.isFromUser;
+          const messageText = msg.text;
           const timestamp = msg.timestamp;
           
           return (
@@ -153,8 +90,7 @@ export const CustomChat: React.FC<CustomChatProps> = ({ agentIdentity }) => {
                 }}
               >
                 <div style={{ fontSize: '14px', marginBottom: '4px' }}>
-                  {!isUserMessage && activeTab === 'agent' && '🤖 Агент: '}
-                  {!isUserMessage && activeTab === 'room' && isReceivedChatMessage(msg) && `${msg.from?.identity}: `}
+                  {!isUserMessage && 'Агент: '}
                   {isUserMessage && 'Вы: '}
                 </div>
                 <div>{messageText}</div>
@@ -165,9 +101,19 @@ export const CustomChat: React.FC<CustomChatProps> = ({ agentIdentity }) => {
             </div>
           );
         })}
+        
+        {agentMessages.length === 0 && (
+          <div style={{ 
+            textAlign: 'center', 
+            color: 'rgba(255,255,255,0.5)', 
+            padding: '20px',
+            fontSize: '14px'
+          }}>
+            Напишите сообщение AI агенту
+          </div>
+        )}
       </div>
 
-      {/* Поле ввода */}
       <div style={{ padding: '16px', borderTop: '1px solid rgba(255,255,255,0.1)' }}>
         <div style={{ display: 'flex', gap: '8px' }}>
           <input
@@ -175,7 +121,7 @@ export const CustomChat: React.FC<CustomChatProps> = ({ agentIdentity }) => {
             value={inputValue}
             onChange={(e) => setInputValue(e.target.value)}
             onKeyPress={(e) => e.key === 'Enter' && handleSendMessage()}
-            placeholder={activeTab === 'room' ? "Сообщение всем..." : "Сообщение ML агенту..."}
+            placeholder="Сообщение AI агенту..."
             style={{
               flex: 1,
               padding: '8px 12px',
@@ -203,4 +149,4 @@ export const CustomChat: React.FC<CustomChatProps> = ({ agentIdentity }) => {
       </div>
     </div>
   );
-};
+}
