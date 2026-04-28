@@ -13,7 +13,7 @@ interface AgentMessage {
 
 export default function CustomChat() {
   const { chatMessages, send } = useChat();
-  const room = useRoomContext(); // 👈 как в вашем примере
+  const room = useRoomContext();
   const [activeTab, setActiveTab] = useState<'general' | 'agent'>('general');
   const [inputValue, setInputValue] = useState('');
   const [agentMessages, setAgentMessages] = useState<AgentMessage[]>([]);
@@ -42,10 +42,13 @@ export default function CustomChat() {
     }
 
     try {
+      // publishData принимает только 2 аргумента: данные и опции
       await room.localParticipant.publishData(
-        JSON.stringify({ type: 'agent_message', message }),
-        DataPacket_Kind.RELIABLE,
-        [agent.identity]
+        new TextEncoder().encode(JSON.stringify({ type: 'agent_message', message })),
+        { 
+          reliable: true,
+          destinationIdentities: [agent.identity] // destination указывается в опциях
+        }
       );
       return true;
     } catch (error) {
@@ -75,7 +78,7 @@ export default function CustomChat() {
     setInputValue('');
   };
 
-  // Слушаем data channel сообщения от агента (как в Excalidraw примере)
+  // Слушаем data channel сообщения от агента
   useEffect(() => {
     if (!room) return;
 
@@ -84,7 +87,7 @@ export default function CustomChat() {
         const data = JSON.parse(new TextDecoder().decode(payload));
         if (data.type === 'agent_message' && participant?.identity === AGENT_IDENTITY) {
           setAgentMessages(prev => {
-            if (prev.some(msg => msg.text === data.message)) {
+            if (prev.some(msg => msg.text === data.message && msg.timestamp === data.timestamp)) {
               return prev;
             }
             return [...prev, {
