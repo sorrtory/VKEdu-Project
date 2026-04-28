@@ -13,10 +13,26 @@ from livekit.agents import (
     ConversationItemAddedEvent
 )
 from livekit.agents.llm import ChatMessage
+from livekit.plugins.openai import LLM as OpenAILLM
 from livekit.plugins import silero, openai
 from faster_whisper_stt import FasterWhisperSTT
 from logging_llm import LoggingLLM
 import time
+
+
+class LoggingLLM(OpenAILLM):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+
+    async def create_response(self, messages, **kwargs):
+        logger.info("Sending to LLM:")
+        for msg in messages:
+            logger.info(f"{msg.role}: {msg.text_content}")
+
+        response = await super().create_response(messages, **kwargs)
+
+        logger.info(f"LLM Response: {response.text}")
+        return response
 
 
 producer = Producer({'bootstrap.servers': 'broker:9092'})
