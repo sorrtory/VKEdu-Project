@@ -89,6 +89,7 @@ services:
       KAFKA_TOPICS: ${MLIN_KAFKA_TOPICS}
       REDIS_HOST: ${REDIS_HOST}
       REDIS_PORT: ${REDIS_PORT}
+      PYTHONIOENCODING: utf-8
     depends_on:
       - broker
       - redis
