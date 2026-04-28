@@ -8,11 +8,18 @@ interface CustomChatProps {
   agentIdentity: string;
 }
 
+// Определяем тип для локального сообщения агента
+interface AgentMessage {
+  text: string;
+  timestamp: number;
+  isFromUser: boolean;
+}
+
 export const CustomChat: React.FC<CustomChatProps> = ({ agentIdentity }) => {
   const { chatMessages, send } = useChat();
   const [activeTab, setActiveTab] = useState<'room' | 'agent'>('agent');
   const [inputValue, setInputValue] = useState('');
-  const [agentMessages, setAgentMessages] = useState<{ text: string; timestamp: number; isFromUser: boolean }[]>([]);
+  const [agentMessages, setAgentMessages] = useState<AgentMessage[]>([]);
 
   // 1. Вычисляем сообщения для общего чата, отфильтровывая только нужные
   const roomMessages = chatMessages.filter((msg) => {
@@ -30,10 +37,8 @@ export const CustomChat: React.FC<CustomChatProps> = ({ agentIdentity }) => {
       await send(inputValue);
     } else {
       // 3. Отправка приватного сообщения агенту (НЕ в общий чат)
-      const agentParticipant = chatMessages.find(msg => msg.from?.identity === agentIdentity)?.from;
-      
-      if (agentParticipant) {
-        // ✅ ИСПРАВЛЕНО: используем destinationIdentities (массив)
+      try {
+        // Используем destinationIdentities (массив)
         await send(inputValue, { destinationIdentities: [agentIdentity] });
         
         // Добавляем сообщение в локальный стейт для вкладки агента
@@ -42,15 +47,8 @@ export const CustomChat: React.FC<CustomChatProps> = ({ agentIdentity }) => {
           timestamp: Date.now(),
           isFromUser: true
         }]);
-      } else {
-        console.warn('Agent not found in the room yet');
-        // Можно всё равно отправить, даже если агент не найден
-        await send(inputValue, { destinationIdentities: [agentIdentity] });
-        setAgentMessages(prev => [...prev, {
-          text: inputValue,
-          timestamp: Date.now(),
-          isFromUser: true
-        }]);
+      } catch (error) {
+        console.error('Failed to send message to agent:', error);
       }
     }
     setInputValue('');
@@ -71,7 +69,7 @@ export const CustomChat: React.FC<CustomChatProps> = ({ agentIdentity }) => {
     });
   }, [chatMessages, agentIdentity, agentMessages]);
 
-  const getCurrentMessages = () => {
+  const getCurrentMessages = (): (ReceivedChatMessage | AgentMessage)[] => {
     if (activeTab === 'room') {
       return roomMessages;
     } else {
@@ -81,6 +79,15 @@ export const CustomChat: React.FC<CustomChatProps> = ({ agentIdentity }) => {
 
   const formatTime = (timestamp: number) => {
     return new Date(timestamp).toLocaleTimeString([], { hour: '2-digit', minute:'2-digit' });
+  };
+
+  // Type guard для проверки типа сообщения
+  const isReceivedChatMessage = (msg: ReceivedChatMessage | AgentMessage): msg is ReceivedChatMessage => {
+    return 'from' in msg;
+  };
+
+  const isAgentMessage = (msg: ReceivedChatMessage | AgentMessage): msg is AgentMessage => {
+    return 'isFromUser' in msg;
   };
 
   return (
@@ -120,9 +127,13 @@ export const CustomChat: React.FC<CustomChatProps> = ({ agentIdentity }) => {
       {/* Область сообщений */}
       <div style={{ flex: 1, overflowY: 'auto', padding: '16px', display: 'flex', flexDirection: 'column', gap: '12px' }}>
         {getCurrentMessages().map((msg, idx) => {
-          const isUserMessage = 'from' in msg ? msg.from?.identity === 'You' : msg.isFromUser;
-          const messageText = 'message' in msg ? msg.message : msg.text;
-          const timestamp = 'timestamp' in msg ? msg.timestamp : msg.timestamp;
+          // Используем type guard для определения типа сообщения
+          const isUserMessage = isReceivedChatMessage(msg) 
+            ? msg.from?.identity === 'You' 
+            : msg.isFromUser;
+          
+          const messageText = isReceivedChatMessage(msg) ? msg.message : msg.text;
+          const timestamp = msg.timestamp;
           
           return (
             <div
@@ -143,7 +154,7 @@ export const CustomChat: React.FC<CustomChatProps> = ({ agentIdentity }) => {
               >
                 <div style={{ fontSize: '14px', marginBottom: '4px' }}>
                   {!isUserMessage && activeTab === 'agent' && '🤖 Агент: '}
-                  {!isUserMessage && activeTab === 'room' && `${'from' in msg ? msg.from?.identity : 'Agent'}: `}
+                  {!isUserMessage && activeTab === 'room' && isReceivedChatMessage(msg) && `${msg.from?.identity}: `}
                   {isUserMessage && 'Вы: '}
                 </div>
                 <div>{messageText}</div>
