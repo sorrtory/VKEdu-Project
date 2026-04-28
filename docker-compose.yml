@@ -127,17 +127,6 @@ services:
     networks:
       - app-network
     restart: unless-stopped
-  
-  whisper:
-    build:
-      context: ./services/ml/whisper-service
-      dockerfile: Dockerfile
-    container_name: BB_whisper
-    ports:
-      - "${WHISPER_PORT}:${WHISPER_PORT}"
-    networks:
-      - app-network
-    restart: unless-stopped
 
   backend:
     profiles: ["web"]
