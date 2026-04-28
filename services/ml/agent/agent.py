@@ -16,7 +16,6 @@ from livekit.agents.llm import ChatMessage
 from livekit.plugins.openai import LLM as OpenAILLM
 from livekit.plugins import silero, openai
 from faster_whisper_stt import FasterWhisperSTT
-from logging_llm import LoggingLLM
 import time
 
 
