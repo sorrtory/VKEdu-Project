@@ -19,7 +19,7 @@ producer = Producer({'bootstrap.servers': 'broker:9092'})
 
 def send_speech_event(text: str):
     try:
-        message = json.dumps({"text": text, "timestamp": time.time()})
+        message = json.dumps({"text": text, "timestamp": time.time()}, ensure_ascii=False)
         producer.produce('speechEvent', value=message.encode('utf-8'))
         producer.poll(0)
         logger.info(f"Sent to Kafka: {text}")
