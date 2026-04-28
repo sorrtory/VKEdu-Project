@@ -12,11 +12,20 @@ from livekit.agents import (
     TurnHandlingOptions,
     ConversationItemAddedEvent
 )
-from livekit.agents.llm import ChatMessage
+from livekit.agents.llm import ChatMessage, LLMResponse
 from livekit.plugins.openai import LLM as OpenAILLM
 from livekit.plugins import silero, openai
+from livekit.rtc import DataPacket
 from faster_whisper_stt import FasterWhisperSTT
 import time
+
+class DummyLLM:
+    async def create_response(self, messages, **kwargs):
+        logger.info("🗣️ DummyLLM called, returning fixed response")
+        return LLMResponse(text="Привет! Это тестовый ответ от агента.")
+    
+    def __getattr__(self, name):
+        return lambda *a, **kw: None
 
 
 class LLMLogger:
@@ -34,6 +43,8 @@ class LLMLogger:
     def __getattr__(self, name):
         return getattr(self._base, name)
 
+
+
 producer = Producer({'bootstrap.servers': 'broker:9092'})
 
 def send_speech_event(text: str):
@@ -45,8 +56,9 @@ def send_speech_event(text: str):
     except Exception as e:
         logger.error(f"Kafka produce failed: {e}")
 
-logging.basicConfig(level=logging.INFO)
+logging.basicConfig(level=logging.DEBUG)
 logger = logging.getLogger("livekit-agent")
+logger.setLevel(logging.DEBUG)
 
 SILENCE_DURATION = 0.5
 
@@ -55,6 +67,14 @@ async def entrypoint(ctx: JobContext):
     logger.info(f"Joining room {ctx.room.name}...")
 
     await ctx.connect(auto_subscribe=AutoSubscribe.AUDIO_ONLY)
+
+    @ctx.room.on("data_received")
+    def on_data_received(dp: DataPacket):
+        try:
+            text = dp.data.decode('utf-8') if isinstance(dp.data, bytes) else str(dp.data)
+            logger.info(f"📥 RAW DATA RECEIVED: topic={dp.topic}, data={text[:200]}")
+        except Exception:
+            logger.info(f"📥 RAW DATA RECEIVED: topic={dp.topic}, bytes len={len(dp.data)}")
 
     logger.info(f"Joined room {ctx.room.name}.")
     logger.info("Waiting for participant...")
@@ -74,17 +94,17 @@ async def entrypoint(ctx: JobContext):
         language="ru",
     )
 
-    base_llm = openai.LLM.with_ollama(
-        model="qwen2.5:0.5b",
-        base_url="http://ollama:11434/v1",
-        temperature=0.6,
-    )
+    # base_llm = openai.LLM.with_ollama(
+    #     model="qwen2.5:0.5b",
+    #     base_url="http://ollama:11434/v1",
+    #     temperature=0.6,
+    # )
 
-    qwen_llm = LLMLogger(base_llm)
+    # qwen_llm = LLMLogger(base_llm)
 
     session = AgentSession(
         stt=whisper_stt,
-        llm=qwen_llm,
+        llm=DummyLLM(),
         vad=silero.VAD.load(),
         turn_handling=TurnHandlingOptions(
             turn_detection="vad",
