@@ -78,6 +78,7 @@ services:
       - app-network
 
   mlin:
+    container_name: BB_mlin
     profiles: ["ml"]
     build:
       context: ./services/ml/MLin
@@ -96,6 +97,7 @@ services:
       - app-network
 
   mlout:
+    container_name: BB_mlout
     profiles: ["ml"]
     build:
       context: ./services/ml/MLout

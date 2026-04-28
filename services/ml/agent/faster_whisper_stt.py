@@ -31,9 +31,6 @@ class FasterWhisperSTT(stt.STT):
 
         self._language = language
 
-        # IMPORTANT:
-        # Do not call this self.model.
-        # livekit.agents.stt.STT already has a read-only `model` property.
         self._model = WhisperModel(
             model_size,
             device=device,
