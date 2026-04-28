@@ -73,6 +73,8 @@ async def entrypoint(ctx: JobContext):
         ),
     )
 
+    session.output.set_audio_enabled(False)
+
     last_partial = ""
 
     @session.on("user_input_transcribed")
