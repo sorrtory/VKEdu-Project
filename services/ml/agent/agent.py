@@ -1,5 +1,6 @@
 import logging
-
+from confluent_kafka import Producer
+import json
 from livekit.agents import (
     AutoSubscribe,
     JobContext,
@@ -10,9 +11,20 @@ from livekit.agents import (
     Agent,
     TurnHandlingOptions,
 )
-
 from livekit.plugins import silero
 from faster_whisper_stt import FasterWhisperSTT
+import time
+
+producer = Producer({'bootstrap.servers': 'broker:9092'})
+
+def send_speech_event(text: str):
+    try:
+        message = json.dumps({"text": text, "timestamp": time.time()})
+        producer.produce('speechEvent', value=message.encode('utf-8'))
+        producer.poll(0)
+        logger.info(f"Sent to Kafka: {text}")
+    except Exception as e:
+        logger.error(f"Kafka produce failed: {e}")
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger("livekit-agent")
@@ -21,12 +33,12 @@ SILENCE_DURATION = 0.5
 
 
 async def entrypoint(ctx: JobContext):
-    logger.info(f"🔗 Joining room {ctx.room.name}...")
+    logger.info(f"Joining room {ctx.room.name}...")
 
     await ctx.connect(auto_subscribe=AutoSubscribe.AUDIO_ONLY)
 
-    logger.info(f"✅ Joined room {ctx.room.name}.")
-    logger.info("⏳ Waiting for participant...")
+    logger.info(f"Joined room {ctx.room.name}.")
+    logger.info("Waiting for participant...")
 
     try:
         participant = await ctx.wait_for_participant()
@@ -34,7 +46,7 @@ async def entrypoint(ctx: JobContext):
         logger.exception("Room disconnected while waiting for participant")
         return
 
-    logger.info(f"👤 Participant joined: {participant.identity}")
+    logger.info(f"Participant joined: {participant.identity}")
 
     whisper_stt = FasterWhisperSTT(
         model_size="small",
@@ -67,8 +79,9 @@ async def entrypoint(ctx: JobContext):
             return
 
         if event.is_final:
-            logger.info(f"✅ FINAL SPEECH: {text}")
+            logger.info(f"FINAL SPEECH: {text}")
             last_partial = ""
+            send_speech_event(text) # -> kafka speechEvent
         elif text != last_partial:
             logger.info(f"… CURRENT SPEECH: {text}")
             last_partial = text
@@ -79,9 +92,9 @@ async def entrypoint(ctx: JobContext):
 
     @session.on("close")
     def on_close(event):
-        logger.info("🔚 AgentSession closed")
+        logger.info("AgentSession closed")
 
-    logger.info("🎤 Starting AgentSession...")
+    logger.info("Starting AgentSession...")
 
     try:
         await session.start(
