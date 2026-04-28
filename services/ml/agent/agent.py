@@ -100,6 +100,10 @@ async def entrypoint(ctx: JobContext):
     @session.on("close")
     def on_close(event):
         logger.info("AgentSession closed")
+    
+    @session.on("agent_speech_committed")
+    def on_agent_speech_committed(event):
+        logger.info(f"AGENT RESPONSE: {event.text.strip()}")
 
     logger.info("Starting AgentSession...")
 
