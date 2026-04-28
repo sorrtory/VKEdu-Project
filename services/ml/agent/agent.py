@@ -12,7 +12,7 @@ from livekit.agents import (
     TurnHandlingOptions,
     ConversationItemAddedEvent
 )
-from livekit.agents.llm import ChatMessage, LLMResponse
+from livekit.agents.llm import ChatMessage
 from livekit.plugins.openai import LLM as OpenAILLM
 from livekit.plugins import silero, openai
 from livekit.rtc import DataPacket
@@ -21,9 +21,10 @@ import time
 
 class DummyLLM:
     async def create_response(self, messages, **kwargs):
-        logger.info("🗣️ DummyLLM called, returning fixed response")
-        return LLMResponse(text="Привет! Это тестовый ответ от агента.")
-    
+        logger.info("DummyLLM called – returning fixed reply")
+        response = type('FakeResponse', (), {'text': "Привет! Это тестовый ответ от агента."})()
+        return response
+
     def __getattr__(self, name):
         return lambda *a, **kw: None
 
@@ -66,7 +67,7 @@ SILENCE_DURATION = 0.5
 async def entrypoint(ctx: JobContext):
     logger.info(f"Joining room {ctx.room.name}...")
 
-    await ctx.connect(auto_subscribe=AutoSubscribe.AUDIO_ONLY)
+    await ctx.connect(auto_subscribe=AutoSubscribe.SUBSCRIBE_ALL)
 
     @ctx.room.on("data_received")
     def on_data_received(dp: DataPacket):
