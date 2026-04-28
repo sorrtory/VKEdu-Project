@@ -15,6 +15,7 @@ from livekit.agents import (
 from livekit.agents.llm import ChatMessage
 from livekit.plugins import silero, openai
 from faster_whisper_stt import FasterWhisperSTT
+from logging_llm import LoggingLLM
 import time
 
 
@@ -58,13 +59,15 @@ async def entrypoint(ctx: JobContext):
         language="ru",
     )
 
+    qwen_llm = LoggingLLM.with_ollama(
+        model="qwen2.5:0.5b",
+        base_url="http://ollama:11434/v1",
+        temperature=0.6,
+    )
+
     session = AgentSession(
         stt=whisper_stt,
-        llm=openai.LLM.with_ollama(
-            model="qwen2.5:0.5b",
-            base_url="http://ollama:11434/v1",
-            temperature=0.6,
-        ),
+        llm=qwen_llm,
         vad=silero.VAD.load(),
         turn_handling=TurnHandlingOptions(
             turn_detection="vad",
