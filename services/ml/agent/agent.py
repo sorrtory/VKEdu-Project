@@ -10,10 +10,13 @@ from livekit.agents import (
     AgentSession,
     Agent,
     TurnHandlingOptions,
+    ConversationItemAddedEvent
 )
+from livekit.agents.llm import ChatMessage
 from livekit.plugins import silero, openai
 from faster_whisper_stt import FasterWhisperSTT
 import time
+
 
 producer = Producer({'bootstrap.servers': 'broker:9092'})
 
@@ -95,12 +98,18 @@ async def entrypoint(ctx: JobContext):
 
     @session.on("user_state_changed")
     def on_user_state_changed(event):
-        logger.info(f"👂 User state changed: {event.old_state} -> {event.new_state}")
+        logger.info(f"User state changed: {event.old_state} -> {event.new_state}")
 
     @session.on("close")
     def on_close(event):
         logger.info("AgentSession closed")
-    
+
+    @session.on("conversation_item_added")
+    def on_conversation_item_added(event: ConversationItemAddedEvent):
+        if isinstance(event.item, ChatMessage) and event.item.role == "user":
+            text = event.item.text_content
+            logger.info(f"USER CONVERSATION ITEM ADDED: {text}")
+
     @session.on("agent_speech_committed")
     def on_agent_speech_committed(event):
         logger.info(f"AGENT RESPONSE: {event.text.strip()}")
