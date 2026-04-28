@@ -12,6 +12,7 @@ from livekit.agents import (
     TurnHandlingOptions,
     ConversationItemAddedEvent
 )
+from livekit.rtc import DataPacket
 from livekit.agents.llm import ChatMessage
 from livekit.plugins.openai import LLM as OpenAILLM
 from livekit.plugins import silero, openai
@@ -19,20 +20,20 @@ from faster_whisper_stt import FasterWhisperSTT
 import time
 
 
-class LoggingLLM(OpenAILLM):
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
+class LLMLogger:
+    def __init__(self, base):
+        self._base = base
 
     async def create_response(self, messages, **kwargs):
         logger.info("Sending to LLM:")
         for msg in messages:
-            logger.info(f"{msg.role}: {msg.text_content}")
-
-        response = await super().create_response(messages, **kwargs)
-
+            logger.info(f"  {msg.role}: {msg.text_content}")
+        response = await self._base.create_response(messages, **kwargs)
         logger.info(f"LLM Response: {response.text}")
         return response
 
+    def __getattr__(self, name):
+        return getattr(self._base, name)
 
 producer = Producer({'bootstrap.servers': 'broker:9092'})
 
@@ -56,6 +57,15 @@ async def entrypoint(ctx: JobContext):
 
     await ctx.connect(auto_subscribe=AutoSubscribe.AUDIO_ONLY)
 
+    @ctx.room.on("data_packet_sent")
+    def on_data_sent(dp: DataPacket):
+        try:
+            if dp.topic == "lk.chat":
+                data = dp.data.decode('utf-8')
+                logger.info(f"AGENT SENT TO CHAT: {data}")
+        except Exception:
+            pass
+
     logger.info(f"Joined room {ctx.room.name}.")
     logger.info("Waiting for participant...")
 
@@ -74,11 +84,13 @@ async def entrypoint(ctx: JobContext):
         language="ru",
     )
 
-    qwen_llm = LoggingLLM.with_ollama(
+    base_llm = openai.LLM.with_ollama(
         model="qwen2.5:0.5b",
         base_url="http://ollama:11434/v1",
         temperature=0.6,
     )
+
+    qwen_llm = LLMLogger(base_llm)
 
     session = AgentSession(
         stt=whisper_stt,
