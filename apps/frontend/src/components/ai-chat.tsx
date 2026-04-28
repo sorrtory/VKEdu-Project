@@ -3,7 +3,6 @@
 import React, { useEffect, useState } from 'react';
 import { useChat, useRoomContext } from '@livekit/components-react';
 import type { ReceivedChatMessage } from '@livekit/components-react';
-import { DataPacket_Kind, RoomEvent } from 'livekit-client';
 
 interface AgentMessage {
   text: string;
@@ -20,100 +19,38 @@ export default function CustomChat() {
   
   const AGENT_IDENTITY = 'default-agent';
 
+  // Фильтруем сообщения для общего чата (исключая агента)
   const generalMessages = chatMessages.filter((msg) => {
     const isFromAgent = msg.from?.identity === AGENT_IDENTITY;
     return !isFromAgent;
   });
 
-  const sendToAgent = async (message: string) => {
-    if (!room) {
-      console.error('Room not available');
-      return false;
-    }
-
-    // Поиск агента среди участников комнаты
-    const agent = Array.from(room.remoteParticipants.values()).find(
-      p => p.identity === AGENT_IDENTITY
-    );
-    
-    if (!agent) {
-      console.error('Agent not found in room');
-      return false;
-    }
-
-    try {
-      // publishData принимает только 2 аргумента: данные и опции
-      await room.localParticipant.publishData(
-        new TextEncoder().encode(JSON.stringify({ type: 'agent_message', message })),
-        { 
-          reliable: true,
-          destinationIdentities: [agent.identity] // destination указывается в опциях
-        }
-      );
-      return true;
-    } catch (error) {
-      console.error('Failed to send to agent:', error);
-      return false;
-    }
-  };
-
   const handleSendMessage = async () => {
     if (!inputValue.trim()) return;
 
     if (activeTab === 'general') {
+      // Отправка в общий чат (видят все)
       await send(inputValue);
     } else {
-      const success = await sendToAgent(inputValue);
+      // Отправка только агенту через стандартный chat
+      await send(inputValue, { destinationIdentities: [AGENT_IDENTITY] });
       
+      // Добавляем сообщение в локальный список для вкладки агента
       setAgentMessages(prev => [...prev, {
         text: inputValue,
         timestamp: Date.now(),
         isFromUser: true
       }]);
-      
-      if (!success) {
-        console.warn('Message may not have been delivered to agent');
-      }
     }
     setInputValue('');
   };
 
-  // Слушаем data channel сообщения от агента
-  useEffect(() => {
-    if (!room) return;
-
-    const onDataReceived = (payload: Uint8Array, participant?: { identity?: string }) => {
-      try {
-        const data = JSON.parse(new TextDecoder().decode(payload));
-        if (data.type === 'agent_message' && participant?.identity === AGENT_IDENTITY) {
-          setAgentMessages(prev => {
-            if (prev.some(msg => msg.text === data.message && msg.timestamp === data.timestamp)) {
-              return prev;
-            }
-            return [...prev, {
-              text: data.message,
-              timestamp: Date.now(),
-              isFromUser: false
-            }];
-          });
-        }
-      } catch (e) {
-        // Не JSON сообщение или не от агента
-      }
-    };
-
-    room.on(RoomEvent.DataReceived, onDataReceived);
-    
-    return () => {
-      room.off(RoomEvent.DataReceived, onDataReceived);
-    };
-  }, [room, AGENT_IDENTITY]);
-
-  // Также слушаем обычные chat сообщения от агента
+  // Слушаем сообщения от агента (через стандартный chat)
   useEffect(() => {
     const agentMsgs = chatMessages.filter(msg => msg.from?.identity === AGENT_IDENTITY);
     agentMsgs.forEach(msg => {
-      if (!agentMessages.some(agentMsg => agentMsg.text === msg.message)) {
+      // Проверяем, нет ли уже такого сообщения в agentMessages
+      if (!agentMessages.some(agentMsg => agentMsg.text === msg.message && agentMsg.timestamp === msg.timestamp)) {
         setAgentMessages(prev => [...prev, {
           text: msg.message,
           timestamp: msg.timestamp,
