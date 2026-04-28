@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState, useCallback } from 'react';
 import { Excalidraw } from '@excalidraw/excalidraw';
 import type { ExcalidrawImperativeAPI } from '@excalidraw/excalidraw/types';
-import { RoomEvent } from 'livekit-client';
+import { ConnectionState, RoomEvent } from 'livekit-client';
 import { useLocalParticipant, useRoomContext } from '@livekit/components-react';
 
 interface ExcalidrawBoardProps {
@@ -15,9 +15,29 @@ export default function ExcalidrawBoard({ creatorIdentity }: ExcalidrawBoardProp
   const { localParticipant } = useLocalParticipant();
   const [excalidrawAPI, setExcalidrawAPI] = useState<ExcalidrawImperativeAPI | null>(null);
   const sendTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const isPublisherReadyRef = useRef(false);
   
   const isCreator = localParticipant.identity === creatorIdentity;
   const canEdit = isCreator;
+
+  useEffect(() => {
+    if (!room) {
+      isPublisherReadyRef.current = false;
+      return;
+    }
+
+    const setPublisherState = (state: ConnectionState) => {
+      isPublisherReadyRef.current = state === ConnectionState.Connected;
+    };
+
+    setPublisherState(room.state);
+    room.on(RoomEvent.ConnectionStateChanged, setPublisherState);
+
+    return () => {
+      room.off(RoomEvent.ConnectionStateChanged, setPublisherState);
+      isPublisherReadyRef.current = false;
+    };
+  }, [room]);
 
   useEffect(() => {
     if (!room) return;
@@ -61,13 +81,20 @@ export default function ExcalidrawBoard({ creatorIdentity }: ExcalidrawBoardProp
 
     sendTimeoutRef.current = setTimeout(async () => {
       try {
+        if (!isPublisherReadyRef.current) {
+          return;
+        }
+
         const sceneData = {
           elements: excalidrawAPI.getSceneElements(),
         };
         const payload = new TextEncoder().encode(JSON.stringify(sceneData));
         await room.localParticipant.publishData(payload);
       } catch (error) {
-        console.error('Failed to send whiteboard update:', error);
+        const message = error instanceof Error ? error.message : '';
+        if (!message.includes('could not establish Publisher connection')) {
+          console.error('Failed to send whiteboard update:', error);
+        }
       }
     }, 80);
   };
