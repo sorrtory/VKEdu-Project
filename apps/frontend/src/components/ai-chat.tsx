@@ -12,31 +12,43 @@ interface AgentMessage {
 
 export default function CustomChat() {
   const { chatMessages, send } = useChat();
+  const [activeTab, setActiveTab] = useState<'general' | 'agent'>('general');
   const [inputValue, setInputValue] = useState('');
   const [agentMessages, setAgentMessages] = useState<AgentMessage[]>([]);
   
   const AGENT_IDENTITY = 'ml-agent';
 
+  // Фильтруем сообщения для общего чата (исключая агента)
+  const generalMessages = chatMessages.filter((msg) => {
+    const isFromAgent = msg.from?.identity === AGENT_IDENTITY;
+    return !isFromAgent;
+  });
+
   const handleSendMessage = async () => {
     if (!inputValue.trim()) return;
 
-    try {
-      await send(inputValue, { destinationIdentities: [AGENT_IDENTITY] });
-      
-      setAgentMessages(prev => [...prev, {
-        text: inputValue,
-        timestamp: Date.now(),
-        isFromUser: true
-      }]);
-    } catch (error) {
-      console.error('Failed to send message to agent:', error);
+    if (activeTab === 'general') {
+      // Отправка в общий чат
+      await send(inputValue);
+    } else {
+      // Отправка агенту
+      try {
+        await send(inputValue, { destinationIdentities: [AGENT_IDENTITY] });
+        
+        setAgentMessages(prev => [...prev, {
+          text: inputValue,
+          timestamp: Date.now(),
+          isFromUser: true
+        }]);
+      } catch (error) {
+        console.error('Failed to send message to agent:', error);
+      }
     }
-    
     setInputValue('');
   };
 
+  // Получаем сообщения от агента
   useEffect(() => {
-    // Получаем сообщения от агента
     const agentMsgs = chatMessages.filter(msg => msg.from?.identity === AGENT_IDENTITY);
     agentMsgs.forEach(msg => {
       if (!agentMessages.some(agentMsg => agentMsg.timestamp === msg.timestamp)) {
@@ -49,28 +61,66 @@ export default function CustomChat() {
     });
   }, [chatMessages, agentMessages]);
 
+  const getCurrentMessages = (): (ReceivedChatMessage | AgentMessage)[] => {
+    if (activeTab === 'general') {
+      return generalMessages;
+    } else {
+      return agentMessages;
+    }
+  };
+
   const formatTime = (timestamp: number) => {
     return new Date(timestamp).toLocaleTimeString([], { hour: '2-digit', minute:'2-digit' });
   };
 
+  const isReceivedChatMessage = (msg: ReceivedChatMessage | AgentMessage): msg is ReceivedChatMessage => {
+    return 'from' in msg;
+  };
+
   return (
     <div style={{ height: '100%', display: 'flex', flexDirection: 'column', background: '#0b1220' }}>
-      <div style={{ 
-        padding: '12px', 
-        borderBottom: '1px solid rgba(255,255,255,0.1)',
-        backgroundColor: '#0f172a',
-        color: 'white',
-        fontWeight: 'bold',
-        fontSize: '14px'
-      }}>
-        Чат с AI агентом
+      {/* Вкладки переключения */}
+      <div style={{ display: 'flex', borderBottom: '1px solid rgba(255,255,255,0.1)' }}>
+        <button
+          onClick={() => setActiveTab('general')}
+          style={{
+            flex: 1,
+            padding: '12px',
+            background: activeTab === 'general' ? '#1e293b' : 'transparent',
+            border: 'none',
+            color: 'white',
+            cursor: 'pointer',
+            fontWeight: activeTab === 'general' ? 'bold' : 'normal'
+          }}
+        >
+          Общий чат
+        </button>
+        <button
+          onClick={() => setActiveTab('agent')}
+          style={{
+            flex: 1,
+            padding: '12px',
+            background: activeTab === 'agent' ? '#1e293b' : 'transparent',
+            border: 'none',
+            color: 'white',
+            cursor: 'pointer',
+            fontWeight: activeTab === 'agent' ? 'bold' : 'normal'
+          }}
+        >
+          AI Агент
+        </button>
       </div>
 
+      {/* Область сообщений */}
       <div style={{ flex: 1, overflowY: 'auto', padding: '16px', display: 'flex', flexDirection: 'column', gap: '12px' }}>
-        {agentMessages.map((msg, idx) => {
-          const isUserMessage = msg.isFromUser;
-          const messageText = msg.text;
+        {getCurrentMessages().map((msg, idx) => {
+          const isUserMessage = isReceivedChatMessage(msg) 
+            ? msg.from?.identity !== AGENT_IDENTITY
+            : msg.isFromUser;
+          
+          const messageText = isReceivedChatMessage(msg) ? msg.message : msg.text;
           const timestamp = msg.timestamp;
+          const senderName = isReceivedChatMessage(msg) ? msg.from?.identity : (msg.isFromUser ? 'Вы' : 'Агент');
           
           return (
             <div
@@ -90,7 +140,8 @@ export default function CustomChat() {
                 }}
               >
                 <div style={{ fontSize: '14px', marginBottom: '4px' }}>
-                  {!isUserMessage && 'Агент: '}
+                  {senderName !== 'Вы' && senderName !== 'Агент' && `${senderName}: `}
+                  {senderName === 'Агент' && '🤖 Агент: '}
                   {isUserMessage && 'Вы: '}
                 </div>
                 <div>{messageText}</div>
@@ -102,7 +153,7 @@ export default function CustomChat() {
           );
         })}
         
-        {agentMessages.length === 0 && (
+        {getCurrentMessages().length === 0 && activeTab === 'agent' && (
           <div style={{ 
             textAlign: 'center', 
             color: 'rgba(255,255,255,0.5)', 
@@ -112,8 +163,20 @@ export default function CustomChat() {
             Напишите сообщение AI агенту
           </div>
         )}
+        
+        {getCurrentMessages().length === 0 && activeTab === 'general' && (
+          <div style={{ 
+            textAlign: 'center', 
+            color: 'rgba(255,255,255,0.5)', 
+            padding: '20px',
+            fontSize: '14px'
+          }}>
+            Нет сообщений
+          </div>
+        )}
       </div>
 
+      {/* Поле ввода */}
       <div style={{ padding: '16px', borderTop: '1px solid rgba(255,255,255,0.1)' }}>
         <div style={{ display: 'flex', gap: '8px' }}>
           <input
@@ -121,7 +184,7 @@ export default function CustomChat() {
             value={inputValue}
             onChange={(e) => setInputValue(e.target.value)}
             onKeyPress={(e) => e.key === 'Enter' && handleSendMessage()}
-            placeholder="Сообщение AI агенту..."
+            placeholder={activeTab === 'general' ? "Сообщение всем..." : "Сообщение AI агенту..."}
             style={{
               flex: 1,
               padding: '8px 12px',
