@@ -3,6 +3,7 @@ services:
   nginx:
     image: nginx:alpine
     container_name: nginx
+    profiles: ["infra"]
     ports:
       - "80:80"
       - "443:443"
@@ -14,7 +15,7 @@ services:
   redis:
     image: redis:alpine
     container_name: BB_redis
-    profiles: ["infra"]
+    profiles: ["infra", "db"]
     command: redis-server --appendonly yes # Enable data persistence
     volumes:
       - redis-data:/data
@@ -25,7 +26,7 @@ services:
   livekit:
     image: livekit/livekit-server:latest
     container_name: BB_livekit
-    profiles: ["infra"]
+    profiles: ["livekit", "infra"]
     command:
       - --config
       - /etc/livekit.yaml
@@ -43,7 +44,7 @@ services:
     image: apache/kafka:latest
     container_name: BB_broker
     hostname: broker
-    profiles: ["infra"]
+    profiles: ["infra", "db"]
     environment:
       KAFKA_NODE_ID: 1
       KAFKA_PROCESS_ROLES: broker,controller
@@ -60,7 +61,7 @@ services:
   postgres:
     image: postgres:alpine
     container_name: BB_postgres
-    profiles: ["infra"]
+    profiles: ["infra", "db"]
     environment:
       POSTGRES_DB: ${POSTGRES_DB} # on a first run, it will create a database with this name
       POSTGRES_USER: ${POSTGRES_USER}
@@ -138,6 +139,7 @@ services:
       context: ./services/ml/agent
       dockerfile: Dockerfile
     container_name: BB_agent
+    profiles: ["livekit", "infra"]
     environment:
       LIVEKIT_URL: ws://livekit:7880
       LIVEKIT_API_KEY: ${LIVEKIT_API_KEY}
