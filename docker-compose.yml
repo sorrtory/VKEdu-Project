@@ -1,8 +1,8 @@
-services:
+name: BB
 
+services:
   nginx:
     image: nginx:alpine
-    container_name: nginx
     profiles: ["infra"]
     ports:
       - "80:80"
@@ -14,18 +14,21 @@ services:
       - app-network
   redis:
     image: redis:alpine
-    container_name: BB_redis
-    profiles: ["infra", "db"]
+    profiles: ["infra", "db", "livekit"]
     command: redis-server --appendonly yes # Enable data persistence
     volumes:
       - redis-data:/data
     restart: unless-stopped
     networks:
       - app-network
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
 
   livekit:
     image: livekit/livekit-server:latest
-    container_name: BB_livekit
     profiles: ["livekit", "infra"]
     command:
       - --config
@@ -39,10 +42,29 @@ services:
     restart: unless-stopped
     networks:
       - app-network
+    depends_on:
+      redis:
+        condition: service_healthy
+  egress:
+    image: livekit/egress:latest
+    profiles: ["livekit", "infra"]
+    cap_add:
+      - SYS_ADMIN
+    environment:
+      EGRESS_CONFIG_FILE: /etc/egress.yaml
+    volumes:
+      - ./infra/livekit/egress.yaml:/etc/egress.yaml
+      - ./infra/livekit/recordings:/out
+    depends_on:
+      redis:
+        condition: service_healthy
+      livekit:
+        condition: service_started
+    networks:
+      - app-network
 
   broker:
     image: apache/kafka:latest
-    container_name: BB_broker
     hostname: broker
     profiles: ["infra", "db"]
     environment:
@@ -60,7 +82,6 @@ services:
 
   postgres:
     image: postgres:alpine
-    container_name: BB_postgres
     profiles: ["infra", "db"]
     environment:
       POSTGRES_DB: ${POSTGRES_DB} # on a first run, it will create a database with this name
@@ -79,7 +100,6 @@ services:
       - app-network
 
   mlin:
-    container_name: BB_mlin
     profiles: ["ml"]
     build:
       context: ./services/ml/MLin
@@ -99,7 +119,6 @@ services:
       - app-network
 
   mlout:
-    container_name: BB_mlout
     profiles: ["ml"]
     build:
       context: ./services/ml/MLout
@@ -119,7 +138,6 @@ services:
 
   ollama:
     image: ollama/ollama:latest
-    container_name: BB_ollama
     profiles: ["ml"]
     restart: unless-stopped
     volumes:
@@ -135,11 +153,10 @@ services:
         tail -f /dev/null
 
   agent:
-    build:                                                                                                                                                    
+    build:
       context: ./services/ml/agent
       dockerfile: Dockerfile
-    container_name: BB_agent
-    profiles: ["livekit", "infra"]
+    profiles: ["livekit", "agent"]
     environment:
       LIVEKIT_URL: ws://livekit:7880
       LIVEKIT_API_KEY: ${LIVEKIT_API_KEY}
@@ -152,7 +169,6 @@ services:
 
   backend:
     profiles: ["web"]
-    container_name: BB_backend
     build:
       context: .
       dockerfile: infra/docker/backend.Dockerfile
@@ -174,7 +190,6 @@ services:
 
   frontend:
     profiles: ["web"]
-    container_name: BB_frontend
     build:
       context: .
       dockerfile: infra/docker/frontend.Dockerfile

@@ -11,19 +11,6 @@ import { KafkaExceptionFilter } from "./kafka-exception.filter"
 @Module({
   // Register kafka producer
   imports: [
-    // ConfigModule,
-    // ClientsModule.register([
-    //   {
-    //     name: "KAFKA_SERVICE",
-    //     transport: Transport.KAFKA,
-    //     options: {
-    //       client: kafkaClientOptions,
-    //       consumer: {
-    //         groupId: "my-nest-app-producer",
-    //       },
-    //     },
-    //   },
-    // ]),
     ClientsModule.registerAsync([
       {
         name: "KAFKA_SERVICE",

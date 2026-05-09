@@ -7,8 +7,9 @@ rtc:
   tcp_port: 7882
   port_range_start: 8000
   port_range_end: 8010
-turn:
-  enabled: false
+
+redis:
+  address: redis:6379
 
 keys:
-  devkey: secret_hehe_boy_a3f8c1e9b2d4f6a0c5e7b9d1f3a5c8e2b4d6f8a0c2e4b6d8f0a2c4e6b8d0f2a4
+  devkey: secret

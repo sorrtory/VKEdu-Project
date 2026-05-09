@@ -71,6 +71,7 @@ yarn dlx @yarnpkg/sdks base vscode
 
 1. `uv init`
 2. `uv add python-dotenv`
+3. 
 
 #### Links
 

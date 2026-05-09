@@ -25,4 +25,6 @@ export class KafkaProducerService implements OnModuleInit, OnModuleDestroy {
   emitHelloEvent(payload: HelloEventDto) {
     this.kafkaClient.emit("test", payload)
   }
+
+  emitTextContextEvent(payload: )
 }

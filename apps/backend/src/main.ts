@@ -41,6 +41,7 @@ async function bootstrap() {
       },
       consumer: {
         groupId: configService.getOrThrow("BACKEND_KAFKA_CONSUMER_GROUP_ID"),
+        fromBeginning: false, // Start consuming new messages only
       },
     },
   })
