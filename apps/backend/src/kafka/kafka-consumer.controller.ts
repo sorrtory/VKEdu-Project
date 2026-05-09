@@ -5,7 +5,7 @@ import {
   UsePipes,
   ValidationPipe,
 } from "@nestjs/common"
-import { EventPattern, Payload, Ctx, KafkaContext } from "@nestjs/microservices"
+import { EventPattern, Payload } from "@nestjs/microservices"
 import { KafkaConsumerService } from "./kafka-consumer.service"
 import { KafkaLoggingInterceptor } from "./kafka-logging.interceptor"
 import { HelloEventDto } from "./dto/hello-event.dto"
@@ -25,10 +25,7 @@ export class KafkaConsumerController {
   constructor(private readonly kafkaConsumerService: KafkaConsumerService) {}
 
   @EventPattern("test")
-  async helloHandler(
-    @Payload() message: HelloEventDto,
-    @Ctx() context: KafkaContext,
-  ) {
-    await this.kafkaConsumerService.hello(message)
+  helloHandler(@Payload() message: HelloEventDto) {
+    this.kafkaConsumerService.hello(message)
   }
 }

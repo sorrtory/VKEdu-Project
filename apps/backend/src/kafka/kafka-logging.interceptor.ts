@@ -9,7 +9,6 @@ import {
 } from "@nestjs/common"
 import { KafkaContext } from "@nestjs/microservices"
 import { Observable } from "rxjs"
-import { tap } from "rxjs/operators"
 
 @Injectable()
 export class KafkaLoggingInterceptor implements NestInterceptor {

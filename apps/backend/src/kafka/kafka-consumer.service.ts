@@ -6,7 +6,7 @@ import { HelloEventDto } from "./dto/hello-event.dto"
 export class KafkaConsumerService {
   constructor(private readonly prisma: PrismaService) {}
 
-  async hello(message: HelloEventDto) {
+  hello(message: HelloEventDto) {
     console.log("Received message in service:", message.message)
     // * Call Prisma here
     // await this.prisma.userEvent.create({

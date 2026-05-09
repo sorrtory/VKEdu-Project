@@ -1,28 +1,26 @@
-import {
-  AccessToken,
-  RoomServiceClient,
-  TrackSource,
-  VideoGrant,
-  RoomConfiguration,
-  RoomAgentDispatch,
-} from "livekit-server-sdk"
+import { Injectable } from "@nestjs/common"
+import { ConfigService } from "@nestjs/config"
+import { AccessToken, RoomServiceClient, TrackSource } from "livekit-server-sdk"
 
+@Injectable()
 export class ConferenceService {
   private readonly roomService: RoomServiceClient
   private readonly API_KEY: string
-  private readonly API_Secret: string
+  private readonly API_SECRET: string
   private readonly LK_HOST: string
   private readonly conferenceCreators = new Map<string, string>()
 
-  constructor() {
-    this.LK_HOST = "http://livekit:7880"
-    this.API_KEY = "devkey"
-    this.API_Secret =
-      "secret_hehe_boy_a3f8c1e9b2d4f6a0c5e7b9d1f3a5c8e2b4d6f8a0c2e4b6d8f0a2c4e6b8d0f2a4"
+  constructor(private readonly configService: ConfigService) {
+    // These environment variables are required — getOrThrow will throw at startup if missing
+    this.LK_HOST = this.configService.getOrThrow<string>("BACKEND_LIVEKIT_HOST")
+    this.API_KEY = this.configService.getOrThrow<string>("LIVEKIT_API_KEY")
+    this.API_SECRET =
+      this.configService.getOrThrow<string>("LIVEKIT_API_SECRET")
+
     this.roomService = new RoomServiceClient(
       this.LK_HOST,
       this.API_KEY,
-      this.API_Secret,
+      this.API_SECRET,
     )
   }
 
@@ -32,9 +30,10 @@ export class ConferenceService {
       // Передаём имя в массиве — вернёт только эту комнату, если она есть
       const rooms = await this.roomService.listRooms([roomName])
       return rooms.length > 0
-    } catch (error: any) {
-      if (error?.status === 401 || error?.status === 403) {
-        throw error // критичная ошибка авторизации
+    } catch (err: unknown) {
+      const error = err as { status?: number }
+      if (error.status === 401 || error.status === 403) {
+        throw err // критичная ошибка авторизации
       }
       console.log(`[roomExists] here was some warn`)
       return false
@@ -58,13 +57,14 @@ export class ConferenceService {
       console.log(
         `[generateToken] Room ${conferenceName} exists: ${roomExists}`,
       )
-    } catch (error: any) {
-      if (error?.status === 401 || error?.status === 403) {
+    } catch (err: unknown) {
+      const error = err as { status?: number; message?: string }
+      if (error.status === 401 || error.status === 403) {
         console.error(
           `[generateToken] Auth error checking room:`,
           error.message,
         )
-        throw error
+        throw err
       }
       console.warn(
         `[generateToken] Could not check room existence:`,
@@ -75,7 +75,7 @@ export class ConferenceService {
     }
 
     // 2. Создаём AccessToken
-    const token = new AccessToken(this.API_KEY, this.API_Secret, {
+    const token = new AccessToken(this.API_KEY, this.API_SECRET, {
       identity: participantName,
       name: participantName,
       // ttl: 3600, // опционально: время жизни токена в секундах
