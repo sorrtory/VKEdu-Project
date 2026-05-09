@@ -1,48 +1,46 @@
-FROM node:22-bookworm-slim AS builder
+FROM node:22-slim AS builder
 
+RUN corepack enable
+WORKDIR /app
+
+COPY .yarnrc.yml yarn.lock ./
+COPY package.json ./
+COPY apps/frontend/package.json ./apps/frontend/
+
+RUN yarn workspaces focus frontend
+
+COPY apps/frontend ./apps/frontend
+
+# TODO: remove these vars
 ARG NEXT_PUBLIC_LIVEKIT_URL=ws://localhost:7880
 ARG NEXT_PUBLIC_LIVEKIT_ROOM=my-room
+
+ENV NODE_ENV=production
+ENV NEXT_TELEMETRY_DISABLED=1
 ENV NEXT_PUBLIC_LIVEKIT_URL=$NEXT_PUBLIC_LIVEKIT_URL
 ENV NEXT_PUBLIC_LIVEKIT_ROOM=$NEXT_PUBLIC_LIVEKIT_ROOM
 
-#RUN npm install -g --force corepack@latest && corepack enable
+ENV BUILD_STANDALONE=true
+RUN yarn workspace frontend build
 
-WORKDIR /app
-
-COPY package.json yarn.lock .yarnrc.yml ./
-COPY .yarn ./.yarn
-
-COPY apps/backend/package.json ./apps/backend/
-COPY apps/frontend/package.json ./apps/frontend/
-
-RUN yarn install --no-immutable
-
-COPY .env.example ./.env.example
-COPY apps/backend ./apps/backend
-COPY apps/frontend ./apps/frontend
-
-RUN yarn workspace bb-front build
-
-FROM node:22-bookworm-slim
+FROM node:22-slim AS runner
 
 WORKDIR /app
 
 ENV NODE_ENV=production
+ENV HOSTNAME=0.0.0.0
+ENV NEXT_TELEMETRY_DISABLED=1
+# PORT should is set by runtime .env by FRONTEND_PORT (3001 by default)
+ENV PORT=3001
 
-RUN npm install -g --force corepack@latest && corepack enable
+RUN addgroup --system --gid 1001 nodejs && \
+    adduser --system --uid 1001 nextjs
 
-COPY --from=builder /app/.yarn ./.yarn
-COPY --from=builder /app/package.json ./package.json
-COPY --from=builder /app/yarn.lock ./yarn.lock
+COPY --from=builder --chown=nextjs:nodejs /app/apps/frontend/public ./apps/frontend/public
+COPY --from=builder --chown=nextjs:nodejs /app/apps/frontend/.next/standalone ./
+COPY --from=builder --chown=nextjs:nodejs /app/apps/frontend/.next/static ./apps/frontend/.next/static
 
-# Копируем собранный frontend
-COPY --from=builder /app/apps/frontend/.next ./apps/frontend/.next
-COPY --from=builder /app/apps/frontend/public ./apps/frontend/public
-COPY --from=builder /app/apps/frontend/package.json ./apps/frontend/
-COPY --from=builder /app/node_modules ./node_modules
-
+USER nextjs
 EXPOSE 3001
 
-WORKDIR /app/apps/frontend
-
-CMD ["yarn", "workspace", "bb-front", "start"]
+CMD ["node", "apps/frontend/server.js"]

@@ -4,6 +4,9 @@
 /build
 /generated
 
+src/generated/
+.oldversions
+
 # Logs
 logs
 *.log

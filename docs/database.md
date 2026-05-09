@@ -18,6 +18,8 @@ docker compose up -d postgres
 # Change to backend app directory
 cd apps/backend
 # Create migration (set name to something meaningful, e.g. "init")
+# if you use modern yarn, you can use `yarn dlx` like `npx`
+# for older yarn, remove `dlx` and install prisma
 yarn dlx prisma migrate dev --name init
 # Generate prisma client (broken? see yarn prebuild)
 yarn dlx prisma generate

@@ -6,14 +6,15 @@
   "private": true,
   "license": "UNLICENSED",
   "packageManager": "yarn@1.22.22",
-  "type": "module",
   "scripts": {
     "prebuild": "prisma generate",
+    "seed": "prisma db seed",
     "build": "nest build",
     "format": "prettier --write \"src/**/*.ts\" \"test/**/*.ts\"",
     "start": "cross-env NODE_ENV=development nest start",
     "repl": "cross-env NODE_ENV=development nest start -- --entryFile repl",
     "prestart:dev": "prisma generate",
+    "dev": "cross-env NODE_ENV=development nest start --watch",
     "start:dev": "cross-env NODE_ENV=development nest start --watch",
     "start:debug": "cross-env NODE_ENV=development nest start --debug --watch",
     "start:prod": "node dist/main.js",
@@ -22,7 +23,7 @@
     "test:watch": "jest --watch",
     "test:cov": "jest --coverage",
     "test:debug": "node --inspect-brk -r tsconfig-paths/register -r ts-node/register node_modules/.bin/jest --runInBand",
-    "test:e2e": "jest --config ./test/jest-e2e.json"
+    "test:e2e": "node --experimental-vm-modules $(yarn bin jest) --config ./test/jest-e2e.json"
   },
   "dependencies": {
     "@nestjs/common": "^11.0.1",

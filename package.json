@@ -1,32 +1,33 @@
 {
-    "name": "broadboard",
-    "private": true,
-    "workspaces": [
-        "apps/*"
-    ],
-    "scripts": {
-        "dev:frontend": "yarn workspace frontend dev",
-        "dev:backend": "yarn workspace backend start:dev",
-        "dev:ml:livekit": "cd services/livekit && uv run main.py",
-        "dev:ml:in": "cd services/ml/MLin && source venv/bin/activate && python main.py",
-        "dev:ml:out": "cd services/ml/MLout && source venv/bin/activate && python main.py",
-        "dev:infra": "docker compose --env-file .env.production --profile infra --profile web -f compose.yaml up -d --build",
-        "web:prod": "docker compose --env-file .env --env-file .env.production --profile infra --profile web -f compose.yaml up -d --build",
-        "web:prod:down": "docker compose --env-file .env --env-file .env.production -f compose.yaml down",
-        "ml:prod": "docker compose --env-file .env --env-file .env.production --profile infra --profile ml -f compose.yaml up -d --build",
-        "lint:frontend": "yarn workspace frontend lint",
-        "lint:backend": "yarn workspace backend lint",
-        "test:backend": "yarn workspace backend test",
-        "lint": "yarn workspaces run lint",
-        "test": "yarn workspaces run test"
-    },
-    "packageManager": "yarn@1.22.22",
-    "devDependencies": {
-        "typescript": "^6.0.2"
-    },
-    "dependenciesMeta": {
-        "prisma-client": {
-            "unplugged": true
-        }
-    }
+  "name": "broadboard",
+  "private": true,
+  "workspaces": [
+    "apps/*"
+  ],
+  "scripts": {
+    "dev:frontend": "yarn workspace frontend dev",
+    "dev:backend": "yarn workspace backend dev",
+    "dev:ml:livekit": "cd services/livekit && uv run main.py",
+    "dev:ml:in": "cd services/ml/MLin && source venv/bin/activate && python main.py",
+    "dev:ml:out": "cd services/ml/MLout && source venv/bin/activate && python main.py",
+    "dev:infra": "docker compose --profile infra up --build -d",
+    
+    "web:prod:backend": "docker compose --env-file .env --env-file .env.production -f docker-compose.yml --profile infra --profile web up --build -d backend",
+    "web:prod:frontend": "docker compose --env-file .env --env-file .env.production -f docker-compose.yml --profile infra --profile web up --build -d frontend",
+    "web:prod": "docker compose --env-file .env --env-file .env.production -f docker-compose.yml --profile infra --profile web up --build -d",
+    "web:prod:down": "docker compose --env-file .env --env-file .env.production -f docker-compose.yml --profile infra --profile web down",
+    "ml:prod": "docker compose --env-file .env --env-file .env.production --profile infra --profile ml -f docker-compose.yml up -d --build",
+    "prod": "docker compose --env-file .env --env-file .env.production -f docker-compose.yml --profile infra --profile livekit --profile web --profile ml up -d --build",
+    "prod:down": "docker compose --env-file .env --env-file .env.production -f docker-compose.yml --profile infra --profile livekit --profile web --profile ml down",
+    "infra:": "docker compose --env-file .env --env-file .env.production -f docker-compose.yml --profile infra up --build -d",
+    "lint:frontend": "yarn workspace frontend lint",
+    "lint:backend": "yarn workspace backend lint",
+    "test:backend": "yarn workspace backend test",
+    "lint": "yarn workspaces run lint",
+    "test": "yarn workspaces run test"
+  },
+  "devDependencies": {
+    "typescript": "^6.0.2"
+  },
+  "packageManager": "yarn@4.14.1"
 }

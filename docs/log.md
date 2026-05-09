@@ -35,6 +35,8 @@ yarn dlx @yarnpkg/sdks base vscode
 
 ### Prisma
 
+> check the [schema options](./../apps/backend/prisma/schema.prisma) for nodenext
+
 9. `yarn add @prisma/client @prisma/adapter-pg pg dotenv dotenv-expand` - [prisma](https://www.prisma.io/docs/prisma-orm/quickstart/postgresql)
 10. `yarn add prisma @types/pg --dev`
 11. `yarn dlx prisma init --datasource-provider postgresql --output ../generated/prisma` + `rm .env` + "install vs code prisma"
@@ -51,6 +53,11 @@ yarn dlx @yarnpkg/sdks base vscode
 17. `yarn add -D @swc/core @swc/helpers @swc/cli chokidar`
 18. nescli + builder flag
 19. `.swcrc`
+
+### jest
+
+20. add [mapper](../apps/backend/test/jest-e2e.json) to befriend with prisma es module 
+21. change test command to `node --experimental-vm-modules $(yarn bin jest) --config ./test/jest-e2e.json`
 
 ## Frontend yarn log
 

@@ -2,63 +2,63 @@ import {
   ConflictException,
   Injectable,
   NotFoundException,
-} from '@nestjs/common';
-import { PrismaService } from '../prisma/prisma.service.js';
-import { CreateUserDto } from './dto/create-user.dto.js';
-import * as bcrypt from 'bcrypt';
-import { UpdateUserDto } from './dto/update-user.dto.js';
-import { Prisma } from '../generated/prisma/client.js';
-import { UserDto } from './dto/user.dto.js';
+} from "@nestjs/common"
+import { PrismaService } from "../prisma/prisma.service"
+import { CreateUserDto } from "./dto/create-user.dto"
+import * as bcrypt from "bcrypt"
+import { UpdateUserDto } from "./dto/update-user.dto"
+import { Prisma } from "../generated/prisma/client"
+import { UserDto } from "./dto/user.dto"
 
 @Injectable()
 export class UsersService {
   constructor(private prisma: PrismaService) {}
 
   async findByEmail(email: string) {
-    return this.prisma.user.findUnique({ where: { email } });
+    return this.prisma.user.findUnique({ where: { email } })
   }
 
   async findById(id: string) {
-    return this.prisma.user.findUnique({ where: { userId: id } });
+    return this.prisma.user.findUnique({ where: { userId: id } })
   }
 
   async findAll(): Promise<UserDto[]> {
     const users = await this.prisma.user.findMany({
-      orderBy: { createdAt: 'desc' },
-    });
+      orderBy: { createdAt: "desc" },
+    })
 
-    return users.map((user) => UserDto.fromModel(user));
+    return users.map((user) => UserDto.fromModel(user))
   }
 
   async findOne(id: string): Promise<UserDto> {
-    const user = await this.findByIdOrThrow(id);
-    return UserDto.fromModel(user);
+    const user = await this.findByIdOrThrow(id)
+    return UserDto.fromModel(user)
   }
 
   async create(data: CreateUserDto) {
     try {
-      const hashedPassword = await bcrypt.hash(data.password, 10);
+      const hashedPassword = await bcrypt.hash(data.password, 10)
       const user = await this.prisma.user.create({
         data: {
           email: data.email,
           passwordHash: hashedPassword,
           nickname: data.nickname,
         },
-      });
+      })
 
-      return UserDto.fromModel(user);
+      return UserDto.fromModel(user)
     } catch (error) {
-      this.handleKnownRequestError(error);
+      this.handleKnownRequestError(error)
     }
   }
 
   async update(id: string, data: UpdateUserDto): Promise<UserDto> {
-    await this.findByIdOrThrow(id);
+    await this.findByIdOrThrow(id)
 
     try {
       const passwordHash = data.password
         ? await bcrypt.hash(data.password, 10)
-        : undefined;
+        : undefined
 
       const user = await this.prisma.user.update({
         where: { userId: id },
@@ -67,41 +67,41 @@ export class UsersService {
           nickname: data.nickname,
           ...(passwordHash ? { passwordHash } : {}),
         },
-      });
+      })
 
-      return UserDto.fromModel(user);
+      return UserDto.fromModel(user)
     } catch (error) {
-      this.handleKnownRequestError(error);
+      this.handleKnownRequestError(error)
     }
   }
 
   async remove(id: string): Promise<UserDto> {
-    await this.findByIdOrThrow(id);
+    await this.findByIdOrThrow(id)
 
     const user = await this.prisma.user.delete({
       where: { userId: id },
-    });
+    })
 
-    return UserDto.fromModel(user);
+    return UserDto.fromModel(user)
   }
 
   private async findByIdOrThrow(id: string) {
-    const user = await this.findById(id);
+    const user = await this.findById(id)
     if (!user) {
-      throw new NotFoundException(`User with id ${id} not found`);
+      throw new NotFoundException(`User with id ${id} not found`)
     }
 
-    return user;
+    return user
   }
 
   private handleKnownRequestError(error: unknown): never {
     if (
       error instanceof Prisma.PrismaClientKnownRequestError &&
-      error.code === 'P2002'
+      error.code === "P2002"
     ) {
-      throw new ConflictException('User with this email already exists');
+      throw new ConflictException("User with this email already exists")
     }
 
-    throw error;
+    throw error
   }
 }
