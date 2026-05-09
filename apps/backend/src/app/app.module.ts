@@ -1,9 +1,11 @@
-import { Module } from "@nestjs/common"
+import { MiddlewareConsumer, Module, NestModule } from "@nestjs/common"
 import { AppController } from "./app.controller"
 import { ConfigModule } from "@nestjs/config"
 import { ConferenceModule } from "../conference/conference.module"
 import { AuthModule } from "../auth/auth.module"
 import { UsersModule } from "../users/users.module"
+import { KafkaModule } from "../kafka/kafka.module"
+import { RequestLoggerMiddleware } from "../middleware/request-logger.middleware"
 
 @Module({
   controllers: [AppController],
@@ -21,6 +23,12 @@ import { UsersModule } from "../users/users.module"
     AuthModule,
     // Users management
     UsersModule,
+    // Kafka consumer and producer
+    KafkaModule,
   ],
 })
-export class AppModule {}
+export class AppModule implements NestModule {
+  configure(consumer: MiddlewareConsumer): void {
+    consumer.apply(RequestLoggerMiddleware).forRoutes("*")
+  }
+}
