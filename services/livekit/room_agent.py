@@ -26,12 +26,10 @@ from kafka_events import KafkaEventPublisher
 from livekit_refs import (
     get_participant_id,
     get_participant_identity,
-    get_room_id,
     get_room_name,
+    resolve_room_id,
 )
-from llm import DummyLLM
 
-logging.basicConfig(level=LOG_LEVEL)
 logger = logging.getLogger("livekit-agent")
 logger.setLevel(LOG_LEVEL)
 
@@ -43,6 +41,8 @@ async def entrypoint(ctx: JobContext):
 
     logger.info("Joined room %s.", ctx.room.name)
 
+    room_id = await resolve_room_id(ctx)
+    room_name = get_room_name(ctx)
     publisher = KafkaEventPublisher()
     room_speech_sequence = 0
     room_chat_sequence = 0
@@ -71,7 +71,6 @@ async def entrypoint(ctx: JobContext):
         room_chat_sequence += 1
 
         sender = getattr(dp, "participant", None)
-        room_id = get_room_id(ctx)
 
         logger.info(
             "CHAT MESSAGE RECEIVED: topic=%s sequence=%s room_id=%s "
@@ -86,7 +85,7 @@ async def entrypoint(ctx: JobContext):
         publisher.send_chat(
             text=text,
             room_id=room_id,
-            room_name=get_room_name(ctx),
+            room_name=room_name,
             participant_id=get_participant_id(sender),
             participant_identity=get_participant_identity(sender),
             sequence=room_chat_sequence,
@@ -107,7 +106,6 @@ async def entrypoint(ctx: JobContext):
 
     session = AgentSession(
         stt=build_stt(),
-        llm=DummyLLM(),
         vad=silero.VAD.load(),
         turn_handling=TurnHandlingOptions(
             turn_detection="vad",
@@ -133,7 +131,6 @@ async def entrypoint(ctx: JobContext):
 
         if event.is_final:
             room_speech_sequence += 1
-            room_id = get_room_id(ctx)
 
             logger.info(
                 "FINAL SPEECH: sequence=%s room_id=%s participant_identity=%s text=%s",
@@ -147,7 +144,7 @@ async def entrypoint(ctx: JobContext):
             publisher.send_speech(
                 text=text,
                 room_id=room_id,
-                room_name=get_room_name(ctx),
+                room_name=room_name,
                 participant_id=get_participant_id(participant),
                 participant_identity=get_participant_identity(participant),
                 sequence=room_speech_sequence,

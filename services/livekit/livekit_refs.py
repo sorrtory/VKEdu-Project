@@ -1,8 +1,11 @@
 from livekit.agents import JobContext
 
 
-def get_room_id(ctx: JobContext) -> str:
-    return getattr(ctx.room, "sid", None) or ctx.room.name
+async def resolve_room_id(ctx: JobContext) -> str:
+    try:
+        return await ctx.room.sid
+    except Exception:
+        return ctx.room.name
 
 
 def get_room_name(ctx: JobContext) -> str:

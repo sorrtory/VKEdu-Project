@@ -154,15 +154,16 @@ services:
 
   agent:
     build:
-      context: ./services/ml/agent
-      dockerfile: Dockerfile
+      context: .
+      dockerfile: infra/docker/livekit-agent.Dockerfile
     profiles: ["livekit", "agent"]
+    env_file:
+      - .env
+      - .env.production
     environment:
+      LIVEKIT_AGENT_LIVEKIT_URL: ws://livekit:7880
       LIVEKIT_URL: ws://livekit:7880
-      LIVEKIT_API_KEY: ${LIVEKIT_API_KEY}
-      LIVEKIT_API_SECRET: ${LIVEKIT_API_SECRET}
-      LIVEKIT_AGENT_HOST: agent
-      LIVEKIT_AGENT_PORT: 8081
+      KAFKA_BOOTSTRAP_SERVERS: broker:9092
     networks:
       - app-network
     restart: unless-stopped
@@ -193,6 +194,11 @@ services:
     build:
       context: .
       dockerfile: infra/docker/frontend.Dockerfile
+      args:
+        NEXT_PUBLIC_LIVEKIT_URL: ${NEXT_PUBLIC_LIVEKIT_URL}
+        NEXT_PUBLIC_LIVEKIT_ROOM: ${NEXT_PUBLIC_LIVEKIT_ROOM}
+        NEXT_PUBLIC_LIVEKIT_AGENT_NAME: ${NEXT_PUBLIC_LIVEKIT_AGENT_NAME}
+        NEXT_PUBLIC_BACKEND_URL: ${NEXT_PUBLIC_BACKEND_URL}
     ports:
       - "${FRONTEND_PORT}:${FRONTEND_PORT}"
     depends_on:
@@ -211,3 +217,4 @@ networks:
 volumes:
   postgres-data:
   redis-data:
+  ollama_data:

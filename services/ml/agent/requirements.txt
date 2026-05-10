@@ -1,5 +1,0 @@
-livekit-agents[silero,openai]
-faster-whisper
-numpy
-soundfile
-confluent-kafka

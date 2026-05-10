@@ -9,6 +9,3 @@ normalized events to Kafka.
 uv sync
 uv run main.py start
 ```
-
-The old prototype under `services/ml/agent` is still present while the uv-based
-service is moved here.

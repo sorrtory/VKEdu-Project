@@ -8,7 +8,7 @@
     "dev": "yarn workspaces foreach -A -p -i -v run dev",
     "dev:frontend": "yarn workspace frontend dev",
     "dev:backend": "yarn workspace backend dev",
-    "dev:ml:livekit": "cd services/livekit && uv run main.py",
+    "dev:agent": "cd services/livekit && uv run main.py start",
     "dev:ml:in": "cd services/ml/MLin && source venv/bin/activate && python main.py",
     "dev:ml:out": "cd services/ml/MLout && source venv/bin/activate && python main.py",
     "dev:infra": "docker compose --profile infra up --build -d",

@@ -143,9 +143,10 @@ class KafkaEventPublisher:
         log_label: str,
     ) -> None:
         try:
+            kafka_key = str(key)
             self._producer.produce(
                 topic,
-                key=key.encode("utf-8"),
+                key=kafka_key.encode("utf-8"),
                 value=json.dumps(message, ensure_ascii=False).encode("utf-8"),
                 on_delivery=self._delivery_report,
             )
@@ -154,7 +155,7 @@ class KafkaEventPublisher:
                 "Queued %s to Kafka: topic=%s key=%s sequence=%s text=%s",
                 log_label,
                 topic,
-                key,
+                kafka_key,
                 message.get("sequence"),
                 message.get("text"),
             )
