@@ -25,30 +25,62 @@
 
 ## Быстрый старт
 
+### Установка зависимостей
+
+```bash
+# Клонируем репозиторий
+git clone git@github.com:sorrtory/VKEdu-Project.git
+
+# Обновляем систему
+sudo apt update -y && sudo apt upgrade -y
+
+## Установка Node.js и modern Yarn
+curl -o- https://fnm.vercel.app/install | bash
+fnm install 22
+corepack enable yarn
+
+## Установка Docker
+curl -fsSL https://get.docker.com -o get-docker.sh | sh
+
+## Для запуска через docker: git-crypt для работы с зашифрованными секретами
+sudo apt install git-crypt
+mkdir -p ~/.local/share/git-crypt && chmod 700 ~/.local/share/git-crypt
+### Скопируйте файл broadboard.key в ~/.local/share/git-crypt
+### Например, с помощью scp:
+scp ~/.local/share/git-crypt/broadboard.key user@host:~/.local/share/git-crypt/
+chmod 600 ~/.local/share/git-crypt/broadboard.key
+cd VKEdu-Project
+git-crypt unlock ~/.local/share/git-crypt/broadboard.key
+```
+
 ```bash
 # Подготовка окружения
 cp .env.example .env
+# Необходимо отредактировать .env.production, указав в нем описаные внутри переменные
 cp .env.example .env.production
-# Отредактируйте .env.production указав значения для докера
 
-# Запуск баз данных (PostgreSQL, Redis, Kafka)
-docker compose --profile db up --build -d
+# Запуск в докере (.production подразумевает под собой запуск в докере)
+yarn prod
+
+# Запуск инфраструктуры (PostgreSQL, Redis, Kafka)
+yarn dev:infra
 
 # Запуск в режиме разработки (без докера)
 yarn install
+yarn dev
+
+## Livekit Agent
+yarn dev:agent
+
+## Бекенд
 yarn workspace backend prestart:dev  # генерирует Prisma Client
 yarn workspace backend seed          # заполняет базу тестовыми данными
 yarn workspace backend dev           # запускает NestJS с hot reload
+firefox http://localhost:3000/api    # Swagger UI
 
-firefox http://localhost:3000/api # Swagger UI
-
-#############
-# Запуск в докере
-# Убедитесь, что вы отредактировали .env.production и указали правильные значения для докера
-yarn prod:infra
-yarn prod:web
-# docker compose -f docker-compose.yml --profile infra --profile web up --build -d
-# docker compose --env-file .env --env-file .env.production -f docker-compose.yml --profile infra --profile web up --build -d
+## Фронтенд
+yarn workspace frontend build
+yarn workspace frontend start
 ```
 
 ## Наша команда
@@ -58,6 +90,6 @@ BroadBoard Team
 | Роль  | Имя                                              |
 | ----- | ------------------------------------------------ |
 | Фронт | [Яковлев Сергей](https://github.com/StrayDog31)  |
-| Бек   | [Марышев Иван](https://github.com/ivanmaryshev)  |
+| Бек ✝ | [Марышев Иван](https://github.com/ivanmaryshev)  |
 | ИИ    | [Носков Алексей](https://github.com/eulerspoon)  |
 | ПМ    | [Федуков Александр](https://github.com/sorrtory) |
