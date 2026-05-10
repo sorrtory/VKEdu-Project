@@ -10,13 +10,17 @@
 ## Setup
 
 - [Install CLI](https://docs.livekit.io/reference/developer-tools/livekit-cli/#setup)
+- LiveKit API credentials live in the root `.env` file as `LIVEKIT_API_KEY`
+  and `LIVEKIT_API_SECRET`. Docker Compose passes the same values to the
+  LiveKit server, egress, backend, and agent.
 
 ## Create a room
 
 ```bash
 export LIVEKIT_URL=ws://localhost:7880
-export LIVEKIT_API_KEY=devkey
-export LIVEKIT_API_SECRET='secret'
+set -a
+. ./.env
+set +a
 
 lk token create \
   --join \

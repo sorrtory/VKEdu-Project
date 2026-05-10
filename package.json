@@ -24,6 +24,7 @@
     "prod:ml": "docker compose --env-file .env --env-file .env.production --profile infra --profile ml -f docker-compose.yml up -d --build",
     "prod:infra": "docker compose --env-file .env --env-file .env.production -f docker-compose.yml --profile infra up --build -d",
     "prod:db": "docker compose --env-file .env --env-file .env.production -f docker-compose.yml --profile db up --build -d",
+    "prod:agent": "docker compose --env-file .env --env-file .env.production -f docker-compose.yml --profile agent up --build -d",
   
     "lint:frontend": "yarn workspace frontend lint",
     "lint:backend": "yarn workspace backend lint",

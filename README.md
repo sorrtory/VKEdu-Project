@@ -25,11 +25,33 @@
 
 ## Быстрый старт
 
+```bash
+git clone https://github.com/sorrtory/VKEdu-Project.git
+cd VKEdu-Project
+cp .env.example .env
+# заменить рекомендуемые переменные в .env.production
+cp .env.example .env.production
+yarn install
+
+# Локально без докера
+yarn dev:infra
+yarn dev:agent
+yarn dev
+
+# Локально в докере
+yarn prod:infra
+yarn prod:agent
+yarn prod:web
+
+# На проде (после изменения .env.production)
+yarn prod
+```
+
 ### Установка зависимостей
 
 ```bash
 # Клонируем репозиторий
-git clone git@github.com:sorrtory/VKEdu-Project.git
+git clone https://github.com/sorrtory/VKEdu-Project.git
 
 # Обновляем систему
 sudo apt update -y && sudo apt upgrade -y
@@ -38,6 +60,7 @@ sudo apt update -y && sudo apt upgrade -y
 curl -o- https://fnm.vercel.app/install | bash
 fnm install 22
 corepack enable yarn
+corepack prepare yarn@4.14.1 --activate
 
 ## Установка Docker
 curl -fsSL https://get.docker.com -o get-docker.sh | sh
@@ -53,11 +76,16 @@ cd VKEdu-Project
 git-crypt unlock ~/.local/share/git-crypt/broadboard.key
 ```
 
+### Запуск приложения
+
 ```bash
 # Подготовка окружения
 cp .env.example .env
 # Необходимо отредактировать .env.production, указав в нем описаные внутри переменные
 cp .env.example .env.production
+
+# Установка зависимостей
+yarn install
 
 # Запуск в докере (.production подразумевает под собой запуск в докере)
 yarn prod
@@ -66,7 +94,6 @@ yarn prod
 yarn dev:infra
 
 # Запуск в режиме разработки (без докера)
-yarn install
 yarn dev
 
 ## Livekit Agent
