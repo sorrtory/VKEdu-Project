@@ -1,9 +1,12 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useState } from 'react';
 import ConferenceRoom from '@/src/components/conference';
 import { useParams } from 'next/navigation';
 import { useUser } from '@/src/contexts/UserContext';
+import { createFallbackUserName } from '@/src/lib/livekit';
+
+const fallbackUserName = createFallbackUserName();
 
 export default function ConferenceRoomPage() {
   const [token, setToken] = useState<string | null>(null);
@@ -14,14 +17,6 @@ export default function ConferenceRoomPage() {
 
   const params = useParams();
   const roomName = params.conferenceName as string;
-
-  const fallbackUserName = useMemo(() => {
-    const randomSegment =
-      typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function'
-        ? crypto.randomUUID().slice(0, 8)
-        : Math.random().toString(36).slice(2, 10);
-    return `user-${randomSegment}`;
-  }, []);
 
   const userName = user?.nickname?.trim() || fallbackUserName;
 
@@ -90,7 +85,7 @@ export default function ConferenceRoomPage() {
     };
   }, [reloadKey, roomName, userName]);
 
-  const serverUrl = 'wss://broadboard.ru';
+  const serverUrl = process.env.NEXT_PUBLIC_LIVEKIT_URL;
 
   if (!serverUrl) {
     return (

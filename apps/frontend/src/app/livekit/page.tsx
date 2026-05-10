@@ -1,10 +1,13 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { LiveKitRoom } from '@livekit/components-react';
 import { VideoConference } from '@livekit/components-react/prefabs';
 import '@livekit/components-styles';
 import { useUser } from '@/src/contexts/UserContext';
+import { createFallbackUserName } from '@/src/lib/livekit';
+
+const fallbackUserName = createFallbackUserName();
 
 export default function RoomPage() {
   const [token, setToken] = useState<string | null>(null);
@@ -12,15 +15,7 @@ export default function RoomPage() {
   const [reloadKey, setReloadKey] = useState(0);
   const { user } = useUser();
 
-  const roomName = process.env.NEXT_PUBLIC_LIVEKIT_ROOM ?? 'my-room';
-  const fallbackUserName = useMemo(() => {
-    const randomSegment =
-      typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function'
-        ? crypto.randomUUID().slice(0, 8)
-        : Math.random().toString(36).slice(2, 10);
-    return `user-${randomSegment}`;
-  }, []);
-
+  const roomName = process.env.NEXT_PUBLIC_LIVEKIT_ROOM;
   const username = user?.nickname?.trim() || fallbackUserName;
 
   useEffect(() => {
@@ -32,9 +27,20 @@ export default function RoomPage() {
       setToken(null);
 
       try {
-        const params = new URLSearchParams({ room: roomName, username });
-        const response = await fetch(`/api/conference/token?${params}`, {
+        if (!roomName) {
+          throw new Error('Укажите переменную окружения NEXT_PUBLIC_LIVEKIT_ROOM');
+        }
+
+        const response = await fetch('/api/conference/token', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
           signal: controller.signal,
+          body: JSON.stringify({
+            conferenceName: roomName,
+            participantName: username,
+          }),
         });
 
         const rawBody = await response.text();
@@ -81,15 +87,15 @@ export default function RoomPage() {
     };
   }, [reloadKey, roomName, username]);
 
-  const livekitUrl = 'http://83.166.251.174:7880';
+  const livekitUrl = process.env.NEXT_PUBLIC_LIVEKIT_URL;
 
-  // if (!livekitUrl) {
-  //   return (
-  //     <div className="flex h-full items-center justify-center bg-slate-900 p-6 text-center text-sm text-white">
-  //       Укажите переменную окружения NEXT_PUBLIC_LIVEKIT_URL с адресом LiveKit.
-  //     </div>
-  //   );
-  // }
+  if (!livekitUrl) {
+    return (
+      <div className="flex h-full items-center justify-center bg-slate-900 p-6 text-center text-sm text-white">
+        Укажите переменную окружения NEXT_PUBLIC_LIVEKIT_URL с адресом LiveKit.
+      </div>
+    );
+  }
 
   if (error) {
     return (

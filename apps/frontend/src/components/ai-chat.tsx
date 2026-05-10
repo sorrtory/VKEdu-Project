@@ -16,10 +16,10 @@ export default function CustomChat() {
   const [inputValue, setInputValue] = useState('');
   const [agentMessages, setAgentMessages] = useState<AgentMessage[]>([]);
   
-  const AGENT_IDENTITY = 'default-agent';
+  const agentIdentity = process.env.NEXT_PUBLIC_LIVEKIT_AGENT_NAME;
 
   const generalMessages = chatMessages.filter((msg) => {
-    const isFromAgent = msg.from?.identity === AGENT_IDENTITY;
+    const isFromAgent = msg.from?.identity === agentIdentity;
     return !isFromAgent;
   });
 
@@ -29,7 +29,9 @@ export default function CustomChat() {
     if (activeTab === 'general') {
       await send(inputValue);
     } else {
-      await send(inputValue, { destinationIdentities: [AGENT_IDENTITY] });
+      if (!agentIdentity) return;
+
+      await send(inputValue, { destinationIdentities: [agentIdentity] });
       
       setAgentMessages(prev => [...prev, {
         text: inputValue,
@@ -41,7 +43,7 @@ export default function CustomChat() {
   };
 
   useEffect(() => {
-    const agentMsgs = chatMessages.filter(msg => msg.from?.identity === AGENT_IDENTITY);
+    const agentMsgs = chatMessages.filter(msg => msg.from?.identity === agentIdentity);
     agentMsgs.forEach(msg => {
       if (!agentMessages.some(agentMsg => agentMsg.timestamp === msg.timestamp)) {
         setAgentMessages(prev => [...prev, {
@@ -51,7 +53,7 @@ export default function CustomChat() {
         }]);
       }
     });
-  }, [chatMessages, agentMessages]);
+  }, [chatMessages, agentMessages, agentIdentity]);
 
   const getCurrentMessages = (): (ReceivedChatMessage | AgentMessage)[] => {
     if (activeTab === 'general') {
@@ -105,7 +107,7 @@ export default function CustomChat() {
       <div style={{ flex: 1, overflowY: 'auto', padding: '16px', display: 'flex', flexDirection: 'column', gap: '12px' }}>
         {getCurrentMessages().map((msg, idx) => {
           const isUserMessage = isReceivedChatMessage(msg) 
-            ? msg.from?.identity !== AGENT_IDENTITY
+            ? msg.from?.identity !== agentIdentity
             : msg.isFromUser;
           
           const messageText = isReceivedChatMessage(msg) ? msg.message : msg.text;
