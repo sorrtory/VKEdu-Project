@@ -2,11 +2,11 @@
 
 - MLIn = context updater service - reads Kafka topics, obtains context, and calls AI.
 
-| Service       | Description                 | Input                                                                          | Output                       |
-| ------------- | --------------------------- | ------------------------------------------------------------------------------ | ---------------------------- |
-| MLIn          | Context updater             | Kafka topic messages (conference events, document updates, whiteboard changes) | Put context (txt) into Redis |
-| MLOut         | LLM processor               | Kafka topic messages (LLM requests)                                            | Put LLM responses into Kafka |
-| Livekit Agent | Call speech / chat listener | LiveKit room events                                                            | Put transcripts into Kafka   |
+| Service       | Description                 | Input                                         | Output                       |
+| ------------- | --------------------------- | --------------------------------------------- | ---------------------------- |
+| MLIn          | Context updater             | Kafka topic messages (speech txt, smart crop) | Put context (txt) into Redis |
+| MLOut         | LLM processor               | Kafka topic messages ()           | Put LLM responses into Kafka |
+| Livekit Agent | Call speech / chat listener | LiveKit room events                           | Put transcripts into Kafka   |
 
 ## Livekit agent
 
