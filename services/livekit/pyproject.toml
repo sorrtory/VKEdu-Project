@@ -1,9 +1,12 @@
 [project]
-name = "livekit"
+name = "livekit-agent"
 version = "0.1.0"
 description = "Livekit listener"
 readme = "README.md"
 requires-python = ">=3.13"
 dependencies = [
+    "confluent-kafka>=2.14.0",
+    "faster-whisper>=1.2.1",
+    "livekit-agents[silero]>=1.5.8",
     "python-dotenv>=1.2.2",
 ]

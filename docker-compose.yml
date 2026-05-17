@@ -1,95 +1,88 @@
-services:
+name: BB
 
+services:
   nginx:
     image: nginx:alpine
-    container_name: nginx
     profiles: ["infra"]
     ports:
-      - "80:80"
-      - "443:443"
-    volumes:
-      # - ./infra/nginx/nginx.conf:/etc/nginx/templates/nginx.conf.template
-      - ./infra/nginx/nginx.conf:/etc/nginx/nginx.conf:ro
-      - ./infra/nginx/certs:/etc/nginx/certs:ro
-    networks:
-      - app-network
-    restart: unless-stopped
+      - "${NGINX_HTTP_PORT:-80}:80"
+      - "${NGINX_HTTPS_PORT:-443}:443"
     env_file:
       - .env
       - .env.production
-
+    environment:
+      NGINX_ENVSUBST_OUTPUT_DIR: /etc/nginx
+      NGINX_ENVSUBST_FILTER: "^NGINX_"
+    volumes:
+      - ./infra/nginx/nginx.conf:/etc/nginx/templates/nginx.conf.template:ro
+      - ./infra/nginx/certs:/etc/nginx/certs:ro
+    networks:
+      - app-network
   redis:
     image: redis:alpine
-    container_name: BB_redis
-    profiles: ["infra", "livekit"]
+    profiles: ["infra", "db", "livekit"]
     command: redis-server --appendonly yes # Enable data persistence
     volumes:
       - redis-data:/data
     restart: unless-stopped
     networks:
       - app-network
-
-  livekit-redis:
-    image: redis:alpine
-    container_name: BB_livekit_redis
-    profiles: ["livekit"]
-    command: redis-server --appendonly yes
-    volumes:
-      - redis-livekit-data:/data
-    ports:
-      - "6380:6380"
-      - "6379:6379" 
-    restart: unless-stopped
-    networks:
-      - livekit-network
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
 
   livekit:
     image: livekit/livekit-server:latest
-    container_name: BB_livekit
-    profiles: ["livekit"]
+    profiles: ["livekit", "infra"]
     command:
-      - --node-ip=83.166.251.174
       - --config
       - /etc/livekit.yaml
+    environment:
+      LIVEKIT_KEYS: "${LIVEKIT_API_KEY}: ${LIVEKIT_API_SECRET}"
     volumes:
       - ./infra/livekit/livekit.yaml:/etc/livekit.yaml:ro
     ports:
-      - "7880:7880"
-      - "7881:7881"
-      - "7882:7882/udp"
-      - "8000-8010:8000-8010/udp"
-    depends_on:
-      - livekit-redis
+      - "${LIVEKIT_PORT}:${LIVEKIT_PORT}"
+      - "${LIVEKIT_SIGNAL_PORT}:${LIVEKIT_SIGNAL_PORT}"
+      - "${LIVEKIT_RTC_UDP_PORT}:${LIVEKIT_RTC_UDP_PORT}/udp"
     restart: unless-stopped
     networks:
-      - livekit-network
       - app-network
-
+    depends_on:
+      redis:
+        condition: service_healthy
   egress:
     image: livekit/egress:latest
-    container_name: BB_egress
-    profiles: ["livekit"]
-    environment:
-      EGRESS_CONFIG_FILE: /etc/egress.yaml
-    volumes:
-      - ./infra/livekit/egress.yaml:/etc/egress.yaml
-      - ./infra/livekit/recordings:/recordings
+    profiles: ["livekit", "infra"]
     cap_add:
       - SYS_ADMIN
+    environment:
+      EGRESS_CONFIG_BODY: |
+        log_level: debug
+
+        api_key: ${LIVEKIT_API_KEY}
+        api_secret: ${LIVEKIT_API_SECRET}
+        ws_url: ws://livekit:7880
+        insecure: true
+
+        redis:
+          address: redis:6379
+    volumes:
+      - ./infra/livekit/recordings:/out
     depends_on:
-      - livekit
-    restart: unless-stopped
+      redis:
+        condition: service_healthy
+      livekit:
+        condition: service_started
     networks:
-      - livekit-network
-    env_file:
-      - .env
-      - .env.production
+      - app-network
 
   broker:
     image: apache/kafka:latest
-    container_name: BB_broker
     hostname: broker
-    profiles: ["infra"]
+    profiles: ["infra", "db"]
     environment:
       KAFKA_NODE_ID: 1
       KAFKA_PROCESS_ROLES: broker,controller
@@ -105,8 +98,7 @@ services:
 
   postgres:
     image: postgres:alpine
-    container_name: BB_postgres
-    profiles: ["infra"]
+    profiles: ["infra", "db"]
     environment:
       POSTGRES_DB: ${POSTGRES_DB} # on a first run, it will create a database with this name
       POSTGRES_USER: ${POSTGRES_USER}
@@ -134,6 +126,7 @@ services:
       KAFKA_TOPICS: ${MLIN_KAFKA_TOPICS}
       REDIS_HOST: ${REDIS_HOST}
       REDIS_PORT: ${REDIS_PORT}
+      PYTHONIOENCODING: utf-8
     depends_on:
       - broker
       - redis
@@ -159,15 +152,48 @@ services:
     networks:
       - app-network
 
+  ollama:
+    image: ollama/ollama:latest
+    profiles: ["ml"]
+    restart: unless-stopped
+    volumes:
+      - ollama_data:/root/.ollama
+    networks:
+      - app-network
+    entrypoint: ["/bin/sh", "-c"]
+    command:
+      - |
+        ollama serve &
+        sleep 5
+        ollama pull qwen2.5:0.5b
+        tail -f /dev/null
+
+  agent:
+    build:
+      context: .
+      dockerfile: infra/docker/livekit-agent.Dockerfile
+    profiles: ["livekit", "agent"]
+    env_file:
+      - .env
+      - .env.production
+    environment:
+      LIVEKIT_AGENT_LIVEKIT_URL: ws://livekit:7880
+      LIVEKIT_URL: ws://livekit:7880
+      KAFKA_BOOTSTRAP_SERVERS: broker:9092
+    networks:
+      - app-network
+    restart: unless-stopped
+
   backend:
     profiles: ["web"]
-    container_name: BB_backend
     build:
       context: .
       dockerfile: infra/docker/backend.Dockerfile
     ports:
       - "${BACKEND_PORT}:${BACKEND_PORT}"
     depends_on:
+      livekit:
+        condition: service_started
       broker:
         condition: service_started
       postgres:
@@ -178,23 +204,17 @@ services:
     env_file:
       - .env
       - .env.production
-    environment:
-      DATABASE_URL: "postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@${BACKEND_DATABASE_HOST}:${POSTGRES_PORT}/${POSTGRES_DB}"
 
   frontend:
     profiles: ["web"]
-    container_name: BB_frontend
     build:
       context: .
       dockerfile: infra/docker/frontend.Dockerfile
       args:
         NEXT_PUBLIC_LIVEKIT_URL: ${NEXT_PUBLIC_LIVEKIT_URL}
         NEXT_PUBLIC_LIVEKIT_ROOM: ${NEXT_PUBLIC_LIVEKIT_ROOM}
-    environment:
-      NEXT_PUBLIC_LIVEKIT_URL: ${NEXT_PUBLIC_LIVEKIT_URL}
-      NEXT_PUBLIC_LIVEKIT_ROOM: ${NEXT_PUBLIC_LIVEKIT_ROOM}
-      NODE_OPTIONS: ${NODE_OPTIONS}
-      PORT: ${FRONTEND_PORT}
+        NEXT_PUBLIC_LIVEKIT_AGENT_NAME: ${NEXT_PUBLIC_LIVEKIT_AGENT_NAME}
+        NEXT_PUBLIC_BACKEND_URL: ${NEXT_PUBLIC_BACKEND_URL}
     ports:
       - "${FRONTEND_PORT}:${FRONTEND_PORT}"
     depends_on:
@@ -209,10 +229,8 @@ services:
 networks:
   app-network:
     driver: bridge
-  livekit-network:
-    driver: bridge
 
 volumes:
   postgres-data:
   redis-data:
-  redis-livekit-data:
+  ollama_data:

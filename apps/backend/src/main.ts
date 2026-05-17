@@ -1,10 +1,14 @@
 import { ValidationPipe } from "@nestjs/common"
 import { NestFactory } from "@nestjs/core"
-import { AppModule } from "./app.module"
+import { AppModule } from "./app/app.module"
 import { DocumentBuilder, SwaggerModule } from "@nestjs/swagger"
+import { MicroserviceOptions, Transport } from "@nestjs/microservices"
+import { ConfigService } from "@nestjs/config"
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule)
+  // Get config service instance
+  const configService = app.get(ConfigService)
 
   // Connect data validation pipe globally with strict options:
   app.useGlobalPipes(
@@ -24,11 +28,30 @@ async function bootstrap() {
   const document = SwaggerModule.createDocument(app, config)
   SwaggerModule.setup("api", app, document)
 
-  const port = Number(process.env.BACKEND_PORT)
-  if (!port) throw new Error("BACKEND_PORT is not set")
+  // Connect kafka consumer
+  console.log("Starting Kafka consumer...")
+  app.connectMicroservice<MicroserviceOptions>({
+    transport: Transport.KAFKA,
+    options: {
+      client: {
+        clientId: configService.getOrThrow("BACKEND_KAFKA_CLIENT_ID"),
+        brokers: [
+          `${configService.getOrThrow("BACKEND_KAFKA_HOST")}:${configService.getOrThrow("KAFKA_PORT")}`,
+        ],
+      },
+      consumer: {
+        groupId: configService.getOrThrow("BACKEND_KAFKA_CONSUMER_GROUP_ID"),
+        fromBeginning: false, // Start consuming new messages only
+      },
+    },
+  })
+  // Start the microservices
+  await app.startAllMicroservices()
 
-  // Bind to 0.0.0.0 so the server is reachable from other Docker containers
-  // and external hosts when running in a containerized environment.
+  // Start the server
+  const port = configService.getOrThrow<number>("BACKEND_PORT")
+
+  console.log(`Starting server on port ${port}...`)
   await app.listen(port, "0.0.0.0")
 }
 void bootstrap()

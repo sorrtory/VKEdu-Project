@@ -1,5 +1,9 @@
 {
   "compilerOptions": {
+    // https://www.prisma.io/docs/prisma-orm/quickstart/postgresql#3-configure-esm-support
+    // that's for next.js setup
+    // "module": "ESNext", 
+    // "moduleResolution": "bundler",
     "module": "nodenext",
     "moduleResolution": "nodenext",
     "target": "ES2023",

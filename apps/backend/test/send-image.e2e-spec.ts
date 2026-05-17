@@ -3,7 +3,7 @@ import { INestApplication } from "@nestjs/common"
 import request from "supertest"
 import type { Server } from "http"
 import { of } from "rxjs"
-import { AppModule } from "../src/app.module"
+import { AppModule } from "../src/app/app.module"
 
 describe("Send Endpoint (real e2e without AppService mock)", () => {
   let app: INestApplication

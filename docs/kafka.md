@@ -1,11 +1,11 @@
 # Broker
 
-
 ## running commands
 
 localhost vs docker
+
 ```bash
---bootstrap-server broker:9092 
+--bootstrap-server broker:9092
 --bootstrap-server localhost:29092
 ```
 
@@ -14,17 +14,19 @@ localhost vs docker
 ### Produce one message
 
 ```bash
-echo "hello" | docker compose exec -T broker /opt/kafka/bin/kafka-console-producer.sh \
+TOPIC_NAME=test
+echo '{"message":"hello"}' | docker compose exec -T broker /opt/kafka/bin/kafka-console-producer.sh \
   --bootstrap-server broker:9092 \
-  --topic test
+  --topic ${TOPIC_NAME}
 ```
 
 ### Consume one message and exit
 
 ```bash
+TOPIC_NAME=test
 docker compose exec -it broker /opt/kafka/bin/kafka-console-consumer.sh \
   --bootstrap-server broker:9092 \
-  --topic test \
+  --topic ${TOPIC_NAME} \
   --from-beginning \
   --max-messages 1
 ```
@@ -40,10 +42,11 @@ docker compose exec broker /opt/kafka/bin/kafka-topics.sh \
 ### Create topic
 
 ```bash
+TOPIC_NAME=test
 docker compose exec broker /opt/kafka/bin/kafka-topics.sh \
   --bootstrap-server broker:9092 \
   --create \
-  --topic test \
+  --topic ${TOPIC_NAME} \
   --partitions 1 \
   --replication-factor 1
 ```
@@ -51,44 +54,49 @@ docker compose exec broker /opt/kafka/bin/kafka-topics.sh \
 ### Describe topic
 
 ```bash
+TOPIC_NAME=test
 docker compose exec broker /opt/kafka/bin/kafka-topics.sh \
   --bootstrap-server broker:9092 \
   --describe \
-  --topic test
+  --topic ${TOPIC_NAME}
 ```
 
 ### Delete topic
 
 ```bash
+TOPIC_NAME=test
 docker compose exec broker /opt/kafka/bin/kafka-topics.sh \
   --bootstrap-server broker:9092 \
   --delete \
-  --topic test
+  --topic ${TOPIC_NAME}
 ```
 
 ### Produce messages interactively
 
 ```bash
+TOPIC_NAME=test
 docker compose exec -it broker /opt/kafka/bin/kafka-console-producer.sh \
   --bootstrap-server broker:9092 \
-  --topic test
+  --topic ${TOPIC_NAME}
 ```
 
 ### Consume messages from beginning
 
 ```bash
+TOPIC_NAME=test
 docker compose exec -it broker /opt/kafka/bin/kafka-console-consumer.sh \
   --bootstrap-server broker:9092 \
-  --topic test \
+  --topic ${TOPIC_NAME} \
   --from-beginning
 ```
 
 ### Consume only new messages
 
 ```bash
+TOPIC_NAME=test
 docker compose exec -it broker /opt/kafka/bin/kafka-console-consumer.sh \
   --bootstrap-server broker:9092 \
-  --topic test
+  --topic ${TOPIC_NAME}
 ```
 
 ### Show consumer groups
@@ -102,8 +110,9 @@ docker compose exec broker /opt/kafka/bin/kafka-consumer-groups.sh \
 ### Describe consumer group
 
 ```bash
+GROUP_NAME=my-group
 docker compose exec broker /opt/kafka/bin/kafka-consumer-groups.sh \
   --bootstrap-server broker:9092 \
   --describe \
-  --group my-group
+  --group ${GROUP_NAME}
 ```

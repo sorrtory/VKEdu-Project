@@ -35,11 +35,14 @@ Do not duplicate long product descriptions in code comments or PR summaries.
 
 ## Dev environment tips
 
-- I use lazyload with `nvm` to manage Node versions. You need to enable it in your shell before using `yarn` commands.
+- I use lazyload with `fnm` to manage Node versions. You need to enable it in your shell before using `yarn` commands.
   For example, to activate `node` run
     ```bash
-    export NVM_DIR="$HOME/.nvm"
-    [ -s "$NVM_DIR/nvm.sh" ] && . "$NVM_DIR/nvm.sh"
+    FNM_PATH="~/.local/share/fnm"
+    if [ -d "$FNM_PATH" ]; then
+      export PATH="$FNM_PATH:$PATH"
+      eval "$(fnm env --shell zsh)"
+    fi
     ```
   Note that you need to run it only if node is not already active in your terminal session. You can check it with `node -v` command. Please double check with `node -v` before asking about node issues, because lazyload may activate it on demand after first `node -v` call.
 - Use `yarn` for package management and scripts.

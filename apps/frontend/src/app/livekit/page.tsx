@@ -1,23 +1,22 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { LiveKitRoom } from '@livekit/components-react';
 import { VideoConference } from '@livekit/components-react/prefabs';
 import '@livekit/components-styles';
+import { useUser } from '@/src/contexts/UserContext';
+import { createFallbackUserName } from '@/src/lib/livekit';
+
+const fallbackUserName = createFallbackUserName();
 
 export default function RoomPage() {
   const [token, setToken] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [reloadKey, setReloadKey] = useState(0);
+  const { user } = useUser();
 
-  const roomName = process.env.NEXT_PUBLIC_LIVEKIT_ROOM ?? 'my-room';
-  const username = useMemo(() => {
-    const randomSegment =
-      typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function'
-        ? crypto.randomUUID().slice(0, 8)
-        : Math.random().toString(36).slice(2, 10);
-    return `user-${randomSegment}`;
-  }, []);
+  const roomName = process.env.NEXT_PUBLIC_LIVEKIT_ROOM;
+  const username = user?.nickname?.trim() || fallbackUserName;
 
   useEffect(() => {
     let isMounted = true;
@@ -28,12 +27,20 @@ export default function RoomPage() {
       setToken(null);
 
       try {
-        // const params = new URLSearchParams({ roomNameParam, usernameParam });
-        // TODO: switch to up to date API endpoint and remove query params
-        console.log(`Requesting token for room "${roomName}" as "${username}"...`);
-        const response = await fetch(`/api/conference/token?${params}`, {
+        if (!roomName) {
+          throw new Error('Укажите переменную окружения NEXT_PUBLIC_LIVEKIT_ROOM');
+        }
+
+        const response = await fetch('/api/conference/token', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
           signal: controller.signal,
-          
+          body: JSON.stringify({
+            conferenceName: roomName,
+            participantName: username,
+          }),
         });
 
         const rawBody = await response.text();
@@ -80,7 +87,7 @@ export default function RoomPage() {
     };
   }, [reloadKey, roomName, username]);
 
-  const livekitUrl = 'http://83.166.251.174:7880';
+  const livekitUrl = process.env.NEXT_PUBLIC_LIVEKIT_URL;
 
   if (!livekitUrl) {
     return (

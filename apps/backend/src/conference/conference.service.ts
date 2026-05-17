@@ -1,81 +1,161 @@
 import { Injectable } from "@nestjs/common"
+import { ConfigService } from "@nestjs/config"
 import { AccessToken, RoomServiceClient, TrackSource } from "livekit-server-sdk"
 
 @Injectable()
 export class ConferenceService {
   private readonly roomService: RoomServiceClient
-  private readonly apiKey: string
-  private readonly apiSecret: string
+  private readonly API_KEY: string
+  private readonly API_SECRET: string
+  private readonly LK_HOST: string
+  private readonly conferenceCreators = new Map<string, string>()
 
-  constructor() {
-    const host =
-      process.env.LIVEKIT_SERVER_URL ??
-      process.env.LIVEKIT_HOST ??
-      "http://livekit:7880"
-    // TODO: remove this neuroshit
-    const apiKey = process.env.LIVEKIT_API_KEY ?? "devkey"
-    const apiSecret = process.env.LIVEKIT_API_SECRET || "devsecret"
+  constructor(private readonly configService: ConfigService) {
+    // These environment variables are required — getOrThrow will throw at startup if missing
+    this.LK_HOST = this.configService.getOrThrow<string>("BACKEND_LIVEKIT_HOST")
+    this.API_KEY = this.configService.getOrThrow<string>("LIVEKIT_API_KEY")
+    this.API_SECRET =
+      this.configService.getOrThrow<string>("LIVEKIT_API_SECRET")
 
-    if (!apiKey || !apiSecret) {
-      throw new Error("LiveKit API credentials are not configured")
+    this.roomService = new RoomServiceClient(
+      this.LK_HOST,
+      this.API_KEY,
+      this.API_SECRET,
+    )
+  }
+
+  // 🔍 Вспомогательный метод: проверка существования комнаты
+  private async roomExists(roomName: string): Promise<boolean> {
+    try {
+      // Передаём имя в массиве — вернёт только эту комнату, если она есть
+      const rooms = await this.roomService.listRooms([roomName])
+      return rooms.length > 0
+    } catch (err: unknown) {
+      const error = err as { status?: number }
+      if (error.status === 401 || error.status === 403) {
+        throw err // критичная ошибка авторизации
+      }
+      console.log(`[roomExists] here was some warn`)
+      return false
     }
-
-    this.apiKey = apiKey
-    this.apiSecret = apiSecret
-
-    this.roomService = new RoomServiceClient(host, apiKey, apiSecret)
-  }
-
-  async createRoom(roomName: string) {
-    await this.roomService.createRoom({
-      name: roomName,
-    })
-  }
-
-  async createConference(conferenceName: string) {
-    await this.createRoom(conferenceName)
   }
 
   async generateToken(
-    roomName: string,
+    conferenceName: string,
     participantName: string,
-    isAdmin = true,
-  ): Promise<string> {
-    const accessToken = new AccessToken(this.apiKey, this.apiSecret, {
+    isAdmin: boolean,
+  ): Promise<{ token: string; creatorId: string }> {
+    console.log(
+      `[generateToken] Processing request for room: ${conferenceName}, participant: ${participantName}`,
+    )
+
+    // 1. Проверяем, существует ли комната (SDK v2.x: listRooms принимает массив имён)
+    let roomExists = false
+    try {
+      const rooms = await this.roomService.listRooms([conferenceName])
+      roomExists = rooms.length > 0
+      console.log(
+        `[generateToken] Room ${conferenceName} exists: ${roomExists}`,
+      )
+    } catch (err: unknown) {
+      const error = err as { status?: number; message?: string }
+      if (error.status === 401 || error.status === 403) {
+        console.error(
+          `[generateToken] Auth error checking room:`,
+          error.message,
+        )
+        throw err
+      }
+      console.warn(
+        `[generateToken] Could not check room existence:`,
+        error.message,
+      )
+      // При ошибке сети считаем, что комнаты нет — агент диспатчится при создании
+      roomExists = false
+    }
+
+    // 2. Создаём AccessToken
+    const token = new AccessToken(this.API_KEY, this.API_SECRET, {
       identity: participantName,
       name: participantName,
+      // ttl: 3600, // опционально: время жизни токена в секундах
     })
 
-    accessToken.addGrant({
-      room: roomName,
+    // 3. Назначаем создателя комнаты один раз на первую выдачу токена
+    if (!this.conferenceCreators.has(conferenceName)) {
+      this.conferenceCreators.set(conferenceName, participantName)
+    }
+    const creatorId =
+      this.conferenceCreators.get(conferenceName) ?? participantName
+
+    // 4. Если комната создаётся впервые — добавляем конфигурацию с агентом
+    if (!roomExists) {
+      console.log(
+        `[generateToken] Setting roomConfig with agent: default-agent`,
+      )
+      token.roomConfig = {
+        agents: [
+          {
+            agent_name: "default-agent",
+            metadata: JSON.stringify({
+              initiator: participantName,
+              createdAt: new Date().toISOString(),
+              conference: conferenceName,
+            }),
+          },
+        ],
+      }
+    }
+
+    // 5. Добавляем права доступа (гранты)
+    token.addGrant({
       roomJoin: true,
+      room: conferenceName,
       canPublish: true,
       canSubscribe: true,
+      canPublishData: true,
       roomAdmin: isAdmin,
+      // canUpdateOwnMetadata: true, // опционально
     })
 
-    return accessToken.toJwt()
+    // 6. Генерируем и возвращаем JWT + identity создателя комнаты
+    const jwt = await token.toJwt()
+    console.log(
+      `[generateToken] Token generated successfully for ${participantName}`,
+    )
+
+    console.log(
+      "[generateToken] roomConfig:",
+      JSON.stringify(token.roomConfig, null, 2),
+    )
+
+    return { token: jwt, creatorId }
   }
 
+  // Опционально: явное создание комнаты без участника (агент НЕ прикрепится)
+  async createConference(conferenceName: string) {
+    await this.roomService.createRoom({ name: conferenceName })
+  }
+
+  // Мутит или размучивает треки участникам. True - включить, false - выключить.
   async manageTrack(
     conferenceName: string,
-    _callerName: string,
+    callerName: string,
     targetName: string,
-    trackSource: TrackSource,
-    muted: boolean,
+    trackType: TrackSource,
+    type: boolean,
   ) {
     const participant = await this.roomService.getParticipant(
       conferenceName,
       targetName,
     )
-
     for (const track of participant.tracks) {
-      if (track.source === trackSource) {
+      if (track.source === trackType) {
         await this.roomService.mutePublishedTrack(
           conferenceName,
           targetName,
           track.sid,
-          muted,
+          type,
         )
       }
     }
@@ -88,7 +168,7 @@ export class ConferenceService {
     callerName: string,
     targetName: string,
   ) {
-    return this.manageTrack(
+    await this.manageTrack(
       conferenceName,
       callerName,
       targetName,
@@ -102,7 +182,7 @@ export class ConferenceService {
     callerName: string,
     targetName: string,
   ) {
-    return this.manageTrack(
+    await this.manageTrack(
       conferenceName,
       callerName,
       targetName,
@@ -111,12 +191,8 @@ export class ConferenceService {
     )
   }
 
-  async onCam(
-    conferenceName: string,
-    callerName: string,
-    targetName: string,
-  ) {
-    return this.manageTrack(
+  async onCam(conferenceName: string, callerName: string, targetName: string) {
+    await this.manageTrack(
       conferenceName,
       callerName,
       targetName,
@@ -125,12 +201,8 @@ export class ConferenceService {
     )
   }
 
-  async offCam(
-    conferenceName: string,
-    callerName: string,
-    targetName: string,
-  ) {
-    return this.manageTrack(
+  async offCam(conferenceName: string, callerName: string, targetName: string) {
+    await this.manageTrack(
       conferenceName,
       callerName,
       targetName,

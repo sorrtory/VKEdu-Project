@@ -1,25 +1,24 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useState } from 'react';
 import ConferenceRoom from '@/src/components/conference';
 import { useParams } from 'next/navigation';
+import { useUser } from '@/src/contexts/UserContext';
+import { createFallbackUserName } from '@/src/lib/livekit';
+
+const fallbackUserName = createFallbackUserName();
 
 export default function ConferenceRoomPage() {
   const [token, setToken] = useState<string | null>(null);
+  const [creatorId, setCreatorId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [reloadKey, setReloadKey] = useState(0);
+  const { user } = useUser();
 
   const params = useParams();
-  const roomName = params.roomName as string;
-  console.log(roomName)
+  const roomName = params.conferenceName as string;
 
-  const userName = useMemo(() => {
-    const randomSegment =
-      typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function'
-        ? crypto.randomUUID().slice(0, 8)
-        : Math.random().toString(36).slice(2, 10);
-    return `user-${randomSegment}`;
-  }, []);
+  const userName = user?.nickname?.trim() || fallbackUserName;
 
   const userId = userName;
 
@@ -30,9 +29,9 @@ export default function ConferenceRoomPage() {
     async function fetchToken() {
       setError(null);
       setToken(null);
+      setCreatorId(null);
 
       try {
-        const params = new URLSearchParams({ room: roomName, username: userName });
         const response = await fetch('/api/conference/token', {
           method: 'POST',
           headers: {
@@ -40,7 +39,7 @@ export default function ConferenceRoomPage() {
           },
           body: JSON.stringify({
             participantName: userName,
-            roomName: roomName,
+            conferenceName: roomName,
           })
             
         });
@@ -51,19 +50,20 @@ export default function ConferenceRoomPage() {
           throw new Error(rawBody || 'Сервер вернул ошибку при выдаче токена');
         }
 
-        let payload: { token?: string } | null = null;
+        let payload: { token?: string; creatorId?: string } | null = null;
         try {
           payload = JSON.parse(rawBody);
         } catch {
           throw new Error('Некорректный ответ сервера LiveKit (ожидался JSON)');
         }
 
-        if (!payload?.token) {
-          throw new Error('Ответ сервера не содержит token');
+        if (!payload?.token || !payload.creatorId) {
+          throw new Error('Ответ сервера не содержит token или creatorId');
         }
 
         if (isMounted) {
           setToken(payload.token);
+          setCreatorId(payload.creatorId);
         }
       } catch (requestError) {
         if (controller.signal.aborted) return;
@@ -85,7 +85,7 @@ export default function ConferenceRoomPage() {
     };
   }, [reloadKey, roomName, userName]);
 
-  const serverUrl = process.env.NEXT_PUBLIC_LIVEKIT_URL ?? 'wss://broadboard.ru';
+  const serverUrl = process.env.NEXT_PUBLIC_LIVEKIT_URL;
 
   if (!serverUrl) {
     return (
@@ -110,7 +110,7 @@ export default function ConferenceRoomPage() {
     );
   }
 
-  if (!token) {
+  if (!token || !creatorId) {
     return (
       <div className="flex h-full items-center justify-center bg-slate-900 text-sm text-white">
         Запрашиваем токен LiveKit...
@@ -125,6 +125,7 @@ export default function ConferenceRoomPage() {
       userId={userId}
       serverUrl={serverUrl}
       token={token}
+      creatorId={creatorId}
     />
   );
 }

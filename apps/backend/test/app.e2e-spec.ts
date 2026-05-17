@@ -2,7 +2,7 @@ import { Test, TestingModule } from "@nestjs/testing"
 import { INestApplication } from "@nestjs/common"
 import type { Server } from "http"
 import request from "supertest"
-import { AppModule } from "../src/app.module"
+import { AppModule } from "../src/app/app.module"
 
 describe("AppController (e2e)", () => {
   let app: INestApplication
@@ -19,6 +19,6 @@ describe("AppController (e2e)", () => {
   it("/ (GET)", () => {
     const httpServer = app.getHttpServer() as Server
 
-    return request(httpServer).get("/").expect(200).expect("Hello World!")
+    return request(httpServer).get("/").expect(200).expect('{"status":"ok"}')
   })
 })

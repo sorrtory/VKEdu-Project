@@ -9,7 +9,7 @@
             "type": "dockerfile",
             "request": "launch",
             "name": "Docker: Build",
-            "dockerfile": "infra/docker/backend.Dockerfile",
+            "dockerfile": "infra/docker/frontend.Dockerfile",
             "contextPath": "${workspaceFolder}"
         }
     ]

@@ -25,17 +25,33 @@
 
 ## Быстрый старт
 
-Из-за ограничений `livekit` развернуть локальный сервер не получится,
-поэтому для разработки и тестирования нужно использовать удаленный сервер.
+```bash
+git clone https://github.com/sorrtory/VKEdu-Project.git
+cd VKEdu-Project
+cp .env.example .env
+# заменить рекомендуемые переменные в .env.production
+cp .env.example .env.production
+yarn install
 
-Имеется ввиду, что `docker` нужно использовать для развертывания.
-А разработка бекенда, фронтенда и ИИ сервисов может происходить локально.
+# Локально без докера
+yarn dev:infra
+yarn dev:agent
+yarn dev
+
+# Локально в докере
+yarn prod:infra
+yarn prod:agent
+yarn prod:web
+
+# На проде (после изменения .env.production)
+yarn prod
+```
 
 ### Установка зависимостей
 
 ```bash
 # Клонируем репозиторий
-git clone git@github.com:sorrtory/VKEdu-Project.git
+git clone https://github.com/sorrtory/VKEdu-Project.git
 
 # Обновляем систему
 sudo apt update -y && sudo apt upgrade -y
@@ -44,6 +60,7 @@ sudo apt update -y && sudo apt upgrade -y
 curl -o- https://fnm.vercel.app/install | bash
 fnm install 22
 corepack enable yarn
+corepack prepare yarn@4.14.1 --activate
 
 ## Установка Docker
 curl -fsSL https://get.docker.com -o get-docker.sh | sh
@@ -59,17 +76,28 @@ cd VKEdu-Project
 git-crypt unlock ~/.local/share/git-crypt/broadboard.key
 ```
 
-### Запуск в режиме разработки
+### Запуск приложения
 
 ```bash
 # Подготовка окружения
 cp .env.example .env
+# Необходимо отредактировать .env.production, указав в нем описаные внутри переменные
+cp .env.example .env.production
+
+# Установка зависимостей
+yarn install
+
+# Запуск в докере (.production подразумевает под собой запуск в докере)
+yarn prod
 
 # Запуск инфраструктуры (PostgreSQL, Redis, Kafka)
-docker compose --profile infra up --build -d
+yarn dev:infra
 
 # Запуск в режиме разработки (без докера)
-yarn install
+yarn dev
+
+## Livekit Agent
+yarn dev:agent
 
 ## Бекенд
 yarn workspace backend prestart:dev  # генерирует Prisma Client
@@ -80,17 +108,6 @@ firefox http://localhost:3000/api    # Swagger UI
 ## Фронтенд
 yarn workspace frontend build
 yarn workspace frontend start
-```
-
-### Запуск в продакшене (через Docker)
-
-```bash
-# Запуск в докере
-cp .env.example .env
-# Отредактируйте .env.production указав значения для докера (есть шаблон в .env.example)
-cp .env.example .env.production
-# Убедитесь, что вы отредактировали .env.production и указали правильные значения для докера
-yarn prod
 ```
 
 ## Наша команда

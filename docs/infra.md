@@ -13,6 +13,7 @@ Note that:
 docker compose --profile infra up -d
 ```
 
+
 ## Run only kafka
 
 ```bash
@@ -24,11 +25,19 @@ docker compose up -d broker
 We use global environment variables for all services.
 
 1. Root level `.env` with shared variables and secrets.
-2. Optional `.env.production` for production-specific variables (overrides root level). E.g. `BACKEND_KAFKA_HOST=broker`
+2. `.env.development` for development-specific variables (overrides root level). E.g. `BACKEND_KAFKA_HOST=localhost`
+3. `.env.production` for production-specific variables (overrides root level). E.g. `BACKEND_KAFKA_HOST=broker`
+
+
+
+~~Per service `[service]/.env.local` (overrides root level).~~
+
+
+
 
 ## List of services
 
-- Backend
+- Backend 
 - Frontend
 - MLIn
 - MLOut

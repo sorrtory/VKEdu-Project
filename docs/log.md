@@ -12,7 +12,7 @@ Note: If having trouble with VS code errors. [Restart](https://stackoverflow.com
 ```bash
 npm install -g corepack
 corepack enable
-yarn set version stable # to add version to package.json
+yarn set version stable
 yarn dlx @yarnpkg/sdks base vscode
 # VS code: Cmd + Shift + P -> Type "Select TypeScript version" -> Select "Use workspace version"
 # or select vs code prompt to use workspace version of typescript when prompted.
@@ -35,6 +35,8 @@ yarn dlx @yarnpkg/sdks base vscode
 
 ### Prisma
 
+> check the [schema options](./../apps/backend/prisma/schema.prisma) for nodenext
+
 9. `yarn add @prisma/client @prisma/adapter-pg pg dotenv dotenv-expand` - [prisma](https://www.prisma.io/docs/prisma-orm/quickstart/postgresql)
 10. `yarn add prisma @types/pg --dev`
 11. `yarn dlx prisma init --datasource-provider postgresql --output ../generated/prisma` + `rm .env` + "install vs code prisma"
@@ -44,22 +46,24 @@ yarn dlx @yarnpkg/sdks base vscode
 
 13. `yarn add @nestjs/passport passport passport-local passport-jwt`
 14. `yarn add -D @types/passport-local @types/passport-jwt`
-15. `yarn add bcrypt`
+15. `yarn add bcrypt` 
 16. `yarn add -D @types/bcrypt`
 
 ### swc
-
 17. `yarn add -D @swc/core @swc/helpers @swc/cli chokidar`
 18. nescli + builder flag
 19. `.swcrc`
+
+### jest
+
+20. add [mapper](../apps/backend/test/jest-e2e.json) to befriend with prisma es module 
+21. change test command to `node --experimental-vm-modules $(yarn bin jest) --config ./test/jest-e2e.json`
 
 ## Frontend yarn log
 
 1. `yarn add next react react-dom`
 2. `yarn add -D typescript @types/node @types/react @types/react-dom`
 3. `yarn add livekit-client @livekit/components-react @livekit/components-styles`
-4. ` yarn workspace frontend add -D cross-env`
-5. `next.config.ts` - for standalone build and dev server proxy rewrite
 
 ## Services
 
@@ -67,6 +71,7 @@ yarn dlx @yarnpkg/sdks base vscode
 
 1. `uv init`
 2. `uv add python-dotenv`
+3. `uv add 'livekit-agents[silero]' faster-whisper confluent-kafka`
 
 #### Links
 

@@ -23,11 +23,7 @@ API_KEY.py
 !.yarn/sdks
 !.yarn/versions
 
-# Node
-node_modules
-**/node_modules
-**/dist
-**/.next
+node_modules/
+package-lock.json
 
-# Livekit
-infra/livekit/recordings
+test_audio/

@@ -3,8 +3,9 @@
 /node_modules
 /build
 /generated
-src/generated
-src/metadata.ts
+
+src/generated/
+.oldversions
 
 # Logs
 logs

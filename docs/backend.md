@@ -1,10 +1,9 @@
 # Backend
 
+
 We use modern `yarn`. See [log](./log.md#Yarn)
 `ESNext` modules (not `nodenext`).
 [ESM setup](https://www.prisma.io/docs/prisma-orm/quickstart/postgresql#3-configure-esm-support)
-
-## Testing
 
 ### Test /send endpoint:
 
@@ -16,35 +15,6 @@ change `input.png` to your image file path
 curl -X POST http://localhost:3000/send \
   -F "file=@input.png" \
   -F "message=hello"
-```
-
-### Jest
-
-Jest conflicts with ESM. So we force Prisma to use CommonJS in `prisma/schema.prisma`.
-
-Also we add `moduleNameMapper` to `test/jest-e2e.json`:
-
-## Run
-
-Start databases:
-
-```bash
-docker compose --profile infra up --build -d
-```
-
-### Development
-
-```bash
-yarn install
-yarn workspace backend start:dev
-curl localhost:3000
-```
-
-### Docker
-
-```bash
-docker compose --env-file .env --env-file .env.production --profile infra --profile web up --build backend
-docker compose --profile infra --profile web stop backend
 ```
 
 ## Architecture

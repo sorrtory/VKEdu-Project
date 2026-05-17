@@ -1,11 +1,15 @@
 import dotenv from "dotenv"
 import dotenvExpand from "dotenv-expand"
 
-// load .env in development
+// load .env
 dotenvExpand.expand(dotenv.config({ path: "../../.env" }))
-// rely on runtime environment variables in production
 
-import { defineConfig, env } from "prisma/config"
+// Ensure DATABASE_URL is set
+if (!process.env.DATABASE_URL) {
+  throw new Error("DATABASE_URL environment variable is not set")
+}
+
+import { defineConfig } from "prisma/config"
 
 export default defineConfig({
   schema: "prisma/schema.prisma",
@@ -14,6 +18,6 @@ export default defineConfig({
     seed: "yarn tsx prisma/seed.ts",
   },
   datasource: {
-    url: env("DATABASE_URL"),
+    url: process.env.DATABASE_URL,
   },
 })

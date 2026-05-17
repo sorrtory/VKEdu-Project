@@ -8,7 +8,7 @@ COPY .yarnrc.yml yarn.lock ./
 COPY package.json ./
 COPY apps/backend/package.json ./apps/backend/
 
-RUN yarn workspaces focus --production backend
+RUN yarn workspaces focus backend
 
 # ─── Stage 2: builder ─────────────────────────────────────────────────────────
 FROM node:22-slim AS builder
@@ -17,12 +17,11 @@ RUN corepack enable
 RUN apt-get update -y && apt-get install -y --no-install-recommends openssl && rm -rf /var/lib/apt/lists/*
 WORKDIR /app
 
-COPY .yarnrc.yml yarn.lock ./
-COPY package.json ./
-COPY apps/backend/package.json ./apps/backend/
+COPY --from=deps /app/.yarnrc.yml /app/yarn.lock ./
+COPY --from=deps /app/package.json ./
+COPY --from=deps /app/apps/backend/package.json ./apps/backend/
 
-RUN yarn workspaces focus backend
-
+COPY --from=deps /app/node_modules ./node_modules
 COPY apps/backend ./apps/backend
 
 # Set a dummy DATABASE_URL for Prisma code generation
