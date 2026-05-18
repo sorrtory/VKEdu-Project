@@ -28,7 +28,6 @@ SYSTEM_PROMPT = (
     "Если не знаешь ответ или вопрос не по теме — так и скажи."
 )
 
-
 async def entrypoint(ctx: JobContext):
     logger.info("🔗 Joining room %s...", ctx.room.name)
     await ctx.connect(auto_subscribe=AutoSubscribe.SUBSCRIBE_ALL)
@@ -70,33 +69,28 @@ async def entrypoint(ctx: JobContext):
             return "Извините, произошла ошибка."
 
     async def handle_chat_message(sender_identity: str, message: str):
-        # 1. Инициализируем историю для нового участника, если её нет
+        """Полная обработка входящего сообщения: история → LLM → ответ."""
+        # 1. Обновляем историю
         if sender_identity not in conversations:
             conversations[sender_identity] = []
-            # Добавляем системный промпт первым сообщением
             conversations[sender_identity].append({"role": "system", "content": SYSTEM_PROMPT})
 
-        # 2. Добавляем сообщение пользователя
         conversations[sender_identity].append({"role": "user", "content": message})
 
-        # Ограничиваем длину (оставляем системный промпт + последние реплики)
-        max_history = MAX_HISTORY
-        if len(conversations[sender_identity]) > max_history:
-            # Сохраняем первое системное сообщение
-            system_msg = conversations[sender_identity][0]
-            conversations[sender_identity] = [system_msg] + conversations[sender_identity][-(max_history - 1):]
+        # Ограничиваем длину истории
+        if len(conversations[sender_identity]) > MAX_HISTORY:
+            conversations[sender_identity] = conversations[sender_identity][-MAX_HISTORY:]
 
-        # 3. Генерируем ответ
+        # 2. Генерируем ответ
         logger.info("🤖 Generating LLM response for %s", sender_identity)
         answer = await generate_llm_response(conversations[sender_identity])
 
-        # 4. Добавляем ответ в историю
+        # 3. Добавляем ответ в историю
         conversations[sender_identity].append({"role": "assistant", "content": answer})
-        if len(conversations[sender_identity]) > max_history:
-            system_msg = conversations[sender_identity][0]
-            conversations[sender_identity] = [system_msg] + conversations[sender_identity][-(max_history - 1):]
+        if len(conversations[sender_identity]) > MAX_HISTORY:
+            conversations[sender_identity] = conversations[sender_identity][-MAX_HISTORY:]
 
-        # 5. Отправляем ответ в чат
+        # 4. Отправляем ответ в чат
         await send_response_to_chat(answer)
 
     @ctx.room.on("data_received")
