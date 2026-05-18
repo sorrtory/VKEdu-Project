@@ -5,7 +5,7 @@
 | Service       | Description                 | Input                                         | Output                       |
 | ------------- | --------------------------- | --------------------------------------------- | ---------------------------- |
 | MLIn          | Context updater             | Kafka topic messages (speech txt, smart crop) | Put context (txt) into Redis |
-| MLOut         | LLM processor               | Kafka topic messages ()           | Put LLM responses into Kafka |
+| MLOut         | LLM processor               | Kafka topic messages ()                       | Put LLM responses into Kafka |
 | Livekit Agent | Call speech / chat listener | LiveKit room events                           | Put transcripts into Kafka   |
 
 ## Livekit agent

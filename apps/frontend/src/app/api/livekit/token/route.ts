@@ -3,7 +3,8 @@ import { getBackendUrl } from "../../shared";
 
 export async function POST(request: NextRequest) {
   try {
-    const { conferenceName, participantName } = await request.json();
+    const { conferenceName, participantIdentity, participantName } =
+      await request.json();
     const response = await fetch(getBackendUrl("conference/token"), {
       method: 'POST',
       headers: {
@@ -11,6 +12,7 @@ export async function POST(request: NextRequest) {
       },
       body: JSON.stringify({
         conferenceName,
+        participantIdentity,
         participantName,
         agentName: process.env.NEXT_PUBLIC_LIVEKIT_AGENT_NAME,
       }),

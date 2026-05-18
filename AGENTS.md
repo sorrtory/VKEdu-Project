@@ -25,6 +25,9 @@ Before making non-trivial changes, read these files in order:
 Use the docs as product context.
 Do not duplicate long product descriptions in code comments or PR summaries.
 
+On making important changes, update the relevant docs with the new information.
+Ensure that the docs reflect the current state of the codebase and product features. If docs and code diverge, clarify the intended state and update the docs accordingly.
+
 ## Working Rules
 
 - Preserve existing architecture and naming unless the task requires change.

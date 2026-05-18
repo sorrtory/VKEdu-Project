@@ -1,7 +1,8 @@
 'use client';
 
 import { useEffect, useRef, useState, useCallback } from 'react';
-import { Excalidraw } from '@excalidraw/excalidraw';
+import dynamic from 'next/dynamic';
+import type { SceneData } from '@excalidraw/excalidraw/types';
 import type { ExcalidrawImperativeAPI } from '@excalidraw/excalidraw/types';
 import { RoomEvent } from 'livekit-client';
 import { useLocalParticipant, useRoomContext } from '@livekit/components-react';
@@ -9,6 +10,24 @@ import { useLocalParticipant, useRoomContext } from '@livekit/components-react';
 interface ExcalidrawBoardProps {
   creatorIdentity: string;
 }
+
+type WhiteboardScenePayload = {
+  elements?: SceneData['elements'];
+};
+
+const isWhiteboardScenePayload = (value: unknown): value is WhiteboardScenePayload => {
+  return (
+    typeof value === 'object' &&
+    value !== null &&
+    'elements' in value &&
+    Array.isArray((value as { elements?: unknown }).elements)
+  );
+};
+
+const Excalidraw = dynamic(
+  () => import('@excalidraw/excalidraw').then((mod) => mod.Excalidraw),
+  { ssr: false },
+);
 
 export default function ExcalidrawBoard({ creatorIdentity }: ExcalidrawBoardProps) {
   const room = useRoomContext();
@@ -33,11 +52,10 @@ export default function ExcalidrawBoard({ creatorIdentity }: ExcalidrawBoardProp
 
       try {
         const decoded = new TextDecoder().decode(payload);
-        const sceneData = JSON.parse(decoded);
+        const sceneData: unknown = JSON.parse(decoded);
         
-        if (sceneData.elements && Array.isArray(sceneData.elements)) {
-          // Используем as any для обхода проблем с типами (данные приходят с сервера в правильном формате)
-          excalidrawAPI.updateScene({ elements: sceneData.elements as any });
+        if (isWhiteboardScenePayload(sceneData)) {
+          excalidrawAPI.updateScene({ elements: sceneData.elements });
         }
       } catch (error) {
         console.error('Failed to apply whiteboard update:', error);

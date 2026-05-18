@@ -5,24 +5,29 @@ import { LiveKitRoom } from '@livekit/components-react';
 import { VideoConference } from '@livekit/components-react/prefabs';
 import '@livekit/components-styles';
 import { useUser } from '@/src/contexts/UserContext';
-import { createFallbackUserName } from '@/src/lib/livekit';
-
-const fallbackUserName = createFallbackUserName();
+import { useGuestParticipant } from '@/src/lib/livekit';
 
 export default function RoomPage() {
   const [token, setToken] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [reloadKey, setReloadKey] = useState(0);
-  const { user } = useUser();
+  const { user, isAuthLoading } = useUser();
+  const guest = useGuestParticipant();
 
   const roomName = process.env.NEXT_PUBLIC_LIVEKIT_ROOM;
-  const username = user?.nickname?.trim() || fallbackUserName;
+  const isParticipantLoading = isAuthLoading || (!user && !guest);
+  const participantName = user?.nickname?.trim() || guest?.name || '';
+  const participantIdentity = user?.userId ?? guest?.identity ?? '';
 
   useEffect(() => {
     let isMounted = true;
     const controller = new AbortController();
 
     async function fetchToken() {
+      if (isParticipantLoading) {
+        return;
+      }
+
       setError(null);
       setToken(null);
 
@@ -39,7 +44,8 @@ export default function RoomPage() {
           signal: controller.signal,
           body: JSON.stringify({
             conferenceName: roomName,
-            participantName: username,
+            participantName,
+            participantIdentity,
           }),
         });
 
@@ -85,7 +91,7 @@ export default function RoomPage() {
       isMounted = false;
       controller.abort();
     };
-  }, [reloadKey, roomName, username]);
+  }, [isParticipantLoading, participantIdentity, participantName, reloadKey, roomName]);
 
   const livekitUrl = process.env.NEXT_PUBLIC_LIVEKIT_URL;
 
@@ -112,7 +118,7 @@ export default function RoomPage() {
     );
   }
 
-  if (!token) {
+  if (isParticipantLoading || !token) {
     return (
       <div className="flex h-full items-center justify-center bg-slate-900 text-sm text-white">
         Запрашиваем токен LiveKit...

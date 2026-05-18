@@ -1,0 +1,83 @@
+name: Deploy production
+
+on:
+  workflow_dispatch:
+    inputs:
+      branch:
+        description: "Branch to deploy"
+        required: false
+        default: "deploy"
+  push:
+    branches:
+      - deploy
+
+concurrency:
+  group: production-deploy
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    name: Deploy over SSH
+    runs-on: ubuntu-latest
+    environment: production
+
+    steps:
+      - name: Deploy on remote server
+        env:
+          PROD_SSH_HOST: ${{ secrets.PROD_SSH_HOST }}
+          PROD_SSH_PRIVATE_KEY: ${{ secrets.PROD_SSH_PRIVATE_KEY }}
+          PROD_SSH_USER: ${{ secrets.PROD_SSH_USER || 'deploy' }}
+          PROD_SSH_PORT: ${{ secrets.PROD_SSH_PORT || '22' }}
+          PROD_PROJECT_PATH: ${{ secrets.PROD_PROJECT_PATH || '/home/deploy/broadboard/'}}
+          PROD_BRANCH: ${{ github.event.inputs.branch || github.ref_name }}
+        run: |
+          set -euo pipefail
+
+          if [ -z "${PROD_SSH_HOST}" ] || [ -z "${PROD_SSH_USER}" ] || [ -z "${PROD_SSH_PRIVATE_KEY}" ] || [ -z "${PROD_PROJECT_PATH}" ]; then
+            echo "Missing one of required secrets: PROD_SSH_HOST, PROD_SSH_USER, PROD_SSH_PRIVATE_KEY, PROD_PROJECT_PATH"
+            exit 1
+          fi
+
+          install -d -m 700 ~/.ssh
+          install -m 600 /dev/null ~/.ssh/prod_deploy_key
+          printf '%s\n' "${PROD_SSH_PRIVATE_KEY}" > ~/.ssh/prod_deploy_key
+          ssh-keyscan -p "${PROD_SSH_PORT}" -H "${PROD_SSH_HOST}" >> ~/.ssh/known_hosts
+
+          ssh -i ~/.ssh/prod_deploy_key -p "${PROD_SSH_PORT}" "${PROD_SSH_USER}@${PROD_SSH_HOST}" \
+            "PROD_PROJECT_PATH='${PROD_PROJECT_PATH}' PROD_BRANCH='${PROD_BRANCH}' bash -se" <<'REMOTE'
+          set -euo pipefail
+
+          cd "${PROD_PROJECT_PATH}"
+
+          if [ ! -f .env ] || [ ! -f .env.production ]; then
+            echo "Both .env and .env.production must exist in ${PROD_PROJECT_PATH}"
+            exit 1
+          fi
+
+          git fetch --prune origin "${PROD_BRANCH}"
+          git checkout "${PROD_BRANCH}"
+          git pull --ff-only origin "${PROD_BRANCH}"
+
+          FNM_PATH="${HOME}/.local/share/fnm"
+          if [ -d "${FNM_PATH}" ]; then
+            export PATH="${FNM_PATH}:${PATH}"
+            eval "$(fnm env --shell bash)"
+          fi
+
+          if command -v corepack >/dev/null 2>&1; then
+            corepack enable
+            corepack prepare yarn@4.14.1 --activate
+          fi
+
+          if ! command -v yarn >/dev/null 2>&1; then
+            echo "Yarn is not available. Install Node.js 22 with Corepack on the server."
+            exit 1
+          fi
+
+          docker compose version
+          yarn install --immutable
+          yarn prod
+
+          docker compose --env-file .env --env-file .env.production -f docker-compose.yml \
+            --profile infra --profile livekit --profile web --profile ml ps
+          REMOTE

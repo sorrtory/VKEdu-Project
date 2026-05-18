@@ -33,20 +33,58 @@ services:
       timeout: 3s
       retries: 20
 
+  rustfs:
+    image: rustfs/rustfs:latest
+    profiles: ["infra", "db"]
+    environment:
+      RUSTFS_ADDRESS: ":9000"
+      RUSTFS_CONSOLE_ENABLE: "true"
+      RUSTFS_ACCESS_KEY: ${S3_ACCESS_KEY_ID}
+      RUSTFS_SECRET_KEY: ${S3_SECRET_ACCESS_KEY}
+    command: ["/data"]
+    ports:
+      - "${S3_PORT:-9000}:9000"
+      - "${S3_CONSOLE_PORT:-9001}:9001"
+    volumes:
+      - rustfs-data:/data
+    restart: unless-stopped
+    networks:
+      - app-network
+
   livekit:
     image: livekit/livekit-server:latest
     profiles: ["livekit", "infra"]
-    command:
-      - --config
-      - /etc/livekit.yaml
     environment:
       LIVEKIT_KEYS: "${LIVEKIT_API_KEY}: ${LIVEKIT_API_SECRET}"
+      LIVEKIT_CONFIG: |
+        port: ${LIVEKIT_PORT}
+        bind_addresses:
+          - "0.0.0.0"
+
+        rtc:
+          use_external_ip: ${LIVEKIT_RTC_USE_EXTERNAL_IP:-false}
+          tcp_port: ${LIVEKIT_RTC_TCP_PORT}
+          port_range_start: ${LIVEKIT_RTC_UDP_PORT_START}
+          port_range_end: ${LIVEKIT_RTC_UDP_PORT_END}
+
+        redis:
+          address: redis:6379
+
+        turn:
+          enabled: ${LIVEKIT_TURN_ENABLED:-false}
+          udp_port: ${LIVEKIT_TURN_UDP_PORT:-3478}
+          tls_port: ${LIVEKIT_TURN_TLS_PORT:-5349}
+          domain: ${LIVEKIT_TURN_DOMAIN:-localhost}
+          cert_file: ${LIVEKIT_TURN_CERT_FILE:-/etc/livekit/certs/local.crt}
+          key_file: ${LIVEKIT_TURN_KEY_FILE:-/etc/livekit/certs/local.key}
     volumes:
-      - ./infra/livekit/livekit.yaml:/etc/livekit.yaml:ro
+      - ./infra/nginx/certs:/etc/livekit/certs:ro
     ports:
       - "${LIVEKIT_PORT}:${LIVEKIT_PORT}"
-      - "${LIVEKIT_SIGNAL_PORT}:${LIVEKIT_SIGNAL_PORT}"
-      - "${LIVEKIT_RTC_UDP_PORT}:${LIVEKIT_RTC_UDP_PORT}/udp"
+      - "${LIVEKIT_RTC_TCP_PORT}:${LIVEKIT_RTC_TCP_PORT}"
+      - "${LIVEKIT_RTC_UDP_PORT_START}-${LIVEKIT_RTC_UDP_PORT_END}:${LIVEKIT_RTC_UDP_PORT_START}-${LIVEKIT_RTC_UDP_PORT_END}/udp"
+      - "${LIVEKIT_TURN_UDP_PORT:-3478}:${LIVEKIT_TURN_UDP_PORT:-3478}/udp"
+      - "${LIVEKIT_TURN_TLS_PORT:-5349}:${LIVEKIT_TURN_TLS_PORT:-5349}/tcp"
     restart: unless-stopped
     networks:
       - app-network
@@ -234,3 +272,4 @@ volumes:
   postgres-data:
   redis-data:
   ollama_data:
+  rustfs-data:

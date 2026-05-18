@@ -10,6 +10,7 @@ from livekit.agents import (
     TurnHandlingOptions,
 )
 from livekit.agents.llm import ChatMessage
+from livekit.agents.voice.room_io import RoomOptions
 from livekit.plugins import silero
 from livekit.rtc import DataPacket
 
@@ -37,16 +38,14 @@ logger.setLevel(LOG_LEVEL)
 async def entrypoint(ctx: JobContext):
     logger.info("Joining room %s...", ctx.room.name)
 
-    await ctx.connect(auto_subscribe=AutoSubscribe.SUBSCRIBE_ALL)
-
-    logger.info("Joined room %s.", ctx.room.name)
-
-    room_id = await resolve_room_id(ctx)
+    room_id = get_room_name(ctx)
     room_name = get_room_name(ctx)
     publisher = KafkaEventPublisher()
     room_speech_sequence = 0
     room_chat_sequence = 0
     seen_chat_ids: set[str] = set()
+    participant_sessions: dict[str, AgentSession] = {}
+    shared_stt = build_stt()
 
     @ctx.room.on("data_received")
     def on_data_received(dp: DataPacket):
@@ -94,98 +93,144 @@ async def entrypoint(ctx: JobContext):
             livekit_topic=dp.topic,
         )
 
-    logger.info("Waiting for participant...")
+    async def start_participant_session(
+        participant_ctx: JobContext,
+        participant,
+    ) -> None:
+        nonlocal room_speech_sequence
 
-    try:
-        participant = await ctx.wait_for_participant()
-    except RuntimeError:
-        logger.exception("Room disconnected while waiting for participant")
-        return
-
-    logger.info("Participant joined: %s", participant.identity)
-
-    session = AgentSession(
-        stt=build_stt(),
-        vad=silero.VAD.load(),
-        turn_handling=TurnHandlingOptions(
-            turn_detection="vad",
-            endpointing={
-                "mode": "fixed",
-                "min_delay": SILENCE_DURATION,
-                "max_delay": 3.0,
-            },
-        ),
-    )
-
-    session.output.set_audio_enabled(False)
-
-    last_partial = ""
-
-    @session.on("user_input_transcribed")
-    def on_user_input_transcribed(event):
-        nonlocal last_partial, room_speech_sequence
-
-        text = event.transcript.strip()
-        if not text:
+        if participant.identity in participant_sessions:
+            logger.info(
+                "Participant session already exists: participant_identity=%s",
+                participant.identity,
+            )
             return
 
-        if event.is_final:
-            room_speech_sequence += 1
+        session_room_id = await resolve_room_id(participant_ctx)
+        logger.info("Starting participant session: %s", participant.identity)
 
-            logger.info(
-                "FINAL SPEECH: sequence=%s room_id=%s participant_identity=%s text=%s",
-                room_speech_sequence,
-                room_id,
-                get_participant_identity(participant),
-                text,
-            )
-
-            last_partial = ""
-            publisher.send_speech(
-                text=text,
-                room_id=room_id,
-                room_name=room_name,
-                participant_id=get_participant_id(participant),
-                participant_identity=get_participant_identity(participant),
-                sequence=room_speech_sequence,
-            )
-        elif text != last_partial:
-            logger.info("CURRENT SPEECH: %s", text)
-            last_partial = text
-
-    @session.on("user_state_changed")
-    def on_user_state_changed(event):
-        logger.info("User state changed: %s -> %s", event.old_state, event.new_state)
-
-    @session.on("close")
-    def on_close(event):
-        logger.info("AgentSession closed")
-        publisher.flush()
-
-    @session.on("conversation_item_added")
-    def on_conversation_item_added(event: ConversationItemAddedEvent):
-        if isinstance(event.item, ChatMessage) and event.item.role == "user":
-            logger.info("USER CONVERSATION ITEM ADDED: %s", event.item.text_content)
-
-    @session.on("agent_speech_committed")
-    def on_agent_speech_committed(event):
-        logger.info("AGENT RESPONSE: %s", event.text.strip())
-
-    logger.info("Starting AgentSession...")
-
-    try:
-        await session.start(
-            room=ctx.room,
-            agent=Agent(
-                instructions=(
-                    "You are a transcription-only agent. "
-                    "Listen to the user and transcribe Russian speech. "
-                    "Do not respond with audio."
-                )
+        session = AgentSession(
+            stt=shared_stt,
+            vad=silero.VAD.load(),
+            turn_handling=TurnHandlingOptions(
+                turn_detection="vad",
+                endpointing={
+                    "mode": "fixed",
+                    "min_delay": SILENCE_DURATION,
+                    "max_delay": 3.0,
+                },
             ),
         )
+        participant_sessions[participant.identity] = session
+
+        session.output.set_audio_enabled(False)
+
+        last_partial = ""
+
+        @session.on("user_input_transcribed")
+        def on_user_input_transcribed(event):
+            nonlocal last_partial, room_speech_sequence
+
+            text = event.transcript.strip()
+            if not text:
+                return
+
+            if event.is_final:
+                room_speech_sequence += 1
+
+                logger.info(
+                    "FINAL SPEECH: sequence=%s room_id=%s participant_identity=%s text=%s",
+                    room_speech_sequence,
+                    session_room_id,
+                    get_participant_identity(participant),
+                    text,
+                )
+
+                last_partial = ""
+                publisher.send_speech(
+                    text=text,
+                    room_id=session_room_id,
+                    room_name=room_name,
+                    participant_id=get_participant_id(participant),
+                    participant_identity=get_participant_identity(participant),
+                    sequence=room_speech_sequence,
+                )
+            elif text != last_partial:
+                logger.info(
+                    "CURRENT SPEECH: participant_identity=%s text=%s",
+                    get_participant_identity(participant),
+                    text,
+                )
+                last_partial = text
+
+        @session.on("user_state_changed")
+        def on_user_state_changed(event):
+            logger.info(
+                "User state changed: participant_identity=%s %s -> %s",
+                get_participant_identity(participant),
+                event.old_state,
+                event.new_state,
+            )
+
+        @session.on("close")
+        def on_close(event):
+            participant_sessions.pop(participant.identity, None)
+            logger.info(
+                "AgentSession closed: participant_identity=%s",
+                get_participant_identity(participant),
+            )
+            publisher.flush()
+
+        @session.on("conversation_item_added")
+        def on_conversation_item_added(event: ConversationItemAddedEvent):
+            if isinstance(event.item, ChatMessage) and event.item.role == "user":
+                logger.info(
+                    "USER CONVERSATION ITEM ADDED: participant_identity=%s text=%s",
+                    get_participant_identity(participant),
+                    event.item.text_content,
+                )
+
+        @session.on("agent_speech_committed")
+        def on_agent_speech_committed(event):
+            logger.info(
+                "AGENT RESPONSE: participant_identity=%s text=%s",
+                get_participant_identity(participant),
+                event.text.strip(),
+            )
+
+        try:
+            await session.start(
+                room=participant_ctx.room,
+                room_options=RoomOptions(
+                    participant_identity=participant.identity,
+                    audio_output=False,
+                    text_input=False,
+                    text_output=False,
+                ),
+                record=False,
+                agent=Agent(
+                    instructions=(
+                        "You are a transcription-only agent. "
+                        "Listen to the user and transcribe Russian speech. "
+                        "Do not respond with audio."
+                    )
+                ),
+            )
+        except Exception:
+            participant_sessions.pop(participant.identity, None)
+            logger.exception(
+                "Participant session error: participant_identity=%s",
+                get_participant_identity(participant),
+            )
+
+    ctx.add_participant_entrypoint(start_participant_session)
+
+    try:
+        await ctx.connect(auto_subscribe=AutoSubscribe.SUBSCRIBE_ALL)
+        room_id = await resolve_room_id(ctx)
+        logger.info("Joined room %s.", ctx.room.name)
     except Exception:
-        logger.exception("Session error")
+        logger.exception("Room connection error")
     finally:
         publisher.flush()
 

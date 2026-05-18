@@ -1,35 +1,34 @@
 'use client';
 
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef } from 'react';
 
 interface InputProps extends React.InputHTMLAttributes<HTMLInputElement> {
     label: string;
     error?: string;
 }
 
-export default function Input({ label, error, value: propValue, onChange, ...props }: InputProps) {
+export default function Input({ label, error, value: propValue, defaultValue, onChange, ...props }: InputProps) {
     const [isFocused, setIsFocused] = useState(false);
-    const [hasValue, setHasValue] = useState(false);
+    const [hasUncontrolledValue, setHasUncontrolledValue] = useState(
+        defaultValue !== undefined && String(defaultValue).length > 0,
+    );
     const inputRef = useRef<HTMLInputElement>(null);
-
-    useEffect(() => {
-        if (propValue !== undefined) {
-            setHasValue(String(propValue).length > 0);
-        }
-    }, [propValue]);
 
     const handleFocus = () => setIsFocused(true);
     
     const handleBlur = (e: React.FocusEvent<HTMLInputElement>) => {
         setIsFocused(false);
-        setHasValue(e.target.value.length > 0);
+        setHasUncontrolledValue(e.target.value.length > 0);
     };
 
     const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-        setHasValue(e.target.value.length > 0);
+        setHasUncontrolledValue(e.target.value.length > 0);
         onChange?.(e);
     };
 
+    const hasValue = propValue !== undefined
+        ? String(propValue).length > 0
+        : hasUncontrolledValue;
     const isActive = isFocused || hasValue;
 
     return (
@@ -57,6 +56,7 @@ export default function Input({ label, error, value: propValue, onChange, ...pro
             <input
                 ref={inputRef}
                 value={propValue}
+                defaultValue={defaultValue}
                 onChange={handleChange}
                 onFocus={handleFocus}
                 onBlur={handleBlur}

@@ -13,6 +13,27 @@ Note that:
 docker compose --profile infra up -d
 ```
 
+Run the web app behind nginx:
+
+```bash
+docker compose --profile infra --profile web --profile livekit up -d
+```
+
+For a production-like build, pass production overrides to compose interpolation too.
+`env_file` configures container runtime environment, but build args such as
+`NEXT_PUBLIC_LIVEKIT_URL` are resolved by compose before containers start.
+
+```bash
+docker compose --env-file .env --env-file .env.production --profile infra --profile web --profile livekit up -d --build
+```
+
+Nginx routes:
+
+- `/` -> frontend
+- `/api/` -> backend, with `/api` stripped
+- `/ws` -> backend Socket.IO gateway
+- `/rtc` -> LiveKit websocket endpoint, with `/rtc` stripped
+
 
 ## Run only kafka
 
