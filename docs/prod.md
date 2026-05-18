@@ -236,6 +236,7 @@ NEXT_PUBLIC_BACKEND_URL=https://broadboard.ru/api
 ## LiveKit checklist
 
 - `NEXT_PUBLIC_LIVEKIT_URL` должен быть внешним адресом из браузера: `wss://<domain>/rtc` для HTTPS-прода.
+- `NEXT_PUBLIC_LIVEKIT_AGENT_NAME` должен совпадать с именем/identity LiveKit agent: frontend использует его, чтобы пометить агента отдельным бейджем в конференции.
 - `BACKEND_LIVEKIT_HOST` и `LIVEKIT_AGENT_LIVEKIT_URL` должны быть внутренними docker-адресами: `http://livekit:7880` и `ws://livekit:7880`.
 - `LIVEKIT_API_KEY` и `LIVEKIT_API_SECRET` должны совпадать для `livekit`, `backend`, `egress` и `agent`.
 - На firewall/security group должны быть открыты `7881/tcp`, `3478/udp`,

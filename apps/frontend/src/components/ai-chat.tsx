@@ -3,6 +3,12 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { IoChevronBack, IoChevronForward, IoChatbubbleEllipsesOutline } from 'react-icons/io5';
 import { io, type Socket } from 'socket.io-client';
+import { useRoomContext } from '@livekit/components-react';
+import { RoomEvent, type RemoteParticipant } from 'livekit-client';
+import {
+  getAgentParticipantLabel,
+  isLiveKitAgentParticipant,
+} from '@/src/lib/livekit-agent';
 
 type ChatTab = 'chat' | 'summary' | 'transcript';
 type SenderType = 'chat' | 'ai' | 'speaker';
@@ -15,7 +21,7 @@ interface ConferenceChatProps {
   onCollapsedChange: (isCollapsed: boolean) => void;
 }
 
-interface RoomEvent {
+interface SocketRoomEvent {
   roomId: string;
   participantId: string;
   participantName: string;
@@ -54,6 +60,7 @@ interface SystemItem {
   text: string;
   createdAt: string;
   kind: 'system';
+  tone?: 'default' | 'agent';
 }
 
 type ChatItem = MessageEvent | SystemItem;
@@ -94,7 +101,7 @@ function isSystemItem(item: ChatItem): item is SystemItem {
   return 'kind' in item;
 }
 
-function createSystemItem(event: RoomEvent, action: 'joined' | 'left'): SystemItem {
+function createSystemItem(event: SocketRoomEvent, action: 'joined' | 'left'): SystemItem {
   return {
     id: `${action}:${event.socketId}:${event.createdAt}`,
     roomId: event.roomId,
@@ -104,6 +111,31 @@ function createSystemItem(event: RoomEvent, action: 'joined' | 'left'): SystemIt
         : `${event.participantName} вышел из чата`,
     createdAt: event.createdAt,
     kind: 'system',
+  };
+}
+
+function createAgentSystemItem({
+  roomId,
+  participant,
+  action,
+}: {
+  roomId: string;
+  participant: RemoteParticipant;
+  action: 'joined' | 'left';
+}): SystemItem {
+  const createdAt = new Date().toISOString();
+  const label = getAgentParticipantLabel(participant);
+
+  return {
+    id: `agent:${action}:${participant.sid || participant.identity}:${createdAt}`,
+    roomId,
+    text:
+      action === 'joined'
+        ? `${label} подключился как агент`
+        : `${label} вышел из конференции`,
+    createdAt,
+    kind: 'system',
+    tone: 'agent',
   };
 }
 
@@ -125,6 +157,8 @@ export default function ConferenceChat({
   );
   const socketRef = useRef<Socket | null>(null);
   const isCollapsedRef = useRef(isCollapsed);
+  const announcedAgentIdentitiesRef = useRef<Set<string>>(new Set());
+  const room = useRoomContext();
 
   const canSend = activeTab === 'chat' && inputValue.trim().length > 0;
 
@@ -167,11 +201,11 @@ export default function ConferenceChat({
       setConnectionError(error.message ?? 'Ошибка websocket');
     });
 
-    socket.on('room:joined', (event: RoomEvent) => {
+    socket.on('room:joined', (event: SocketRoomEvent) => {
       setChatItems((items) => [...items, createSystemItem(event, 'joined')]);
     });
 
-    socket.on('room:left', (event: RoomEvent) => {
+    socket.on('room:left', (event: SocketRoomEvent) => {
       setChatItems((items) => [...items, createSystemItem(event, 'left')]);
     });
 
@@ -200,6 +234,62 @@ export default function ConferenceChat({
       socketRef.current = null;
     };
   }, [roomName, userId, userName]);
+
+  useEffect(() => {
+    if (!room) {
+      return;
+    }
+
+    const announceAgent = (
+      participant: RemoteParticipant,
+      action: 'joined' | 'left',
+    ) => {
+      if (!isLiveKitAgentParticipant(participant)) {
+        return;
+      }
+
+      const agentKey = participant.sid || participant.identity;
+
+      if (action === 'joined') {
+        if (announcedAgentIdentitiesRef.current.has(agentKey)) {
+          return;
+        }
+        announcedAgentIdentitiesRef.current.add(agentKey);
+      } else {
+        announcedAgentIdentitiesRef.current.delete(agentKey);
+      }
+
+      const systemItem = createAgentSystemItem({
+        roomId: roomName,
+        participant,
+        action,
+      });
+      setChatItems((items) => [...items, systemItem]);
+
+      if (isCollapsedRef.current) {
+        setUnreadCount((count) => count + 1);
+      }
+    };
+
+    room.remoteParticipants.forEach((participant) => {
+      announceAgent(participant, 'joined');
+    });
+
+    const handleParticipantConnected = (participant: RemoteParticipant) => {
+      announceAgent(participant, 'joined');
+    };
+    const handleParticipantDisconnected = (participant: RemoteParticipant) => {
+      announceAgent(participant, 'left');
+    };
+
+    room.on(RoomEvent.ParticipantConnected, handleParticipantConnected);
+    room.on(RoomEvent.ParticipantDisconnected, handleParticipantDisconnected);
+
+    return () => {
+      room.off(RoomEvent.ParticipantConnected, handleParticipantConnected);
+      room.off(RoomEvent.ParticipantDisconnected, handleParticipantDisconnected);
+    };
+  }, [room, roomName]);
 
   const handleSendMessage = () => {
     const text = inputValue.trim();
@@ -383,7 +473,21 @@ export default function ConferenceChat({
           chatItems.map((item) => {
             if (isSystemItem(item)) {
               return (
-                <div key={item.id} style={{ textAlign: 'center', color: 'rgba(255,255,255,0.55)', fontSize: '12px' }}>
+                <div
+                  key={item.id}
+                  style={{
+                    alignSelf: 'center',
+                    maxWidth: '92%',
+                    padding: item.tone === 'agent' ? '6px 10px' : 0,
+                    border: item.tone === 'agent' ? '1px solid rgba(153, 246, 228, 0.32)' : 0,
+                    borderRadius: '8px',
+                    background: item.tone === 'agent' ? 'rgba(20, 184, 166, 0.12)' : 'transparent',
+                    color: item.tone === 'agent' ? '#ccfbf1' : 'rgba(255,255,255,0.55)',
+                    fontSize: '12px',
+                    fontWeight: item.tone === 'agent' ? 700 : 400,
+                    textAlign: 'center',
+                  }}
+                >
                   {item.text}
                 </div>
               );

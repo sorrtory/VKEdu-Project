@@ -6,7 +6,9 @@ import {
   LiveKitRoom,
   ParticipantTile,
   RoomAudioRenderer,
+  type TrackReferenceOrPlaceholder,
   useCreateLayoutContext,
+  useParticipants,
   useTracks,
 } from '@livekit/components-react';
 import '@livekit/components-styles';
@@ -16,6 +18,7 @@ import { Track } from 'livekit-client';
 import CustomChat from './ai-chat';
 import { useState } from 'react';
 import { FaChalkboard, FaColumns, FaDesktop } from 'react-icons/fa';
+import { isLiveKitAgentParticipant } from '@/src/lib/livekit-agent';
 
 interface ConferenceRoomProps {
   roomName: string;
@@ -45,6 +48,29 @@ const stageModes: Array<{
   { mode: 'split', label: 'Доска и скринкаст', icon: FaColumns },
 ];
 
+function ConferenceParticipantTile({
+  trackRef,
+}: {
+  trackRef: TrackReferenceOrPlaceholder;
+}) {
+  const isAgent = isLiveKitAgentParticipant(trackRef.participant);
+
+  return (
+    <div
+      className={`conference-participant-tile${isAgent ? ' conference-participant-tile--agent' : ''}`}
+      aria-label={isAgent ? 'Участник конференции: агент' : undefined}
+    >
+      <ParticipantTile trackRef={trackRef} />
+      {isAgent && (
+        <div className="conference-agent-badge">
+          <span className="conference-agent-badge__indicator" aria-hidden="true" />
+          Агент
+        </div>
+      )}
+    </div>
+  );
+}
+
 function RoomContent({
   creatorId,
   roomName,
@@ -62,7 +88,19 @@ function RoomContent({
     [{ source: Track.Source.ScreenShare, withPlaceholder: false }],
     { onlySubscribed: false },
   );
+  const participants = useParticipants();
   const screenShareTrack = screenShareTracks.find((trackRef) => trackRef.publication);
+  const cameraParticipantIdentities = new Set(
+    cameraTracks.map((trackRef) => trackRef.participant.identity),
+  );
+  const agentPlaceholderTracks: TrackReferenceOrPlaceholder[] = participants
+    .filter((participant) => isLiveKitAgentParticipant(participant))
+    .filter((participant) => !cameraParticipantIdentities.has(participant.identity))
+    .map((participant) => ({
+      participant,
+      source: Track.Source.Camera,
+    }));
+  const participantTileTracks = [...cameraTracks, ...agentPlaceholderTracks];
   const hasScreenShare = Boolean(screenShareTrack);
   const effectiveStageMode = hasScreenShare ? stageMode : 'board';
   const showBoard = effectiveStageMode === 'board' || effectiveStageMode === 'split';
@@ -91,7 +129,7 @@ function RoomContent({
             paddingBottom: '4px',
           }}
         >
-          {cameraTracks.map((trackRef, index) => {
+          {participantTileTracks.map((trackRef, index) => {
             if (!trackRef) return null;
             return (
               <div
@@ -105,7 +143,7 @@ function RoomContent({
                   background: '#111827',
                 }}
               >
-                <ParticipantTile trackRef={trackRef} />
+                <ConferenceParticipantTile trackRef={trackRef} />
               </div>
             );
           })}
@@ -204,7 +242,7 @@ function RoomContent({
                     background: '#020617',
                   }}
                 >
-                  <ParticipantTile trackRef={screenShareTrack} />
+                  <ConferenceParticipantTile trackRef={screenShareTrack} />
                 </div>
               )}
             </div>

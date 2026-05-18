@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import ConferenceRoom from '@/src/components/conference';
 import { useParams } from 'next/navigation';
 import { useUser } from '@/src/contexts/UserContext';
@@ -13,6 +13,7 @@ export default function ConferenceRoomPage() {
   const [reloadKey, setReloadKey] = useState(0);
   const { user, isAuthLoading } = useUser();
   const guest = useGuestParticipant();
+  const tokenRequestIdRef = useRef(0);
 
   const params = useParams();
   const roomName = params.conferenceName as string;
@@ -24,6 +25,8 @@ export default function ConferenceRoomPage() {
   useEffect(() => {
     let isMounted = true;
     const controller = new AbortController();
+    const requestId = tokenRequestIdRef.current + 1;
+    tokenRequestIdRef.current = requestId;
 
     async function fetchToken() {
       if (isParticipantLoading) {
@@ -40,6 +43,7 @@ export default function ConferenceRoomPage() {
           headers: {
             'Content-Type': 'application/json',
           },
+          signal: controller.signal,
           body: JSON.stringify({
             participantName,
             participantIdentity,
@@ -64,13 +68,13 @@ export default function ConferenceRoomPage() {
           throw new Error('Ответ сервера не содержит token или creatorId');
         }
 
-        if (isMounted) {
+        if (isMounted && tokenRequestIdRef.current === requestId) {
           setToken(payload.token);
           setCreatorId(payload.creatorId);
         }
       } catch (requestError) {
         if (controller.signal.aborted) return;
-        if (isMounted) {
+        if (isMounted && tokenRequestIdRef.current === requestId) {
           setError(
             requestError instanceof Error
               ? requestError.message
