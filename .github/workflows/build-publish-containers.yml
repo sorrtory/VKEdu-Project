@@ -45,11 +45,11 @@ jobs:
             context: .
             dockerfile: infra/docker/livekit-agent.Dockerfile
           - name: mlin
-            context: services/ml/MLin
-            dockerfile: Dockerfile
+            context: .
+            dockerfile: infra/docker/mlin.Dockerfile
           - name: mlout
-            context: services/ml/MLout
-            dockerfile: Dockerfile
+            context: .
+            dockerfile: infra/docker/mlout.Dockerfile
 
     steps:
       - name: Check out repository

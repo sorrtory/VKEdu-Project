@@ -40,13 +40,13 @@ Ensure that the docs reflect the current state of the codebase and product featu
 
 - I use lazyload with `fnm` to manage Node versions. You need to enable it in your shell before using `yarn` commands.
   For example, to activate `node` run
-    ```bash
-    FNM_PATH="~/.local/share/fnm"
-    if [ -d "$FNM_PATH" ]; then
-      export PATH="$FNM_PATH:$PATH"
-      eval "$(fnm env --shell zsh)"
-    fi
-    ```
+  ```bash
+  FNM_PATH="~/.local/share/fnm"
+  if [ -d "$FNM_PATH" ]; then
+    export PATH="$FNM_PATH:$PATH"
+    eval "$(fnm env --shell zsh)"
+  fi
+  ```
   Note that you need to run it only if node is not already active in your terminal session. You can check it with `node -v` command. Please double check with `node -v` before asking about node issues, because lazyload may activate it on demand after first `node -v` call.
 - Use `yarn` for package management and scripts.
 - Use `yarn test` for running tests and `yarn lint` for linting.
@@ -85,6 +85,21 @@ When working in `apps/frontend/`:
 - prefer simple flows that support the MVP demo
 - avoid adding heavy state or styling systems unless already adopted
 - keep UI tied to core product flows: conference, summary, transcript, whiteboard, and context documents
+
+## Environment management
+
+Always check the `.env.example` file for required environment variables when working on features that interact with external services or require configuration. Keep environment variables organized and documented there.
+On adding new environment variables, update the `.env.example`, `.env` and `.env.production` if required.
+
+Prefer not using default values for environment variables in the codebase. Instead, ensure that all required variables are defined in the `.env` files and panic or throw an error if a required variable is missing at runtime.
+
+### Environment override
+
+Ensure that `.env` is a copy of `.env.example` with actual values for local development. Ensure that `.env.production` is set up for production deployment and use overrides that are recommended in `env.example`.
+
+```
+.env (copy of .env.example) -> .env.production (with docker+production overrides) -> actual environment variables at runtime
+```
 
 ## Delivery Standard
 

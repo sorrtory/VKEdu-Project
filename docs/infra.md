@@ -41,6 +41,12 @@ Nginx routes:
 docker compose up -d broker
 ```
 
+Run ML services with their Redis and Kafka dependencies:
+
+```bash
+docker compose --profile ml up -d
+```
+
 ## Environment
 
 We use global environment variables for all services.
@@ -63,3 +69,7 @@ We use global environment variables for all services.
 - MLIn
 - MLOut
 - LiveKit bot
+
+Service Dockerfiles are kept in `infra/docker/`. Compose and CI use the
+repository root as build context for app-owned images so Dockerfiles can copy
+the needed files by repository-relative paths.

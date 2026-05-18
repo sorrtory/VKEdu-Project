@@ -20,7 +20,7 @@ services:
       - app-network
   redis:
     image: redis:alpine
-    profiles: ["infra", "db", "livekit"]
+    profiles: ["infra", "db", "livekit", "ml"]
     command: redis-server --appendonly yes # Enable data persistence
     volumes:
       - redis-data:/data
@@ -120,7 +120,7 @@ services:
   broker:
     image: apache/kafka:latest
     hostname: broker
-    profiles: ["infra", "db"]
+    profiles: ["infra", "db", "ml"]
     environment:
       KAFKA_NODE_ID: 1
       KAFKA_PROCESS_ROLES: broker,controller
@@ -158,8 +158,8 @@ services:
     pull_policy: ${APP_IMAGE_PULL_POLICY:-missing}
     profiles: ["ml"]
     build:
-      context: ./services/ml/MLin
-      dockerfile: Dockerfile
+      context: .
+      dockerfile: infra/docker/mlin.Dockerfile
     environment:
       KAFKA_BOOTSTRAP_SERVERS: ${KAFKA_BOOTSTRAP_SERVERS}
       KAFKA_GROUP_ID: ${MLIN_KAFKA_GROUP_ID}
@@ -179,14 +179,15 @@ services:
     pull_policy: ${APP_IMAGE_PULL_POLICY:-missing}
     profiles: ["ml"]
     build:
-      context: ./services/ml/MLout
-      dockerfile: Dockerfile
+      context: .
+      dockerfile: infra/docker/mlout.Dockerfile
     environment:
       KAFKA_BOOTSTRAP_SERVERS: ${KAFKA_BOOTSTRAP_SERVERS}
       KAFKA_GROUP_ID: ${MLOUT_KAFKA_GROUP_ID}
       KAFKA_TOPICS: ${MLOUT_KAFKA_TOPICS}
       REDIS_HOST: ${REDIS_HOST}
       REDIS_PORT: ${REDIS_PORT}
+      PYTHONIOENCODING: utf-8
     depends_on:
       - broker
       - redis

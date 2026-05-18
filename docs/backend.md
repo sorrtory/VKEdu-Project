@@ -88,7 +88,9 @@ curl "http://localhost:3000/conference/my-room/download?file=conferences/my-room
 ```
 
 Required environment variables are documented in `.env.example` under
-`Object Storage`. For local Docker infra, the compose stack includes a RustFS
-service on ports `9000` (S3 API) and `9001` (console). If the backend also runs
-inside Docker, set `S3_ENDPOINT=http://rustfs:9000`; for a backend process on
-the host, use `S3_ENDPOINT=http://localhost:9000`.
+`Object Storage`. `S3_ACCESS_KEY_ID` and `S3_SECRET_ACCESS_KEY` are shared by
+the backend S3 client and the local RustFS service in compose. For local Docker
+infra, the compose stack includes RustFS on ports `9000` (S3 API) and `9001`
+(console). For a backend process on the host, use
+`S3_ENDPOINT=http://localhost:9000`. For the backend container, `.env.production`
+overrides it with `S3_ENDPOINT=http://rustfs:9000`.
