@@ -1,6 +1,6 @@
 # Production runbook
 
-Этот документ описывает минимальный production-запуск MVP на одном сервере через Docker Compose. Текущий прод-режим проекта запускается командой `yarn prod`, которая читает оба файла окружения и подтягивает published images из GHCR:
+Этот документ описывает минимальный production-запуск MVP на одном сервере через Docker Compose. Текущий published deploy читает оба файла окружения и подтягивает images из GHCR:
 
 ```bash
 docker compose --env-file .env --env-file .env.production -f docker-compose.yml --profile infra --profile livekit --profile web --profile ml up -d --pull always
@@ -11,7 +11,7 @@ docker compose --env-file .env --env-file .env.production -f docker-compose.yml 
 - Ubuntu/Debian сервер с публичным IP и доменом, который указывает на этот IP.
 - Открытые порты: `80/tcp`, `443/tcp`, `7881/tcp`, `3478/udp`, `5349/tcp`,
   `8000-8010/udp`.
-- Установлены `git`, Docker, Node.js 22 и Yarn 4 через Corepack.
+- Установлены `git`, Docker и `git-crypt`.
 - Репозиторий склонирован, например в `/opt/broadboard/VKEdu-Project`.
 - В корне проекта созданы `.env` и `.env.production`.
 - TLS-сертификаты лежат в `infra/nginx/certs/` или смонтированы туда другим способом.
@@ -43,10 +43,7 @@ cp .env.example .env.production
 ${EDITOR:-nano} .env
 ${EDITOR:-nano} .env.production
 
-corepack enable
-corepack prepare yarn@4.14.1 --activate
-yarn install --immutable
-yarn prod
+docker compose --env-file .env --env-file .env.production -f docker-compose.yml --profile infra --profile livekit --profile web --profile ml up -d --pull always
 ```
 
 Проверка:
@@ -129,7 +126,7 @@ MLOUT_KAFKA_TOPICS=chatEvent,summaryEvent
 
 ## Пример `.env.production`
 
-`.env.production` переопределяет значения под публичный домен и docker-сеть. `NEXT_PUBLIC_*` попадают в frontend build, поэтому после их изменения нужно пересобрать frontend через `yarn prod` или `yarn prod:web:frontend`.
+`.env.production` переопределяет значения под публичный домен и docker-сеть. `NEXT_PUBLIC_*` попадают в frontend build, поэтому после их изменения нужно заново опубликовать frontend image через `.github/workflows/build-publish-containers.yml`.
 
 ```dotenv
 NODE_ENV=production
@@ -187,9 +184,9 @@ NGINX_SSL_CERTIFICATE_KEY=/etc/nginx/certs/certificate.key
 
 ## GitHub Actions деплой
 
-Основной workflow находится в `.github/workflows/deploy-published-prod.yml`. После успешного `.github/workflows/build-publish-containers.yml` на ветке `deploy` он заходит на сервер по SSH, обновляет ветку `deploy`, разблокирует `git-crypt`, останавливает старый compose stack через `yarn prod:down` и запускает новый через `yarn prod`.
+Основной workflow находится в `.github/workflows/deploy-published-prod.yml`. После успешного `.github/workflows/build-publish-containers.yml` на ветке `deploy` он заходит на сервер по SSH, обновляет ветку `deploy`, разблокирует `git-crypt` и запускает Docker Compose с `--pull always`, чтобы подтянуть опубликованные образы из GHCR.
 
-Ручной workflow `.github/workflows/ssh-build-prod.yml` оставлен как fallback для SSH-деплоя через `workflow_dispatch`.
+Для автоматического запуска через `workflow_run` оба workflow-файла должны быть доступны в default branch репозитория. Сейчас default branch репозитория - `master`; если workflow-файлы лежат только в ветке `deploy`, GitHub не создаст run для `.github/workflows/deploy-published-prod.yml` после успешной публикации образов.
 
 В GitHub нужно настроить environment `production` и secrets:
 
@@ -203,7 +200,7 @@ PROD_PROJECT_PATH=/opt/broadboard/VKEdu-Project
 
 На сервере публичный ключ из `PROD_SSH_PRIVATE_KEY` должен быть добавлен в `~deploy/.ssh/authorized_keys`, а пользователь `deploy` должен иметь доступ к Docker.
 
-Основной deploy запускается автоматически после успешной публикации контейнеров из ветки `deploy` и вручную через `workflow_dispatch`, где можно указать branch. Production deploy намеренно отказывается деплоить ветки кроме `deploy`.
+Основной deploy запускается автоматически после успешной публикации контейнеров из ветки `deploy` и вручную через `workflow_dispatch`, где можно указать branch. Production deploy намеренно отказывается деплоить ветки кроме `deploy`. Старый ручной workflow `ssh-build-prod.yml` удален, чтобы не держать второй production-путь.
 
 ## GitHub Container Registry
 
@@ -262,13 +259,12 @@ NEXT_PUBLIC_BACKEND_URL=https://broadboard.ru/api
 
 ```bash
 cd /opt/broadboard/VKEdu-Project
-git pull --ff-only origin main
-yarn install --immutable
-yarn prod
+git pull --ff-only origin deploy
+docker compose --env-file .env --env-file .env.production -f docker-compose.yml --profile infra --profile livekit --profile web --profile ml up -d --pull always
 ```
 
 Остановить прод:
 
 ```bash
-yarn prod:down
+docker compose --env-file .env --env-file .env.production -f docker-compose.yml --profile infra --profile livekit --profile web --profile ml down
 ```

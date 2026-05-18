@@ -93,6 +93,8 @@ On adding new environment variables, update the `.env.example`, `.env` and `.env
 
 Prefer not using default values for environment variables in the codebase. Instead, ensure that all required variables are defined in the `.env` files and panic or throw an error if a required variable is missing at runtime.
 
+Notice that [docs/prod.md](./docs/prod.md) has a fine copy of the required environment variables for production deployment. Make sure to keep it updated as well when adding new environment variables.
+
 ### Environment override
 
 Ensure that `.env` is a copy of `.env.example` with actual values for local development. Ensure that `.env.production` is set up for production deployment and use overrides that are recommended in `env.example`.

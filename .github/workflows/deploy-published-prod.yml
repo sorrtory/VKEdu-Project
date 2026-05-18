@@ -30,7 +30,10 @@ jobs:
     timeout-minutes: 30
     if: >-
       github.event_name == 'workflow_dispatch' ||
-      github.event.workflow_run.conclusion == 'success'
+      (
+        github.event.workflow_run.conclusion == 'success' &&
+        github.event.workflow_run.head_branch == 'deploy'
+      )
 
     steps:
       - name: Deploy on remote server
@@ -133,27 +136,18 @@ jobs:
             exit 1
           fi
 
-          FNM_PATH="${HOME}/.local/share/fnm"
-          if [ -d "${FNM_PATH}" ]; then
-            export PATH="${FNM_PATH}:${PATH}"
-            eval "$(fnm env --shell bash)"
-          fi
-
-          if command -v corepack >/dev/null 2>&1; then
-            corepack enable
-            corepack prepare yarn@4.14.1 --activate
-          fi
-
-          if ! command -v yarn >/dev/null 2>&1; then
-            echo "Yarn is not available. Install Node.js 22 with Corepack on the server."
-            exit 1
-          fi
-
           docker compose version
 
-          yarn install --immutable
-          yarn prod:down
-          yarn prod
+          echo "Running yarn prod equivalent (without yarn)"
+          docker compose \
+            --env-file .env \
+            --env-file .env.production \
+            -f docker-compose.yml \
+            --profile infra \
+            --profile livekit \
+            --profile web \
+            --profile ml \
+            up -d --pull always
 
           docker compose \
             --env-file .env \
