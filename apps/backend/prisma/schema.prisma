@@ -1,6 +1,6 @@
 generator client {
-  provider = "prisma-client"
-  output   = "../src/generated/prisma"
+  provider               = "prisma-client"
+  output                 = "../src/generated/prisma"
   moduleFormat           = "cjs"
   importFileExtension    = "js"
   generatedFileExtension = "ts"
@@ -15,13 +15,32 @@ enum ConferenceRole {
   participant
 }
 
+enum ChatMessageKind {
+  text
+  file
+}
+
+enum ChatMessageSenderType {
+  chat
+  ai
+  speaker
+  system
+}
+
+enum TranscriptSource {
+  voice
+  chat
+  board
+  file
+}
+
 model User {
   // PK
   userId String @id @default(uuid()) @map("user_id") @db.Uuid
 
   // Main
-  email    String @unique
-  nickname String
+  email        String @unique
+  nickname     String
   passwordHash String @map("password_hash")
 
   // Metadata
@@ -38,17 +57,125 @@ model Conference {
   conferenceId String @id @default(uuid()) @map("conference_id") @db.Uuid
 
   // Main
+  roomName    String?   @unique @map("room_name")
   title       String
   description String?
   startedAt   DateTime? @map("started_at")
   endedAt     DateTime? @map("ended_at")
 
   // Metadata
-  createdAt    DateTime         @default(now()) @map("created_at")
-  updatedAt    DateTime         @updatedAt @map("updated_at")
-  participants ConferenceUser[]
+  createdAt         DateTime               @default(now()) @map("created_at")
+  updatedAt         DateTime               @updatedAt @map("updated_at")
+  participants      ConferenceUser[]
+  chat              ConferenceChat?
+  attachments       ConferenceAttachment[]
+  transcriptEntries TranscriptEntry[]
+  summaryEntries    SummaryEntry[]
 
   @@map("CONFERENCE")
+}
+
+model ConferenceChat {
+  // PK
+  chatId String @id @default(uuid()) @map("chat_id") @db.Uuid
+
+  // Main
+  conferenceId String @unique @map("conference_id") @db.Uuid
+
+  // Metadata
+  createdAt  DateTime      @default(now()) @map("created_at")
+  updatedAt  DateTime      @updatedAt @map("updated_at")
+  conference Conference    @relation(fields: [conferenceId], references: [conferenceId], onDelete: Cascade)
+  messages   ChatMessage[]
+
+  @@map("CONFERENCE_CHAT")
+}
+
+model ChatMessage {
+  // PK
+  chatMessageId String @id @default(uuid()) @map("chat_message_id") @db.Uuid
+
+  // Main
+  chatId     String                @map("chat_id") @db.Uuid
+  senderId   String?               @map("sender_id")
+  senderName String?               @map("sender_name")
+  senderType ChatMessageSenderType @map("sender_type")
+  kind       ChatMessageKind       @default(text)
+  text       String?
+  metadata   Json?
+  createdAt  DateTime              @default(now()) @map("created_at")
+
+  // Metadata
+  updatedAt  DateTime              @updatedAt @map("updated_at")
+  chat       ConferenceChat        @relation(fields: [chatId], references: [chatId], onDelete: Cascade)
+  attachment ConferenceAttachment?
+
+  @@index([chatId, createdAt])
+  @@map("CHAT_MESSAGE")
+}
+
+model ConferenceAttachment {
+  // PK
+  attachmentId String @id @default(uuid()) @map("attachment_id") @db.Uuid
+
+  // Main
+  conferenceId  String  @map("conference_id") @db.Uuid
+  chatMessageId String? @unique @map("chat_message_id") @db.Uuid
+  filename      String
+  bucket        String
+  objectKey     String  @map("object_key")
+  contentType   String? @map("content_type")
+  size          Int
+
+  // Metadata
+  createdAt   DateTime     @default(now()) @map("created_at")
+  updatedAt   DateTime     @updatedAt @map("updated_at")
+  conference  Conference   @relation(fields: [conferenceId], references: [conferenceId], onDelete: Cascade)
+  chatMessage ChatMessage? @relation(fields: [chatMessageId], references: [chatMessageId], onDelete: SetNull)
+
+  @@index([conferenceId, createdAt])
+  @@index([objectKey])
+  @@map("CONFERENCE_ATTACHMENT")
+}
+
+model TranscriptEntry {
+  // PK
+  transcriptEntryId String @id @default(uuid()) @map("transcript_entry_id") @db.Uuid
+
+  // Main
+  conferenceId String           @map("conference_id") @db.Uuid
+  source       TranscriptSource @default(voice)
+  speakerId    String?          @map("speaker_id")
+  speakerName  String?          @map("speaker_name")
+  text         String
+  metadata     Json?
+  occurredAt   DateTime         @default(now()) @map("occurred_at")
+
+  // Metadata
+  createdAt  DateTime   @default(now()) @map("created_at")
+  updatedAt  DateTime   @updatedAt @map("updated_at")
+  conference Conference @relation(fields: [conferenceId], references: [conferenceId], onDelete: Cascade)
+
+  @@index([conferenceId, occurredAt])
+  @@map("TRANSCRIPT_ENTRY")
+}
+
+model SummaryEntry {
+  // PK
+  summaryEntryId String @id @default(uuid()) @map("summary_entry_id") @db.Uuid
+
+  // Main
+  conferenceId String   @map("conference_id") @db.Uuid
+  text         String
+  metadata     Json?
+  createdAt    DateTime @default(now()) @map("created_at")
+
+  // Metadata
+  updatedAt  DateTime   @updatedAt @map("updated_at")
+  conference Conference @relation(fields: [conferenceId], references: [conferenceId], onDelete: Cascade)
+
+  @@index([conferenceId, createdAt])
+  @@map("SUMMARY_ENTRY")
 }
 
 model ConferenceUser {

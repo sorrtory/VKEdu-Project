@@ -7,10 +7,12 @@ import { KafkaConsumerController } from "./kafka-consumer.controller"
 import { KafkaConsumerService } from "./kafka-consumer.service"
 import { KafkaLoggingInterceptor } from "./kafka-logging.interceptor"
 import { KafkaExceptionFilter } from "./kafka-exception.filter"
+import { ConferenceHistoryModule } from "../conference/conference-history.module"
 
 @Module({
   // Register kafka producer
   imports: [
+    ConferenceHistoryModule,
     ClientsModule.registerAsync([
       {
         name: "KAFKA_SERVICE",

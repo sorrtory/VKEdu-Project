@@ -40,6 +40,39 @@ export class ConferenceController {
     return { success: true, file: storedFile }
   }
 
+  @Get(":conferenceName/chat")
+  async getChatHistory(@Param("conferenceName") conferenceName: string) {
+    return {
+      success: true,
+      messages: await this.ConferenceService.getChatHistory(conferenceName),
+    }
+  }
+
+  @Get(":conferenceName/files")
+  async getAttachments(@Param("conferenceName") conferenceName: string) {
+    return {
+      success: true,
+      files: await this.ConferenceService.getAttachments(conferenceName),
+    }
+  }
+
+  @Get(":conferenceName/transcript")
+  async getTranscriptHistory(@Param("conferenceName") conferenceName: string) {
+    return {
+      success: true,
+      transcript:
+        await this.ConferenceService.getTranscriptHistory(conferenceName),
+    }
+  }
+
+  @Get(":conferenceName/summary")
+  async getSummaryHistory(@Param("conferenceName") conferenceName: string) {
+    return {
+      success: true,
+      summary: await this.ConferenceService.getSummaryHistory(conferenceName),
+    }
+  }
+
   @Get(":conferenceName/download")
   async createDownloadUrl(
     @Param("conferenceName") conferenceName: string,

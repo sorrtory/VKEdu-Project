@@ -15,8 +15,9 @@ Keep your existing edit sends as incremental/full-scene but debounce (you alread
 ```
 Backend: слушает HTTP API /api
 - GET /conference/{id}/summary?type=json/pdf    : получение истории саммари       -> преобразованная postgres data в ответ
-- GET /conference/{id}/trascript?type=json/pdf  : получение истории расшифровки   -> преобразованная postgres data в ответ
+- GET /conference/{id}/transcript?type=json/pdf : получение истории расшифровки   -> преобразованная postgres data в ответ
 - GET /conference/{id}/chat    				    : получение истории чата  		  -> преобразованная postgres data в ответ
+- GET /conference/{id}/files                    : получение списка файлов конфы   -> postgres metadata для карточек файлов
 - POST /conference/{id}/upload                  : загрузка файла в контекст конфы -> conferences/{id}/... в s3-compatible хранилище и conference.chat.file в кафке
 - GET /conference/{id}/download?file=objectKey  : скачивание файла     			  -> presigned ссылка на s3-compatible хранилище
 - POST /conference/{id}/boardcrop				: отправка blob снепшота доски    -> emit в кафка conference.boardcrop
@@ -49,10 +50,10 @@ Backend: тикер
 Backend: слушает кафку
 - conference.chat.ai.response : получает ответ ии, сохраняет в базу и публикует его в websocket  -> room:<room_id> на message:new
 - conference.summary.response : получает чанк саммари, сохраняет в базу и публикует его в ws     -> room:<room_id> на summary:new
-- conference.transript        : получает чанк расшифровки, сохраняет в базу и публикует его в ws -> room:<room_id> на transcript:new
+- conference.transcript       : получает чанк расшифровки, сохраняет в базу и публикует его в ws -> room:<room_id> на transcript:new
 
 Agent: подключается к конфе
-- Слушает голос в конфе : преобразует его в текст через виспер, кладет в кафку расшифровки голоса -> на conference.transript.voice
+- Слушает голос в конфе : преобразует его в текст через виспер, кладет в кафку расшифровки голоса -> на conference.transcript.voice
 
 
 ML in: слушает кафку
@@ -61,8 +62,8 @@ ML in: слушает кафку
 - conference.chat.ai.response : загрузка ответов в контекст
 - conference.chat.file        : загрузка s3 ссылки в редис (LLM будет сама читать файлы? или также VLM?)
 - conference.boardcrop        : преобразует картинку от смарт кропа в текст через VLM
-- conference.transript.voice  : преобразует текст от голоса в контекст
--> Создает расшифровку и пишет ее в кафку на conference.transript
+- conference.transcript.voice : преобразует текст от голоса в контекст
+-> Создает расшифровку и пишет ее в кафку на conference.transcript
 -> Переписывает обновленный контекс в редис. То есть оформляем context как огромный json. Тут нужна структура чтобы LLM не упала
 : conference:<id> = {context:<json>, attachments:<s3 links>, transcript:<text>, ai_req:<prompts>, ai_resp:<text>}
 
@@ -81,3 +82,10 @@ ML out: слушает кафку
 Участники поздоровались.
 Участник 1 нарисовал сердечко и выразил свою любовь ко встречам.
 ```
+
+Postgres для MVP:
+- `conferenceName` из API/LiveKit/socket считаем стабильным `roomName` конференции.
+- На одну конференцию создается один `ConferenceChat`.
+- Сообщения пользователей, `@ai` запросы, ответы AI и карточки файлов хранятся в `ChatMessage`.
+- Загруженные файлы хранятся в S3-compatible storage, а в Postgres лежат метаданные `ConferenceAttachment`; карточка файла в чате ссылается на attachment.
+- Расшифровка и саммари хранятся чанками в `TranscriptEntry` и `SummaryEntry`, чтобы архив можно было отдавать как JSON и позже преобразовывать в markdown/pdf.

@@ -11,6 +11,7 @@ import { UsePipes, ValidationPipe } from "@nestjs/common"
 import { randomUUID } from "node:crypto"
 import { Server, Socket } from "socket.io"
 import { KafkaProducerService } from "../kafka/kafka-producer.service"
+import { ConferenceHistoryService } from "../conference/conference-history.service"
 import { JoinRoomDto } from "./dto/join-room.dto"
 import { LeaveRoomDto } from "./dto/leave-room.dto"
 import { SendMessageDto } from "./dto/send-message.dto"
@@ -58,7 +59,10 @@ export class ChatGateway implements OnGatewayDisconnect {
   @WebSocketServer()
   private server!: Server
 
-  constructor(private readonly kafkaProducerService: KafkaProducerService) {}
+  constructor(
+    private readonly kafkaProducerService: KafkaProducerService,
+    private readonly conferenceHistoryService: ConferenceHistoryService,
+  ) {}
 
   @SubscribeMessage("room:join")
   async handleJoin(
@@ -106,10 +110,10 @@ export class ChatGateway implements OnGatewayDisconnect {
   }
 
   @SubscribeMessage("message:send")
-  handleMessage(
+  async handleMessage(
     @ConnectedSocket() socket: Socket,
     @MessageBody() payload: SendMessageDto,
-  ): MessageEvent {
+  ): Promise<MessageEvent> {
     const socketData = socket.data as ChatSocketData
     const roomName = this.getRoomName(payload.roomId)
 
@@ -134,6 +138,16 @@ export class ChatGateway implements OnGatewayDisconnect {
       senderType,
       text,
     )
+
+    await this.conferenceHistoryService.recordChatMessage({
+      messageId: event.id,
+      roomName: event.roomId,
+      senderId: event.senderId,
+      senderName: event.senderName,
+      senderType: event.senderType,
+      text: event.text,
+      createdAt: event.createdAt,
+    })
 
     this.server.to(roomName).emit("message:new", event)
     this.emitKafkaEvent(event)

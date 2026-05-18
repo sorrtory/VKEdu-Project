@@ -80,8 +80,10 @@ curl -X POST http://localhost:3000/conference/my-room/upload \
   -F "file=@input.pdf"
 ```
 
-The response includes `file.key`. Use it as the `file` query parameter to get a
-temporary download URL:
+The upload is stored in object storage, persisted in Postgres as a conference
+attachment, and appended to the conference chat as a `kind=file` message. The
+response includes `file.key`. Use it as the `file` query parameter to get a
+temporary download URL when the user opens the file card:
 
 ```bash
 curl "http://localhost:3000/conference/my-room/download?file=conferences/my-room/<object-key>"
@@ -94,3 +96,22 @@ infra, the compose stack includes RustFS on ports `9000` (S3 API) and `9001`
 (console). For a backend process on the host, use
 `S3_ENDPOINT=http://localhost:9000`. For the backend container, `.env.production`
 overrides it with `S3_ENDPOINT=http://rustfs:9000`.
+
+## Conference Archive
+
+The MVP exposes JSON history endpoints backed by Postgres:
+
+```bash
+curl http://localhost:3000/conference/my-room/chat
+curl http://localhost:3000/conference/my-room/files
+curl http://localhost:3000/conference/my-room/transcript
+curl http://localhost:3000/conference/my-room/summary
+```
+
+`conferenceName` is treated as the stable `roomName` for conference archive
+lookup.
+
+The backend persists archive events from Kafka topics
+`conference.chat.ai.response`, `conference.summary.response`,
+and `conference.transcript`. Event payloads should include either
+`conferenceName` or `roomId` plus `text`.

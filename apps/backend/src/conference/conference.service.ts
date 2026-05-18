@@ -7,8 +7,13 @@ import {
   RoomServiceClient,
   TrackSource,
 } from "livekit-server-sdk"
+import type {
+  ChatMessage,
+  ConferenceAttachment,
+} from "../generated/prisma/client"
 import { KafkaProducerService } from "../kafka/kafka-producer.service"
 import { S3StorageService, type StoredObject } from "../storage/storage.service"
+import { ConferenceHistoryService } from "./conference-history.service"
 
 @Injectable()
 export class ConferenceService {
@@ -22,6 +27,7 @@ export class ConferenceService {
     private readonly configService: ConfigService,
     private readonly storageService: S3StorageService,
     private readonly kafkaProducerService: KafkaProducerService,
+    private readonly conferenceHistoryService: ConferenceHistoryService,
   ) {
     // These environment variables are required — getOrThrow will throw at startup if missing
     this.LK_HOST = this.configService.getOrThrow<string>("BACKEND_LIVEKIT_HOST")
@@ -150,13 +156,19 @@ export class ConferenceService {
   // Опционально: явное создание комнаты без участника (агент НЕ прикрепится)
   async createConference(conferenceName: string) {
     await this.roomService.createRoom({ name: conferenceName })
+    await this.conferenceHistoryService.ensureRoom(conferenceName)
   }
 
   async uploadFile(
     conferenceName: string,
     file: Express.Multer.File,
   ): Promise<
-    StoredObject & { downloadUrl: string; downloadTtlSeconds: number }
+    StoredObject & {
+      downloadUrl: string
+      downloadTtlSeconds: number
+      chatMessage: ChatMessage
+      attachment: ConferenceAttachment
+    }
   > {
     const storedFile = await this.storageService.uploadConferenceFile({
       conferenceName,
@@ -165,6 +177,15 @@ export class ConferenceService {
     const downloadUrl = await this.storageService.createDownloadUrl(
       storedFile.key,
     )
+
+    const fileCard = await this.conferenceHistoryService.recordAttachment({
+      roomName: conferenceName,
+      filename: storedFile.filename,
+      bucket: storedFile.bucket,
+      objectKey: storedFile.key,
+      contentType: storedFile.contentType,
+      size: storedFile.size,
+    })
 
     this.kafkaProducerService.emitFileContextEvent({
       conferenceName,
@@ -179,7 +200,25 @@ export class ConferenceService {
       ...storedFile,
       downloadUrl,
       downloadTtlSeconds: this.storageService.getDownloadTtlSeconds(),
+      chatMessage: fileCard.message,
+      attachment: fileCard.attachment,
     }
+  }
+
+  async getChatHistory(conferenceName: string) {
+    return this.conferenceHistoryService.getChatHistory(conferenceName)
+  }
+
+  async getAttachments(conferenceName: string) {
+    return this.conferenceHistoryService.getAttachments(conferenceName)
+  }
+
+  async getTranscriptHistory(conferenceName: string) {
+    return this.conferenceHistoryService.getTranscriptHistory(conferenceName)
+  }
+
+  async getSummaryHistory(conferenceName: string) {
+    return this.conferenceHistoryService.getSummaryHistory(conferenceName)
   }
 
   async createDownloadUrl(conferenceName: string, file: string) {
