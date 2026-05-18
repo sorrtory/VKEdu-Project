@@ -1,0 +1,37 @@
+{
+  "name": "broadboard",
+  "private": true,
+  "workspaces": [
+    "apps/*"
+  ],
+  "scripts": {
+    "dev": "yarn workspaces foreach -A -p -i -v run dev",
+    "dev:frontend": "yarn workspace frontend dev",
+    "dev:backend": "yarn workspace backend dev",
+    "dev:agent": "cd services/livekit && uv run main.py start",
+    "dev:ml:in": "cd services/ml/MLin && source venv/bin/activate && python main.py",
+    "dev:ml:out": "cd services/ml/MLout && source venv/bin/activate && python main.py",
+    "dev:infra": "docker compose --profile infra up --build -d",
+    "dev:db": "docker compose --profile db up --build -d",
+    "dev:livekit": "docker compose --profile livekit up --build -d",
+    "prod": "docker compose --env-file .env --env-file .env.production -f docker-compose.yml --profile infra --profile livekit --profile web --profile ml up -d --pull always",
+    "prod:down": "docker compose --env-file .env --env-file .env.production -f docker-compose.yml --profile infra --profile livekit --profile web --profile ml down",
+    "prod:web:backend": "docker compose --env-file .env --env-file .env.production -f docker-compose.yml --profile infra --profile web up --pull always -d backend",
+    "prod:web:frontend": "docker compose --env-file .env --env-file .env.production -f docker-compose.yml --profile infra --profile web up --pull always -d frontend",
+    "prod:web": "docker compose --env-file .env --env-file .env.production -f docker-compose.yml --profile infra --profile web up --pull always -d",
+    "prod:web:down": "docker compose --env-file .env --env-file .env.production -f docker-compose.yml --profile infra --profile web down",
+    "prod:ml": "docker compose --env-file .env --env-file .env.production --profile infra --profile ml -f docker-compose.yml up -d --pull always",
+    "prod:infra": "docker compose --env-file .env --env-file .env.production -f docker-compose.yml --profile infra up --build -d",
+    "prod:db": "docker compose --env-file .env --env-file .env.production -f docker-compose.yml --profile db up --build -d",
+    "prod:agent": "docker compose --env-file .env --env-file .env.production -f docker-compose.yml --profile agent up --pull always -d",
+    "lint:frontend": "yarn workspace frontend lint",
+    "lint:backend": "yarn workspace backend lint",
+    "test:backend": "yarn workspace backend test",
+    "lint": "yarn workspaces foreach -A -i -v run lint",
+    "test": "yarn workspaces foreach -A -i -v run test"
+  },
+  "devDependencies": {
+    "typescript": "^6.0.2"
+  },
+  "packageManager": "yarn@4.14.1"
+}

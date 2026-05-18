@@ -1,0 +1,29 @@
+# Env
+.env*
+!.env.example
+
+# python
+venv/
+__pycache__/
+API_KEY.py
+
+# codex bug https://github.com/openai/codex/issues/16088
+.codex
+
+# Old files
+.trash/
+
+# Yarn
+## https://yarnpkg.com/getting-started/qa#which-files-should-be-gitignored
+.pnp.*
+.yarn/*
+!.yarn/patches
+!.yarn/plugins
+!.yarn/releases
+!.yarn/sdks
+!.yarn/versions
+
+node_modules/
+package-lock.json
+
+test_audio/

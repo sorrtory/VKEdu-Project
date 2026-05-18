@@ -23,6 +23,93 @@
 - [Miro](https://miro.com/welcomeonboard/SWE1WG1pMk5uSS9vdTZIUEhqSy8rTi8vcHUzSkhMRGhLZzVZSVpNeE1jaDh4VVowRW1kdUtaU2tZM1BaUzVOVmQvSkJyZGFGQzUyNlJFVXkxbDNMV29HWkozbm42Mzhza3Mxek9VbFA5Z3Q2TU5JWmxWTXpRdjM4a3h6K3J2ZlBNakdSWkpBejJWRjJhRnhhb1UwcS9BPT0hdjE=?share_link_id=211148927232)
 - [Figma](https://www.figma.com/design/RiuDMv1oV24M95TdV43Yjf/BroadBoard?node-id=0-1&p=f&t=GjVTFzmFC96vlobo-0)
 
+## Быстрый старт
+
+```bash
+git clone https://github.com/sorrtory/VKEdu-Project.git
+cd VKEdu-Project
+cp .env.example .env
+# заменить рекомендуемые переменные в .env.production
+cp .env.example .env.production
+yarn install
+
+# Локально без докера
+yarn dev:infra
+yarn dev:agent
+yarn dev
+
+# Локально в докере
+yarn prod:infra
+yarn prod:agent
+yarn prod:web
+
+# На проде (после изменения .env.production)
+yarn prod
+```
+
+### Установка зависимостей
+
+```bash
+# Клонируем репозиторий
+git clone https://github.com/sorrtory/VKEdu-Project.git
+
+# Обновляем систему
+sudo apt update -y && sudo apt upgrade -y
+
+## Установка Node.js и modern Yarn
+curl -o- https://fnm.vercel.app/install | bash
+fnm install 22
+corepack enable yarn
+corepack prepare yarn@4.14.1 --activate
+
+## Установка Docker
+curl -fsSL https://get.docker.com -o get-docker.sh | sh
+
+## Для запуска через docker: git-crypt для работы с зашифрованными секретами
+sudo apt install git-crypt
+mkdir -p ~/.local/share/git-crypt && chmod 700 ~/.local/share/git-crypt
+### Скопируйте файл broadboard.key в ~/.local/share/git-crypt
+### Например, с помощью scp:
+scp ~/.local/share/git-crypt/broadboard.key user@host:~/.local/share/git-crypt/
+chmod 600 ~/.local/share/git-crypt/broadboard.key
+cd VKEdu-Project
+git-crypt unlock ~/.local/share/git-crypt/broadboard.key
+```
+
+### Запуск приложения
+
+```bash
+# Подготовка окружения
+cp .env.example .env
+# Необходимо отредактировать .env.production, указав в нем описаные внутри переменные
+cp .env.example .env.production
+
+# Установка зависимостей
+yarn install
+
+# Запуск в докере (.production подразумевает под собой запуск в докере)
+yarn prod
+
+# Запуск инфраструктуры (PostgreSQL, Redis, Kafka)
+yarn dev:infra
+
+# Запуск в режиме разработки (без докера)
+yarn dev
+
+## Livekit Agent
+yarn dev:agent
+
+## Бекенд
+yarn workspace backend prestart:dev  # генерирует Prisma Client
+yarn workspace backend seed          # заполняет базу тестовыми данными
+yarn workspace backend dev           # запускает NestJS с hot reload
+firefox http://localhost:3000/api    # Swagger UI
+
+## Фронтенд
+yarn workspace frontend build
+yarn workspace frontend start
+```
+
 ## Наша команда
 
 BroadBoard Team
@@ -30,6 +117,6 @@ BroadBoard Team
 | Роль  | Имя                                              |
 | ----- | ------------------------------------------------ |
 | Фронт | [Яковлев Сергей](https://github.com/StrayDog31)  |
-| Бек   | [Марышев Иван](https://github.com/ivanmaryshev)  |
+| Бек ✝ | [Марышев Иван](https://github.com/ivanmaryshev)  |
 | ИИ    | [Носков Алексей](https://github.com/eulerspoon)  |
 | ПМ    | [Федуков Александр](https://github.com/sorrtory) |
