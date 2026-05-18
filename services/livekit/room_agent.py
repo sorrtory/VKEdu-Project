@@ -61,11 +61,10 @@ async def entrypoint(ctx: JobContext):
                 "id": str(uuid.uuid4()),
             }
             payload = json.dumps(response_data).encode("utf-8")
-            data_packet = DataPacket(
+            await ctx.room.local_participant.publish_data(
+                payload,
                 topic="agent-response",
-                data=payload,
             )
-            await ctx.room.local_participant.publish_data(data_packet)
             logger.info("AGENT RESPONSE SENT TO CHAT: %s", response_text)
         except Exception:
             logger.exception("Failed to send response to chat")
