@@ -78,6 +78,13 @@ async def entrypoint(ctx: JobContext):
         if data is None:
             return
 
+        if dp.topic == "agent-response":
+            return
+
+        sender = getattr(dp, "participant", None)
+        if sender and get_participant_identity(sender) == agent_identity:
+            return
+
         text = str(data.get("message") or "").strip()
         if not text:
             return
@@ -91,8 +98,6 @@ async def entrypoint(ctx: JobContext):
             seen_chat_ids.add(chat_id)
 
         room_chat_sequence += 1
-
-        sender = getattr(dp, "participant", None)
 
         logger.info(
             "CHAT MESSAGE RECEIVED: topic=%s sequence=%s room_id=%s "
@@ -115,6 +120,9 @@ async def entrypoint(ctx: JobContext):
             chat_timestamp=data.get("timestamp"),
             livekit_topic=dp.topic,
         )
+
+        mock_response = "Привет! Я агент. Это тестовый ответ."
+        asyncio.create_task(send_response_to_chat(mock_response))
 
     async def start_participant_session(
         participant_ctx: JobContext,
