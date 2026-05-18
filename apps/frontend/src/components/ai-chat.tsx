@@ -1,26 +1,31 @@
 'use client';
 
-import React, { useEffect, useState } from 'react';
-import { useChat } from '@livekit/components-react';
+import React, { useEffect, useState, useRef } from 'react';
+import { useChat, useRoomContext } from '@livekit/components-react';
+import { RoomEvent } from 'livekit-client';
 import type { ReceivedChatMessage } from '@livekit/components-react';
 
 interface AgentMessage {
   text: string;
   timestamp: number;
   isFromUser: boolean;
+  id: string;
 }
 
 export default function CustomChat() {
   const { chatMessages, send } = useChat();
+  const room = useRoomContext();
   const [activeTab, setActiveTab] = useState<'general' | 'agent'>('general');
   const [inputValue, setInputValue] = useState('');
   const [agentMessages, setAgentMessages] = useState<AgentMessage[]>([]);
+  const agentMessagesRef = useRef<Set<string>>(new Set());
   
   const agentIdentity = process.env.NEXT_PUBLIC_LIVEKIT_AGENT_NAME;
 
+  // General chat: all messages except direct agent responses
   const generalMessages = chatMessages.filter((msg) => {
-    const isFromAgent = msg.from?.identity === agentIdentity;
-    return !isFromAgent;
+    const isAgentResponse = msg.from?.identity === agentIdentity && msg.destinationIdentities && msg.destinationIdentities.length > 0;
+    return !isAgentResponse;
   });
 
   const handleSendMessage = async () => {
@@ -29,31 +34,80 @@ export default function CustomChat() {
     if (activeTab === 'general') {
       await send(inputValue);
     } else {
+      // Send to agent with destinationIdentities
       if (!agentIdentity) return;
 
+      const messageId = `${Date.now()}-${Math.random()}`;
       await send(inputValue, { destinationIdentities: [agentIdentity] });
       
       setAgentMessages(prev => [...prev, {
         text: inputValue,
         timestamp: Date.now(),
-        isFromUser: true
+        isFromUser: true,
+        id: messageId,
       }]);
+      agentMessagesRef.current.add(messageId);
     }
     setInputValue('');
   };
 
+  // Listen for agent responses on the agent-response data channel
   useEffect(() => {
-    const agentMsgs = chatMessages.filter(msg => msg.from?.identity === agentIdentity);
-    agentMsgs.forEach(msg => {
-      if (!agentMessages.some(agentMsg => agentMsg.timestamp === msg.timestamp)) {
+    if (!room) return;
+
+    const onDataReceived = (payload: Uint8Array) => {
+      try {
+        const decoded = new TextDecoder().decode(payload);
+        const data = JSON.parse(decoded);
+
+        if (data.from_agent && data.message) {
+          const messageId = data.id || `agent-${data.timestamp}`;
+          
+          if (!agentMessagesRef.current.has(messageId)) {
+            setAgentMessages(prev => [...prev, {
+              text: data.message,
+              timestamp: data.timestamp || Date.now(),
+              isFromUser: false,
+              id: messageId,
+            }]);
+            agentMessagesRef.current.add(messageId);
+          }
+        }
+      } catch (error) {
+        console.error('Failed to parse agent response:', error);
+      }
+    };
+
+    // Note: In real scenario, we would filter by topic, but LiveKit's data channel 
+    // broadcasts all messages. Agent responses come with from_agent flag.
+    room.on(RoomEvent.DataReceived, onDataReceived);
+
+    return () => {
+      room.off(RoomEvent.DataReceived, onDataReceived);
+    };
+  }, [room]);
+
+  // Also listen to regular chat messages that are responses to agent
+  useEffect(() => {
+    const agentResponses = chatMessages.filter(msg => 
+      msg.from?.identity === agentIdentity && 
+      msg.destinationIdentities && 
+      msg.destinationIdentities.length > 0
+    );
+    
+    agentResponses.forEach(msg => {
+      const msgId = `${msg.from?.identity}-${msg.timestamp}`;
+      if (!agentMessagesRef.current.has(msgId)) {
         setAgentMessages(prev => [...prev, {
           text: msg.message,
           timestamp: msg.timestamp,
-          isFromUser: false
+          isFromUser: false,
+          id: msgId,
         }]);
+        agentMessagesRef.current.add(msgId);
       }
     });
-  }, [chatMessages, agentMessages, agentIdentity]);
+  }, [chatMessages, agentIdentity]);
 
   const getCurrentMessages = (): (ReceivedChatMessage | AgentMessage)[] => {
     if (activeTab === 'general') {
@@ -86,7 +140,7 @@ export default function CustomChat() {
             fontWeight: activeTab === 'general' ? 'bold' : 'normal'
           }}
         >
-          Общий чат
+          Общий чат ({generalMessages.length})
         </button>
         <button
           onClick={() => setActiveTab('agent')}
@@ -100,14 +154,14 @@ export default function CustomChat() {
             fontWeight: activeTab === 'agent' ? 'bold' : 'normal'
           }}
         >
-          AI Агент
+          AI Агент ({agentMessages.length})
         </button>
       </div>
 
       <div style={{ flex: 1, overflowY: 'auto', padding: '16px', display: 'flex', flexDirection: 'column', gap: '12px' }}>
         {getCurrentMessages().map((msg, idx) => {
           const isUserMessage = isReceivedChatMessage(msg) 
-            ? msg.from?.identity !== agentIdentity
+            ? msg.from?.identity !== agentIdentity && (!msg.destinationIdentities || msg.destinationIdentities.length === 0)
             : msg.isFromUser;
           
           const messageText = isReceivedChatMessage(msg) ? msg.message : msg.text;

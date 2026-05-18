@@ -25,7 +25,7 @@ interface ConferenceRoomProps {
   creatorId: string;
 }
 
-function RoomContent({ creatorId }: { creatorId: string }) {
+function RoomContent({ creatorId, roomName }: { creatorId: string; roomName: string }) {
   const layoutContext = useCreateLayoutContext();
   const cameraTracks = useTracks(
     [{ source: Track.Source.Camera, withPlaceholder: true }],
@@ -84,7 +84,7 @@ function RoomContent({ creatorId }: { creatorId: string }) {
           }}
         >
           <div style={{ minHeight: 0, borderRadius: '10px', overflow: 'hidden' }}>
-            <ExcalidrawBoard creatorIdentity={creatorId} />
+            <ExcalidrawBoard creatorIdentity={creatorId} roomName={roomName} />
           </div>
 
           <div
@@ -148,7 +148,7 @@ export default function ConferenceRoom({
         data-lk-theme="default"
         onDisconnected={handleDisconnect}
       >
-        <RoomContent creatorId={creatorId} />
+        <RoomContent creatorId={creatorId} roomName={roomName} />
         <RoomAudioRenderer />
       </LiveKitRoom>
     </div>

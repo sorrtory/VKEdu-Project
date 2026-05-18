@@ -1,5 +1,7 @@
+import asyncio
 import json
 import logging
+import uuid
 
 from livekit.agents import (
     Agent,
@@ -23,6 +25,7 @@ from config import (
 )
 from faster_whisper_stt import FasterWhisperSTT
 from kafka_events import KafkaEventPublisher
+from kafka_response_consumer import KafkaChatResponseConsumer
 from livekit_refs import (
     get_participant_id,
     get_participant_identity,
@@ -43,10 +46,34 @@ async def entrypoint(ctx: JobContext):
 
     room_id = await resolve_room_id(ctx)
     room_name = get_room_name(ctx)
+    agent_identity = ctx.agent.identity or "agent"
     publisher = KafkaEventPublisher()
+    
+    # Start consuming chat responses from Kafka
+    response_consumer = KafkaChatResponseConsumer(room_name, agent_identity)
+    
     room_speech_sequence = 0
     room_chat_sequence = 0
     seen_chat_ids: set[str] = set()
+
+    async def send_response_to_chat(response_text: str):
+        """Send agent response back to the chat."""
+        try:
+            response_data = {
+                "message": response_text,
+                "timestamp": int(asyncio.get_event_loop().time() * 1000),
+                "from_agent": True,
+                "id": str(uuid.uuid4()),
+            }
+            payload = json.dumps(response_data).encode("utf-8")
+            data_packet = DataPacket(
+                topic="agent-response",
+                data=payload,
+            )
+            await ctx.room.local_participant.publish_data(data_packet)
+            logger.info("AGENT RESPONSE SENT TO CHAT: %s", response_text)
+        except Exception:
+            logger.exception("Failed to send response to chat")
 
     @ctx.room.on("data_received")
     def on_data_received(dp: DataPacket):
@@ -103,6 +130,9 @@ async def entrypoint(ctx: JobContext):
         return
 
     logger.info("Participant joined: %s", participant.identity)
+
+    # Start consuming chat responses from Kafka
+    await response_consumer.start(send_response_to_chat)
 
     session = AgentSession(
         stt=build_stt(),
@@ -188,6 +218,7 @@ async def entrypoint(ctx: JobContext):
         logger.exception("Session error")
     finally:
         publisher.flush()
+        await response_consumer.stop()
 
 
 def parse_data_packet(dp: DataPacket) -> dict | None:

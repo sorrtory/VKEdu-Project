@@ -8,13 +8,16 @@ import { useLocalParticipant, useRoomContext } from '@livekit/components-react';
 
 interface ExcalidrawBoardProps {
   creatorIdentity: string;
+  roomName: string;
 }
 
-export default function ExcalidrawBoard({ creatorIdentity }: ExcalidrawBoardProps) {
+export default function ExcalidrawBoard({ creatorIdentity, roomName }: ExcalidrawBoardProps) {
   const room = useRoomContext();
   const { localParticipant } = useLocalParticipant();
   const [excalidrawAPI, setExcalidrawAPI] = useState<ExcalidrawImperativeAPI | null>(null);
   const sendTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const snapshotTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const lastSnapshotTimeRef = useRef<number>(0);
   
   const isCreator = localParticipant.identity === creatorIdentity;
   const canEdit = isCreator;
@@ -36,8 +39,10 @@ export default function ExcalidrawBoard({ creatorIdentity }: ExcalidrawBoardProp
         const sceneData = JSON.parse(decoded);
         
         if (sceneData.elements && Array.isArray(sceneData.elements)) {
-          // Используем as any для обхода проблем с типами (данные приходят с сервера в правильном формате)
-          excalidrawAPI.updateScene({ elements: sceneData.elements as any });
+          // Type assertion needed due to Excalidraw API complexity
+          excalidrawAPI.updateScene({
+            elements: sceneData.elements as Parameters<typeof excalidrawAPI.updateScene>[0]['elements'],
+          });
         }
       } catch (error) {
         console.error('Failed to apply whiteboard update:', error);
@@ -70,12 +75,87 @@ export default function ExcalidrawBoard({ creatorIdentity }: ExcalidrawBoardProp
         console.error('Failed to send whiteboard update:', error);
       }
     }, 80);
+
+    // Schedule board snapshot (debounced with longer interval)
+    if (snapshotTimeoutRef.current) {
+      clearTimeout(snapshotTimeoutRef.current);
+    }
+
+    snapshotTimeoutRef.current = setTimeout(() => {
+      void submitBoardSnapshot();
+    }, 2000); // Wait 2 seconds after last change before capturing
+  };
+
+  const submitBoardSnapshot = async () => {
+    if (!canEdit || !excalidrawAPI) {
+      return;
+    }
+
+    try {
+      // Prevent sending snapshots too frequently (max once per 5 seconds)
+      const now = Date.now();
+      if (now - lastSnapshotTimeRef.current < 5000) {
+        return;
+      }
+      lastSnapshotTimeRef.current = now;
+
+      // Export canvas as PNG blob
+      const canvas = document.querySelector(
+        '.excalidraw-container canvas'
+      ) as HTMLCanvasElement;
+      
+      if (!canvas) {
+        console.warn('Canvas element not found');
+        return;
+      }
+
+      canvas.toBlob(async (blob) => {
+        if (!blob) {
+          console.error('Failed to create canvas blob');
+          return;
+        }
+
+        const reader = new FileReader();
+        reader.onload = async (event) => {
+          const base64 = (event.target?.result as string).split(',')[1]; // Remove data:image/png;base64, prefix
+          if (!base64) {
+            console.error('Failed to convert canvas to base64');
+            return;
+          }
+
+          try {
+            const response = await fetch('/api/conference/board/snapshot', {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+              },
+              body: JSON.stringify({
+                conferenceId: roomName,
+                imageBase64: base64,
+              }),
+            });
+
+            if (!response.ok) {
+              console.error('Failed to submit board snapshot:', response.statusText);
+            }
+          } catch (error) {
+            console.error('Failed to submit board snapshot:', error);
+          }
+        };
+        reader.readAsDataURL(blob);
+      }, 'image/png', 0.8);
+    } catch (error) {
+      console.error('Failed to capture board snapshot:', error);
+    }
   };
 
   useEffect(() => {
     return () => {
       if (sendTimeoutRef.current) {
         clearTimeout(sendTimeoutRef.current);
+      }
+      if (snapshotTimeoutRef.current) {
+        clearTimeout(snapshotTimeoutRef.current);
       }
     };
   }, []);

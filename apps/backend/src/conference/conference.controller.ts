@@ -1,13 +1,19 @@
 import { Body, Controller, Post } from "@nestjs/common"
 import { ConferenceService } from "./conference.service"
+import { KafkaProducerService } from "../kafka/kafka-producer.service"
+import { SubmitBoardSnapshotDto } from "./dto/submit-board-snapshot.dto"
+import { BoardSnapshotEventDto } from "../kafka/dto/board-snapshot.dto"
 
 @Controller("conference")
 export class ConferenceController {
-  constructor(private ConferenceService: ConferenceService) {}
+  constructor(
+    private conferenceService: ConferenceService,
+    private kafkaProducerService: KafkaProducerService,
+  ) {}
 
   @Post("create")
   async createConference(@Body() body: { conferenceName: string }) {
-    await this.ConferenceService.createConference(body.conferenceName)
+    await this.conferenceService.createConference(body.conferenceName)
     return { success: true }
   }
 
@@ -15,7 +21,7 @@ export class ConferenceController {
   async generateToken(
     @Body() body: { conferenceName: string; participantName: string },
   ) {
-    const result = await this.ConferenceService.generateToken(
+    const result = await this.conferenceService.generateToken(
       body.conferenceName,
       body.participantName,
       true,
@@ -32,7 +38,7 @@ export class ConferenceController {
       targettName: string
     },
   ) {
-    await this.ConferenceService.onMicro(
+    await this.conferenceService.onMicro(
       body.conferenceName,
       body.callertName,
       body.targettName,
@@ -49,7 +55,7 @@ export class ConferenceController {
       targettName: string
     },
   ) {
-    await this.ConferenceService.onCam(
+    await this.conferenceService.onCam(
       body.conferenceName,
       body.callertName,
       body.targettName,
@@ -66,7 +72,7 @@ export class ConferenceController {
       targettName: string
     },
   ) {
-    await this.ConferenceService.offMicro(
+    await this.conferenceService.offMicro(
       body.conferenceName,
       body.callertName,
       body.targettName,
@@ -83,11 +89,22 @@ export class ConferenceController {
       targettName: string
     },
   ) {
-    await this.ConferenceService.offCam(
+    await this.conferenceService.offCam(
       body.conferenceName,
       body.callertName,
       body.targettName,
     )
     return { success: true }
+  }
+
+  @Post("board/snapshot")
+  submitBoardSnapshot(@Body() dto: SubmitBoardSnapshotDto) {
+    const boardEvent: BoardSnapshotEventDto = {
+      conferenceId: dto.conferenceId,
+      imageBase64: dto.imageBase64,
+      capturedAt: new Date().toISOString(),
+    }
+    this.kafkaProducerService.emitBoardSnapshot(boardEvent)
+    return { success: true, capturedAt: boardEvent.capturedAt }
   }
 }

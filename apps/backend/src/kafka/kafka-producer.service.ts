@@ -7,6 +7,7 @@ import {
 import { ClientKafka } from "@nestjs/microservices"
 import { HelloEventDto } from "./dto/hello-event.dto"
 import { TextContextEventDto } from "./dto/context-event.dto"
+import { BoardSnapshotEventDto } from "./dto/board-snapshot.dto"
 
 @Injectable()
 export class KafkaProducerService implements OnModuleInit, OnModuleDestroy {
@@ -28,6 +29,10 @@ export class KafkaProducerService implements OnModuleInit, OnModuleDestroy {
   }
 
   emitTextContextEvent(payload: TextContextEventDto) {
-    console.error("Unimplemented: emitTextContextEvent", payload)
+    this.kafkaClient.emit("context.text", payload)
+  }
+
+  emitBoardSnapshot(payload: BoardSnapshotEventDto) {
+    this.kafkaClient.emit("board.snapshot", payload)
   }
 }
