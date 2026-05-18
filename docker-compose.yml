@@ -154,6 +154,8 @@ services:
       - app-network
 
   mlin:
+    image: ${APP_IMAGE_PREFIX:-ghcr.io/sorrtory/vkedu-project}-mlin:${APP_IMAGE_TAG:-latest}
+    pull_policy: ${APP_IMAGE_PULL_POLICY:-missing}
     profiles: ["ml"]
     build:
       context: ./services/ml/MLin
@@ -173,6 +175,8 @@ services:
       - app-network
 
   mlout:
+    image: ${APP_IMAGE_PREFIX:-ghcr.io/sorrtory/vkedu-project}-mlout:${APP_IMAGE_TAG:-latest}
+    pull_policy: ${APP_IMAGE_PULL_POLICY:-missing}
     profiles: ["ml"]
     build:
       context: ./services/ml/MLout
@@ -207,6 +211,8 @@ services:
         tail -f /dev/null
 
   agent:
+    image: ${APP_IMAGE_PREFIX:-ghcr.io/sorrtory/vkedu-project}-agent:${APP_IMAGE_TAG:-latest}
+    pull_policy: ${APP_IMAGE_PULL_POLICY:-missing}
     build:
       context: .
       dockerfile: infra/docker/livekit-agent.Dockerfile
@@ -223,6 +229,8 @@ services:
     restart: unless-stopped
 
   backend:
+    image: ${APP_IMAGE_PREFIX:-ghcr.io/sorrtory/vkedu-project}-backend:${APP_IMAGE_TAG:-latest}
+    pull_policy: ${APP_IMAGE_PULL_POLICY:-missing}
     profiles: ["web"]
     build:
       context: .
@@ -244,6 +252,8 @@ services:
       - .env.production
 
   frontend:
+    image: ${APP_IMAGE_PREFIX:-ghcr.io/sorrtory/vkedu-project}-frontend:${APP_IMAGE_TAG:-latest}
+    pull_policy: ${APP_IMAGE_PULL_POLICY:-missing}
     profiles: ["web"]
     build:
       context: .

@@ -1,4 +1,4 @@
-name: Deploy production
+name: Deploy published production
 
 on:
   workflow_dispatch:
@@ -8,7 +8,11 @@ on:
         required: false
         default: "deploy"
         type: string
-  push:
+  workflow_run:
+    workflows:
+      - Build and publish containers
+    types:
+      - completed
     branches:
       - deploy
 
@@ -20,10 +24,13 @@ concurrency:
 
 jobs:
   deploy:
-    name: Deploy over SSH
+    name: Deploy published images over SSH
     runs-on: ubuntu-latest
     environment: production
     timeout-minutes: 30
+    if: >-
+      github.event_name == 'workflow_dispatch' ||
+      github.event.workflow_run.conclusion == 'success'
 
     steps:
       - name: Deploy on remote server
@@ -34,7 +41,7 @@ jobs:
           PROD_SSH_PORT: ${{ secrets.PROD_SSH_PORT || '22' }}
           PROD_PROJECT_PATH: ${{ secrets.PROD_PROJECT_PATH || '/home/deploy/broadboard' }}
           PROD_GIT_CRYPT_KEY_PATH: ${{ secrets.PROD_GIT_CRYPT_KEY_PATH || '' }}
-          PROD_BRANCH: ${{ inputs.branch || github.ref_name }}
+          PROD_BRANCH: ${{ github.event.workflow_run.head_branch || inputs.branch || 'deploy' }}
         run: |
           set -euo pipefail
 
@@ -82,6 +89,9 @@ jobs:
             -i ~/.ssh/prod_deploy_key \
             -p "${PROD_SSH_PORT}" \
             -o IdentitiesOnly=yes \
+            -o ServerAliveInterval=30 \
+            -o ServerAliveCountMax=20 \
+            -o TCPKeepAlive=yes \
             "${PROD_SSH_USER}@${PROD_SSH_HOST}" \
             "PROD_PROJECT_PATH='${PROD_PROJECT_PATH}' PROD_BRANCH='${PROD_BRANCH}' PROD_GIT_CRYPT_KEY_PATH='${PROD_GIT_CRYPT_KEY_PATH}' bash -se" <<'REMOTE'
           set -euo pipefail
@@ -142,6 +152,7 @@ jobs:
           docker compose version
 
           yarn install --immutable
+          yarn prod:down
           yarn prod
 
           docker compose \

@@ -1,9 +1,9 @@
 # Production runbook
 
-Этот документ описывает минимальный production-запуск MVP на одном сервере через Docker Compose. Текущий прод-режим проекта запускается командой `yarn prod`, которая читает оба файла окружения:
+Этот документ описывает минимальный production-запуск MVP на одном сервере через Docker Compose. Текущий прод-режим проекта запускается командой `yarn prod`, которая читает оба файла окружения и подтягивает published images из GHCR:
 
 ```bash
-docker compose --env-file .env --env-file .env.production -f docker-compose.yml --profile infra --profile livekit --profile web --profile ml up -d --build
+docker compose --env-file .env --env-file .env.production -f docker-compose.yml --profile infra --profile livekit --profile web --profile ml up -d --pull always
 ```
 
 ## Что должно быть на сервере
@@ -15,11 +15,13 @@ docker compose --env-file .env --env-file .env.production -f docker-compose.yml 
 - Репозиторий склонирован, например в `/opt/broadboard/VKEdu-Project`.
 - В корне проекта созданы `.env` и `.env.production`.
 - TLS-сертификаты лежат в `infra/nginx/certs/` или смонтированы туда другим способом.
+- GHCR packages с app-образами сделаны public, чтобы production-сервер мог
+  выполнять pull без `docker login`.
 
 LiveKit использует `/rtc/` для WebSocket-сигналинга через nginx, но медиа идет отдельными WebRTC-портами. Поэтому для звонков недостаточно открыть только `443`: TCP-порт `7881`, UDP-диапазон `8000-8010` и TURN-порты тоже должны быть доступны снаружи.
 
 Для максимально простого MVP используем тот же домен для TURN/TLS:
-`LIVEKIT_TURN_DOMAIN=broadboard.example`. TURN/TLS будет работать на отдельном
+`LIVEKIT_TURN_DOMAIN=broadboard.ru`. TURN/TLS будет работать на отдельном
 порту `5349/tcp`, а `443/tcp` останется за nginx для сайта и `/rtc`.
 
 Встроенного TURN/STUN сервера LiveKit достаточно для текущего self-hosted MVP;
@@ -51,8 +53,8 @@ yarn prod
 
 ```bash
 docker compose --env-file .env --env-file .env.production -f docker-compose.yml --profile infra --profile livekit --profile web --profile ml ps
-curl -I https://broadboard.example
-curl -I https://broadboard.example/api/api
+curl -I https://broadboard.ru
+curl -I https://broadboard.ru/api/api
 ```
 
 ## Пример `.env`
@@ -61,6 +63,9 @@ curl -I https://broadboard.example/api/api
 
 ```dotenv
 NODE_ENV=production
+APP_IMAGE_PREFIX=ghcr.io/sorrtory/vkedu-project
+APP_IMAGE_TAG=latest
+APP_IMAGE_PULL_POLICY=always
 
 BACKEND_DATABASE_HOST=postgres
 BACKEND_KAFKA_HOST=broker
@@ -137,19 +142,19 @@ KAFKA_BOOTSTRAP_SERVERS=broker:9092
 REDIS_HOST=redis
 DATABASE_URL=postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}
 
-NEXT_PUBLIC_LIVEKIT_URL=wss://broadboard.example/rtc
-NEXT_PUBLIC_BACKEND_URL=https://broadboard.example/api
+NEXT_PUBLIC_LIVEKIT_URL=wss://broadboard.ru/rtc
+NEXT_PUBLIC_BACKEND_URL=https://broadboard.ru/api
 FRONTEND_INTERNAL_BACKEND_URL=http://backend:3000
 
 LIVEKIT_RTC_USE_EXTERNAL_IP=true
 LIVEKIT_TURN_ENABLED=true
-LIVEKIT_TURN_DOMAIN=broadboard.example
+LIVEKIT_TURN_DOMAIN=broadboard.ru
 LIVEKIT_TURN_CERT_FILE=/etc/livekit/certs/certificate.crt
 LIVEKIT_TURN_KEY_FILE=/etc/livekit/certs/certificate.key
 
 NGINX_HTTP_PORT=80
 NGINX_HTTPS_PORT=443
-NGINX_SERVER_NAME=broadboard.example www.broadboard.example
+NGINX_SERVER_NAME=broadboard.ru www.broadboard.ru
 NGINX_REDIRECT_TO_HTTPS=true
 NGINX_FRONTEND_UPSTREAM=frontend:3001
 NGINX_BACKEND_UPSTREAM=backend:3000
@@ -182,7 +187,9 @@ NGINX_SSL_CERTIFICATE_KEY=/etc/nginx/certs/certificate.key
 
 ## GitHub Actions деплой
 
-Workflow находится в `.github/workflows/deploy-prod.yml`. Он заходит на сервер по SSH, делает `git pull --ff-only`, устанавливает зависимости и запускает `yarn prod`.
+Основной workflow находится в `.github/workflows/deploy-published-prod.yml`. После успешного `.github/workflows/build-publish-containers.yml` на ветке `deploy` он заходит на сервер по SSH, обновляет ветку `deploy`, разблокирует `git-crypt`, останавливает старый compose stack через `yarn prod:down` и запускает новый через `yarn prod`.
+
+Ручной workflow `.github/workflows/ssh-build-prod.yml` оставлен как fallback для SSH-деплоя через `workflow_dispatch`.
 
 В GitHub нужно настроить environment `production` и secrets:
 
@@ -196,7 +203,38 @@ PROD_PROJECT_PATH=/opt/broadboard/VKEdu-Project
 
 На сервере публичный ключ из `PROD_SSH_PRIVATE_KEY` должен быть добавлен в `~deploy/.ssh/authorized_keys`, а пользователь `deploy` должен иметь доступ к Docker.
 
-Workflow запускается автоматически при push в `main` и вручную через `workflow_dispatch`, где можно указать branch.
+Основной deploy запускается автоматически после успешной публикации контейнеров из ветки `deploy` и вручную через `workflow_dispatch`, где можно указать branch. Production deploy намеренно отказывается деплоить ветки кроме `deploy`.
+
+## GitHub Container Registry
+
+Workflow `.github/workflows/build-publish-containers.yml` собирает и публикует собственные контейнеры проекта в GitHub Container Registry:
+
+- `ghcr.io/<owner>/<repo>-backend`
+- `ghcr.io/<owner>/<repo>-frontend`
+- `ghcr.io/<owner>/<repo>-agent`
+- `ghcr.io/<owner>/<repo>-mlin`
+- `ghcr.io/<owner>/<repo>-mlout`
+
+Он запускается вручную, при push в `main` или `deploy`, и при tag вида `v*`. Для ветки `deploy` дополнительно публикуется tag `latest`; для всех запусков публикуются branch/tag refs и `sha-<commit>`.
+
+Для публикации в GHCR отдельный personal access token не нужен, если контейнеры публикуются в registry этого же репозитория: workflow использует встроенный `${{ secrets.GITHUB_TOKEN }}` и разрешение `packages: write`.
+
+В настройках GitHub проверьте:
+
+- `Settings -> Actions -> General -> Workflow permissions`: workflows могут получать write permissions.
+- `Settings -> Actions -> General -> Allow GitHub Actions to create and approve pull requests` не требуется для этого workflow.
+- После первого publish откройте каждый package в `Packages -> Package settings -> Danger Zone -> Change visibility` и выберите `Public`. Для public container packages production-сервер сможет делать pull анонимно, без `docker login ghcr.io`.
+
+Для frontend build workflow использует production-safe defaults. Их можно переопределить через variables в environment `production`:
+
+```text
+NEXT_PUBLIC_LIVEKIT_URL=wss://broadboard.ru/rtc
+NEXT_PUBLIC_LIVEKIT_ROOM=my-room
+NEXT_PUBLIC_LIVEKIT_AGENT_NAME=default-agent
+NEXT_PUBLIC_BACKEND_URL=https://broadboard.ru/api
+```
+
+Это не секреты: `NEXT_PUBLIC_*` попадают в клиентский bundle. Production secrets вроде `DATABASE_URL`, JWT secret, LiveKit secret и S3 keys не нужны для сборки образов и должны оставаться только в `.env` / `.env.production` на сервере или в защищенном deployment environment.
 
 ## LiveKit checklist
 
