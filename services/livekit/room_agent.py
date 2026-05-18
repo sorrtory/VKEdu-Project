@@ -25,7 +25,7 @@ from config import (
 )
 from faster_whisper_stt import FasterWhisperSTT
 from kafka_events import KafkaEventPublisher
-from kafka_response_consumer import KafkaChatResponseConsumer
+# from kafka_response_consumer import KafkaChatResponseConsumer
 from livekit_refs import (
     get_participant_id,
     get_participant_identity,
@@ -47,10 +47,10 @@ async def entrypoint(ctx: JobContext):
     room_id = await resolve_room_id(ctx)
     room_name = get_room_name(ctx)
     agent_identity = ctx.agent.identity or "agent"
-    publisher = KafkaEventPublisher()
+    # publisher = KafkaEventPublisher()
     
     # Start consuming chat responses from Kafka
-    response_consumer = KafkaChatResponseConsumer(room_name, agent_identity)
+    # response_consumer = KafkaChatResponseConsumer(room_name, agent_identity)
     
     room_speech_sequence = 0
     room_chat_sequence = 0
@@ -139,7 +139,7 @@ async def entrypoint(ctx: JobContext):
     logger.info("Participant joined: %s", participant.identity)
 
     # Start consuming chat responses from Kafka
-    await response_consumer.start(send_response_to_chat)
+    # await response_consumer.start(send_response_to_chat)
 
     session = AgentSession(
         stt=build_stt(),
@@ -223,9 +223,9 @@ async def entrypoint(ctx: JobContext):
         )
     except Exception:
         logger.exception("Session error")
-    finally:
-        publisher.flush()
-        await response_consumer.stop()
+    # finally:
+        # publisher.flush()
+        # await response_consumer.stop()
 
 
 def parse_data_packet(dp: DataPacket) -> dict | None:
