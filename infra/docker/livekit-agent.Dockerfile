@@ -2,7 +2,7 @@ FROM ghcr.io/astral-sh/uv:python3.13-bookworm-slim
 
 WORKDIR /app
 
-RUN pip install --no-cache-dir livekit-agents
+RUN pip install --no-cache-dir livekit-agents openai
 
 COPY services/livekit/room_agent.py .
 COPY services/livekit/main_test.py .

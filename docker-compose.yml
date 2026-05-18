@@ -180,6 +180,9 @@ services:
       LIVEKIT_AGENT_LIVEKIT_URL: ws://livekit:7880
       LIVEKIT_URL: ws://livekit:7880
       KAFKA_BOOTSTRAP_SERVERS: broker:9092
+      LLM_API_KEY: ${LLM_API_KEY}
+      LLM_BASE_URL: ${LLM_BASE_URL}
+      LLM_MODEL: ${LLM_MODEL}
     networks:
       - app-network
     restart: unless-stopped
