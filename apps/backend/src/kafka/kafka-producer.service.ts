@@ -11,6 +11,7 @@ import {
   TextContextEventDto,
 } from "./dto/context-event.dto"
 import { ChatMessageEventDto } from "./dto/chat-message-event.dto"
+import { BoardSnapshotEventDto } from "./dto/board-snapshot.dto"
 
 @Injectable()
 export class KafkaProducerService implements OnModuleInit, OnModuleDestroy {
@@ -32,7 +33,11 @@ export class KafkaProducerService implements OnModuleInit, OnModuleDestroy {
   }
 
   emitTextContextEvent(payload: TextContextEventDto) {
-    console.error("Unimplemented: emitTextContextEvent", payload)
+    this.kafkaClient.emit("context.text", payload)
+  }
+
+  emitBoardSnapshot(payload: BoardSnapshotEventDto) {
+    this.kafkaClient.emit("board.snapshot", payload)
   }
 
   emitFileContextEvent(payload: FileContextEventDto) {

@@ -11,14 +11,20 @@ import {
 } from "@nestjs/common"
 import { FileInterceptor } from "@nestjs/platform-express"
 import { ConferenceService } from "./conference.service"
+import { KafkaProducerService } from "../kafka/kafka-producer.service"
+import { SubmitBoardSnapshotDto } from "./dto/submit-board-snapshot.dto"
+import { BoardSnapshotEventDto } from "../kafka/dto/board-snapshot.dto"
 
 @Controller("conference")
 export class ConferenceController {
-  constructor(private ConferenceService: ConferenceService) {}
+  constructor(
+    private conferenceService: ConferenceService,
+    private kafkaProducerService: KafkaProducerService,
+  ) {}
 
   @Post("create")
   async createConference(@Body() body: { conferenceName: string }) {
-    await this.ConferenceService.createConference(body.conferenceName)
+    await this.conferenceService.createConference(body.conferenceName)
     return { success: true }
   }
 
@@ -32,7 +38,7 @@ export class ConferenceController {
       throw new BadRequestException("file is required")
     }
 
-    const storedFile = await this.ConferenceService.uploadFile(
+    const storedFile = await this.conferenceService.uploadFile(
       conferenceName,
       file,
     )
@@ -49,7 +55,7 @@ export class ConferenceController {
       throw new BadRequestException("file query parameter is required")
     }
 
-    const result = await this.ConferenceService.createDownloadUrl(
+    const result = await this.conferenceService.createDownloadUrl(
       conferenceName,
       file,
     )
@@ -69,7 +75,7 @@ export class ConferenceController {
     const participantIdentity =
       body.participantIdentity?.trim() || body.participantName
 
-    const result = await this.ConferenceService.generateToken(
+    const result = await this.conferenceService.generateToken(
       body.conferenceName,
       participantIdentity,
       body.participantName,
@@ -87,7 +93,7 @@ export class ConferenceController {
       targettName: string
     },
   ) {
-    await this.ConferenceService.onMicro(
+    await this.conferenceService.onMicro(
       body.conferenceName,
       body.callertName,
       body.targettName,
@@ -104,7 +110,7 @@ export class ConferenceController {
       targettName: string
     },
   ) {
-    await this.ConferenceService.onCam(
+    await this.conferenceService.onCam(
       body.conferenceName,
       body.callertName,
       body.targettName,
@@ -121,7 +127,7 @@ export class ConferenceController {
       targettName: string
     },
   ) {
-    await this.ConferenceService.offMicro(
+    await this.conferenceService.offMicro(
       body.conferenceName,
       body.callertName,
       body.targettName,
@@ -138,11 +144,22 @@ export class ConferenceController {
       targettName: string
     },
   ) {
-    await this.ConferenceService.offCam(
+    await this.conferenceService.offCam(
       body.conferenceName,
       body.callertName,
       body.targettName,
     )
     return { success: true }
+  }
+
+  @Post("board/snapshot")
+  submitBoardSnapshot(@Body() dto: SubmitBoardSnapshotDto) {
+    const boardEvent: BoardSnapshotEventDto = {
+      conferenceId: dto.conferenceId,
+      imageBase64: dto.imageBase64,
+      capturedAt: new Date().toISOString(),
+    }
+    this.kafkaProducerService.emitBoardSnapshot(boardEvent)
+    return { success: true, capturedAt: boardEvent.capturedAt }
   }
 }
