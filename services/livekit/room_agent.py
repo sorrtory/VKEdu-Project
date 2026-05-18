@@ -19,6 +19,15 @@ client = openai.AsyncOpenAI(api_key=LLM_API_KEY, base_url=LLM_BASE_URL)
 
 MAX_HISTORY = 10  # последних сообщений в истории диалога
 
+SYSTEM_PROMPT = (
+    "Ты — агент-помощник платформы видеоконференций BroadBoard. "
+    "Твоя задача — кратко и по делу отвечать на вопросы пользователей на русском языке, "
+    "помогать им с вопросами касательно содержания конференции. "
+    "Тема конференции - лекция по математике."
+    "Отвечай на русском, не более 2-3 предложений, без лишних деталей. "
+    "Если не знаешь ответ или вопрос не по теме — так и скажи."
+)
+
 
 async def entrypoint(ctx: JobContext):
     logger.info("🔗 Joining room %s...", ctx.room.name)
@@ -61,27 +70,33 @@ async def entrypoint(ctx: JobContext):
             return "Извините, произошла ошибка."
 
     async def handle_chat_message(sender_identity: str, message: str):
-        """Полная обработка входящего сообщения: история → LLM → ответ."""
-        # 1. Обновляем историю
+        # 1. Инициализируем историю для нового участника, если её нет
         if sender_identity not in conversations:
             conversations[sender_identity] = []
+            # Добавляем системный промпт первым сообщением
+            conversations[sender_identity].append({"role": "system", "content": SYSTEM_PROMPT})
 
+        # 2. Добавляем сообщение пользователя
         conversations[sender_identity].append({"role": "user", "content": message})
 
-        # Ограничиваем длину истории
-        if len(conversations[sender_identity]) > MAX_HISTORY:
-            conversations[sender_identity] = conversations[sender_identity][-MAX_HISTORY:]
+        # Ограничиваем длину (оставляем системный промпт + последние реплики)
+        max_history = MAX_HISTORY
+        if len(conversations[sender_identity]) > max_history:
+            # Сохраняем первое системное сообщение
+            system_msg = conversations[sender_identity][0]
+            conversations[sender_identity] = [system_msg] + conversations[sender_identity][-(max_history - 1):]
 
-        # 2. Генерируем ответ
+        # 3. Генерируем ответ
         logger.info("🤖 Generating LLM response for %s", sender_identity)
         answer = await generate_llm_response(conversations[sender_identity])
 
-        # 3. Добавляем ответ в историю
+        # 4. Добавляем ответ в историю
         conversations[sender_identity].append({"role": "assistant", "content": answer})
-        if len(conversations[sender_identity]) > MAX_HISTORY:
-            conversations[sender_identity] = conversations[sender_identity][-MAX_HISTORY:]
+        if len(conversations[sender_identity]) > max_history:
+            system_msg = conversations[sender_identity][0]
+            conversations[sender_identity] = [system_msg] + conversations[sender_identity][-(max_history - 1):]
 
-        # 4. Отправляем ответ в чат
+        # 5. Отправляем ответ в чат
         await send_response_to_chat(answer)
 
     @ctx.room.on("data_received")
