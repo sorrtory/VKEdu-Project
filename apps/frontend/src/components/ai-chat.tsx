@@ -22,11 +22,9 @@ export default function CustomChat() {
   
   const agentIdentity = process.env.NEXT_PUBLIC_LIVEKIT_AGENT_NAME;
 
-  // General chat: all messages except direct agent responses
-  const generalMessages = chatMessages.filter((msg) => {
-    const isAgentResponse = msg.from?.identity === agentIdentity && msg.destinationIdentities && msg.destinationIdentities.length > 0;
-    return !isAgentResponse;
-  });
+  // General chat: all messages from the standard LiveKit chat API
+  // (Agent async responses come through DataReceived event, not standard chat)
+  const generalMessages = chatMessages;
 
   const handleSendMessage = async () => {
     if (!inputValue.trim()) return;
@@ -87,28 +85,6 @@ export default function CustomChat() {
     };
   }, [room]);
 
-  // Also listen to regular chat messages that are responses to agent
-  useEffect(() => {
-    const agentResponses = chatMessages.filter(msg => 
-      msg.from?.identity === agentIdentity && 
-      msg.destinationIdentities && 
-      msg.destinationIdentities.length > 0
-    );
-    
-    agentResponses.forEach(msg => {
-      const msgId = `${msg.from?.identity}-${msg.timestamp}`;
-      if (!agentMessagesRef.current.has(msgId)) {
-        setAgentMessages(prev => [...prev, {
-          text: msg.message,
-          timestamp: msg.timestamp,
-          isFromUser: false,
-          id: msgId,
-        }]);
-        agentMessagesRef.current.add(msgId);
-      }
-    });
-  }, [chatMessages, agentIdentity]);
-
   const getCurrentMessages = (): (ReceivedChatMessage | AgentMessage)[] => {
     if (activeTab === 'general') {
       return generalMessages;
@@ -161,7 +137,7 @@ export default function CustomChat() {
       <div style={{ flex: 1, overflowY: 'auto', padding: '16px', display: 'flex', flexDirection: 'column', gap: '12px' }}>
         {getCurrentMessages().map((msg, idx) => {
           const isUserMessage = isReceivedChatMessage(msg) 
-            ? msg.from?.identity !== agentIdentity && (!msg.destinationIdentities || msg.destinationIdentities.length === 0)
+            ? msg.from?.identity !== agentIdentity
             : msg.isFromUser;
           
           const messageText = isReceivedChatMessage(msg) ? msg.message : msg.text;
