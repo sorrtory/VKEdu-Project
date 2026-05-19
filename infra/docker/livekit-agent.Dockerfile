@@ -2,9 +2,13 @@ FROM ghcr.io/astral-sh/uv:python3.13-bookworm-slim
 
 WORKDIR /app
 
-RUN pip install --no-cache-dir livekit-agents openai
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    libgomp1 \
+    && rm -rf /var/lib/apt/lists/*
 
-COPY services/livekit/room_agent.py .
-COPY services/livekit/main_test.py .
+COPY services/livekit/pyproject.toml services/livekit/uv.lock ./
+RUN uv sync --frozen --no-dev
 
-CMD ["python", "main_test.py", "start"]
+COPY services/livekit/*.py ./
+
+CMD ["uv", "run", "--frozen", "main.py", "start"]

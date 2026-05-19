@@ -3,42 +3,83 @@ import json
 import logging
 import os
 import uuid
+import time
 
 import openai
-from livekit.agents import AutoSubscribe, JobContext
+from livekit.agents import (
+    AutoSubscribe,
+    JobContext,
+    AgentSession,
+    Agent,
+    TurnHandlingOptions,
+    ConversationItemAddedEvent,
+)
+from livekit.agents.llm import ChatMessage
+from livekit.plugins import silero
 from livekit.rtc import DataPacket
+
+# ─── Собственные модули ──────────────────────────────────────────
+from config import (
+    LOG_LEVEL,
+    SILENCE_DURATION,
+    KAFKA_BOOTSTRAP_SERVERS,
+    KAFKA_TRANSCRIPT_TOPIC,
+    KAFKA_CHAT_TOPIC,
+    WHISPER_MODEL_SIZE,
+    WHISPER_DEVICE,
+    WHISPER_COMPUTE_TYPE,
+    WHISPER_LANGUAGE,
+)
+from faster_whisper_stt import FasterWhisperSTT
+from kafka_events import KafkaEventPublisher
+from livekit_refs import (
+    get_participant_id,
+    get_participant_identity,
+    get_room_name,
+    resolve_room_id,
+)
+from llm import DummyLLM   # заглушка, чтобы AgentSession не пыталась генерировать ответ
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger("livekit-agent")
+logger.setLevel(LOG_LEVEL)
 
+# ─── Конфигурация LLM ────────────────────────────────────────────
 LLM_API_KEY = os.getenv("LLM_API_KEY", "your-api-key")
 LLM_BASE_URL = os.getenv("LLM_BASE_URL", "https://api.vsellm.ru/v1")
 LLM_MODEL = os.getenv("LLM_MODEL", "deepseek/deepseek-v4-flash")
 
 client = openai.AsyncOpenAI(api_key=LLM_API_KEY, base_url=LLM_BASE_URL)
 
-MAX_HISTORY = 10  # последних сообщений в истории диалога
-
+MAX_HISTORY = 10
 SYSTEM_PROMPT = (
     "Ты — агент-помощник платформы видеоконференций BroadBoard. "
     "Твоя задача — кратко и по делу отвечать на вопросы пользователей на русском языке, "
     "помогать им с вопросами касательно содержания конференции. "
-    "Тема конференции - лекция по математике."
+    "Тема конференции - лекция по математике. "
     "Отвечай на русском, не более 2-3 предложений, без лишних деталей. "
     "Если не знаешь ответ или вопрос не по теме — так и скажи."
 )
+
 
 async def entrypoint(ctx: JobContext):
     logger.info("🔗 Joining room %s...", ctx.room.name)
     await ctx.connect(auto_subscribe=AutoSubscribe.SUBSCRIBE_ALL)
     logger.info("✅ Joined room %s.", ctx.room.name)
 
+    room_id = await resolve_room_id(ctx)
+    room_name = get_room_name(ctx)
     agent_identity = ctx.agent.identity
+    publisher = KafkaEventPublisher()
 
+    # Счётчики и история диалогов
+    room_speech_sequence = 0
+    room_chat_sequence = 0
+    seen_chat_ids: set[str] = set()
     conversations: dict[str, list[dict[str, str]]] = {}
 
+    # ─── Вспомогательные функции ───────────────────────────────────
     async def send_response_to_chat(response_text: str):
-        """Отправка ответа в чат LiveKit."""
         try:
             response_data = {
                 "message": response_text,
@@ -53,7 +94,6 @@ async def entrypoint(ctx: JobContext):
             logger.exception("Failed to send response to chat")
 
     async def generate_llm_response(history: list[dict[str, str]]) -> str:
-        """Обращение к LLM и получение ответа."""
         try:
             response = await client.chat.completions.create(
                 model=LLM_MODEL,
@@ -61,41 +101,36 @@ async def entrypoint(ctx: JobContext):
                 temperature=0.7,
             )
             text = response.choices[0].message.content.strip()
-            if not text:
-                text = "Ответ не получен."
-            return text
+            return text if text else "Ответ не получен."
         except Exception:
             logger.exception("LLM generation failed")
             return "Извините, произошла ошибка."
 
     async def handle_chat_message(sender_identity: str, message: str):
-        """Полная обработка входящего сообщения: история → LLM → ответ."""
-        # 1. Обновляем историю
         if sender_identity not in conversations:
             conversations[sender_identity] = []
             conversations[sender_identity].append({"role": "system", "content": SYSTEM_PROMPT})
 
         conversations[sender_identity].append({"role": "user", "content": message})
 
-        # Ограничиваем длину истории
+        # Ограничиваем историю
         if len(conversations[sender_identity]) > MAX_HISTORY:
             conversations[sender_identity] = conversations[sender_identity][-MAX_HISTORY:]
 
-        # 2. Генерируем ответ
         logger.info("🤖 Generating LLM response for %s", sender_identity)
         answer = await generate_llm_response(conversations[sender_identity])
 
-        # 3. Добавляем ответ в историю
         conversations[sender_identity].append({"role": "assistant", "content": answer})
         if len(conversations[sender_identity]) > MAX_HISTORY:
             conversations[sender_identity] = conversations[sender_identity][-MAX_HISTORY:]
 
-        # 4. Отправляем ответ в чат
         await send_response_to_chat(answer)
 
+    # ─── Обработчик чата (DataPacket) ──────────────────────────────
     @ctx.room.on("data_received")
     def on_data_received(dp: DataPacket):
-        # Пропускаем свои ответы
+        nonlocal room_chat_sequence
+
         if dp.topic == "agent-response":
             return
         sender = getattr(dp, "participant", None)
@@ -113,10 +148,130 @@ async def entrypoint(ctx: JobContext):
         if not message:
             return
 
-        logger.info("💬 Chat message from %s: %s", sender.identity if sender else "?", message)
+        chat_id = data.get("id")
+        if chat_id and chat_id in seen_chat_ids:
+            return
+        if chat_id:
+            seen_chat_ids.add(chat_id)
 
-        # Асинхронно обрабатываем сообщение
-        asyncio.create_task(handle_chat_message(sender.identity if sender else "unknown", message))
+        room_chat_sequence += 1
+        sender_identity = get_participant_identity(sender) if sender else "unknown"
 
-    logger.info("⏳ Waiting for participants...")
-    await asyncio.Event().wait()
+        logger.info("💬 Chat message from %s: %s", sender_identity, message)
+
+        # Отправляем в Kafka
+        publisher.send_chat(
+            text=message,
+            room_id=room_id,
+            room_name=room_name,
+            participant_id=get_participant_id(sender),
+            participant_identity=sender_identity,
+            sequence=room_chat_sequence,
+            chat_id=chat_id,
+            chat_timestamp=data.get("timestamp"),
+            livekit_topic=dp.topic,
+        )
+
+        # Генерируем ответ через LLM
+        asyncio.create_task(handle_chat_message(sender_identity, message))
+
+    # ─── Ожидание участника ──────────────────────────────────────
+    logger.info("⏳ Waiting for participant...")
+    try:
+        participant = await ctx.wait_for_participant()
+    except RuntimeError:
+        logger.exception("Room disconnected while waiting for participant")
+        return
+    logger.info("👤 Participant joined: %s", participant.identity)
+
+    # ─── Инициализация сессии распознавания речи ─────────────────
+    whisper_stt = FasterWhisperSTT(
+        model_size=WHISPER_MODEL_SIZE,
+        device=WHISPER_DEVICE,
+        compute_type=WHISPER_COMPUTE_TYPE,
+        language=WHISPER_LANGUAGE,
+    )
+
+    session = AgentSession(
+        stt=whisper_stt,
+        llm=DummyLLM(),          # заглушка, чтобы избежать ошибки отсутствия LLM
+        vad=silero.VAD.load(),
+        turn_handling=TurnHandlingOptions(
+            turn_detection="vad",
+            endpointing={
+                "mode": "fixed",
+                "min_delay": SILENCE_DURATION,
+                "max_delay": 3.0,
+            },
+        ),
+    )
+    session.output.set_audio_enabled(False)
+
+    last_partial = ""
+
+    @session.on("user_input_transcribed")
+    def on_user_input_transcribed(event):
+        nonlocal last_partial, room_speech_sequence
+
+        text = event.transcript.strip()
+        if not text:
+            return
+
+        if event.is_final:
+            room_speech_sequence += 1
+
+            logger.info(
+                "FINAL SPEECH: sequence=%s room_id=%s participant_identity=%s text=%s",
+                room_speech_sequence,
+                room_id,
+                get_participant_identity(participant),
+                text,
+            )
+
+            last_partial = ""
+            publisher.send_speech(
+                text=text,
+                room_id=room_id,
+                room_name=room_name,
+                participant_id=get_participant_id(participant),
+                participant_identity=get_participant_identity(participant),
+                sequence=room_speech_sequence,
+            )
+        elif text != last_partial:
+            logger.info("CURRENT SPEECH: %s", text)
+            last_partial = text
+
+    @session.on("user_state_changed")
+    def on_user_state_changed(event):
+        logger.info("User state changed: %s -> %s", event.old_state, event.new_state)
+
+    @session.on("close")
+    def on_close(event):
+        logger.info("AgentSession closed")
+        publisher.flush()
+
+    @session.on("conversation_item_added")
+    def on_conversation_item_added(event: ConversationItemAddedEvent):
+        if isinstance(event.item, ChatMessage) and event.item.role == "user":
+            logger.info("USER CONVERSATION ITEM ADDED: %s", event.item.text_content)
+
+    @session.on("agent_speech_committed")
+    def on_agent_speech_committed(event):
+        logger.info("AGENT RESPONSE: %s", event.text.strip())
+
+    logger.info("Starting AgentSession...")
+    try:
+        await session.start(
+            room=ctx.room,
+            agent=Agent(
+                instructions=(
+                    "You are a transcription-only agent. "
+                    "Listen to the user and transcribe Russian speech. "
+                    "Do not respond with audio."
+                )
+            ),
+        )
+    except Exception:
+        logger.exception("Session error")
+    finally:
+        publisher.flush()
