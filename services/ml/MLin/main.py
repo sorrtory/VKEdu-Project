@@ -5,6 +5,7 @@ import base64
 from confluent_kafka import Consumer, KafkaError, KafkaException
 import redis
 import time
+import json
 from confluent_kafka.admin import AdminClient, NewTopic
 
 BOOTSTRAP_SERVERS = os.getenv('KAFKA_BOOTSTRAP_SERVERS', 'localhost:9092')
@@ -42,7 +43,38 @@ def wait_for_topics(bootstrap_servers, topics, timeout=60):
     raise Exception(f"Failed to ensure topics after {timeout} seconds: {last_error}")
 
 def speech_event_handler(msg):
-    print(f"[speechEvent] Received: {msg.value().decode('utf-8')}")
+    try:
+        raw = msg.value().decode('utf-8')
+        data = json.loads(raw)
+    except Exception as e:
+        print(f"[speechEvent] Failed to parse JSON: {e}")
+        return
+
+    text = data.get('text', '').strip()
+    room_id = data.get('room_id', 'unknown-room')
+    participant = data.get('participant_identity', 'unknown')
+    timestamp = data.get('timestamp', '')
+
+    if not text:
+        print("[speechEvent] Empty text, skipping")
+        return
+
+    entry = json.dumps({
+        "participant": participant,
+        "text": text,
+        "timestamp": timestamp
+    }, ensure_ascii=False)
+
+    redis_key = f"transcripts:{room_id}"
+
+    try:
+        pipe = redis_client.pipeline()
+        pipe.rpush(redis_key, entry)
+        pipe.ltrim(redis_key, -500, -1)
+        pipe.execute()
+        print(f"[speechEvent] Saved to Redis {redis_key}: {text[:80]}...")
+    except Exception as e:
+        print(f"[speechEvent] Redis write failed: {e}")
 
 def board_event_handler(msg):
     base64_data = msg.value().decode('utf-8')

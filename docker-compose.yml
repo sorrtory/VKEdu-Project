@@ -124,12 +124,12 @@ services:
       KAFKA_BOOTSTRAP_SERVERS: ${KAFKA_BOOTSTRAP_SERVERS}
       KAFKA_GROUP_ID: ${MLIN_KAFKA_GROUP_ID}
       KAFKA_TOPICS: ${MLIN_KAFKA_TOPICS}
-      REDIS_HOST: ${REDIS_HOST}
-      REDIS_PORT: ${REDIS_PORT}
+      REDIS_HOST: ${REDIS_ML_HOST}
+      REDIS_PORT: ${REDIS_ML_PORT}
       PYTHONIOENCODING: utf-8
     depends_on:
       - broker
-      - redis
+      - redis-ml
     restart: unless-stopped
     networks:
       - app-network
@@ -143,11 +143,11 @@ services:
       KAFKA_BOOTSTRAP_SERVERS: ${KAFKA_BOOTSTRAP_SERVERS}
       KAFKA_GROUP_ID: ${MLOUT_KAFKA_GROUP_ID}
       KAFKA_TOPICS: ${MLOUT_KAFKA_TOPICS}
-      REDIS_HOST: ${REDIS_HOST}
-      REDIS_PORT: ${REDIS_PORT}
+      REDIS_HOST: ${REDIS_ML_HOST}
+      REDIS_PORT: ${REDIS_ML_PORT}
     depends_on:
       - broker
-      - redis
+      - redis-ml
     restart: unless-stopped
     networks:
       - app-network
@@ -170,6 +170,21 @@ services:
     networks:
       - app-network
     restart: unless-stopped
+  
+  redis-ml:
+    image: redis:alpine
+    profiles: ["ml", "db"]
+    command: redis-server --appendonly yes
+    volumes:
+      - redis-ml-data:/data
+    restart: unless-stopped
+    networks:
+      - app-network
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
 
   backend:
     profiles: ["web"]
@@ -220,4 +235,4 @@ networks:
 volumes:
   postgres-data:
   redis-data:
-  ollama_data:
+  redis-ml-data:
