@@ -1,7 +1,7 @@
 import os
 
-CHAT_AI_REQUEST_TOPIC = "conference.chat.ai.request"
-CHAT_AI_RESPONSE_TOPIC = "conference.chat.ai.response"
+CHAT_AI_REQUEST_TOPIC = os.getenv("CHAT_AI_REQUEST_TOPIC", "conference.chat.ai.request")
+CHAT_AI_RESPONSE_TOPIC = os.getenv("CHAT_AI_RESPONSE_TOPIC", "conference.chat.ai.response")
 
 SYSTEM_PROMPT = (
     "Ты — агент-помощник платформы видеоконференций BroadBoard. "
@@ -12,12 +12,12 @@ SYSTEM_PROMPT = (
     "Если не знаешь ответ или вопрос не по теме — так и скажи."
 )
 
-BOOTSTRAP_SERVERS = os.getenv("KAFKA_BOOTSTRAP_SERVERS", "localhost:9092")
-GROUP_ID = os.getenv("KAFKA_GROUP_ID", "mlout_group")
-AUTO_OFFSET_RESET = os.getenv("KAFKA_AUTO_OFFSET_RESET", "earliest")
+BOOTSTRAP_SERVERS = os.getenv("KAFKA_BOOTSTRAP_SERVERS")
+GROUP_ID = os.getenv("KAFKA_GROUP_ID")
+AUTO_OFFSET_RESET = os.getenv("KAFKA_AUTO_OFFSET_RESET")
 
-REDIS_HOST = os.getenv("REDIS_HOST", "redis")
-REDIS_PORT = int(os.getenv("REDIS_PORT", 6379))
+REDIS_HOST = os.getenv("REDIS_HOST")
+REDIS_PORT = int(os.getenv("REDIS_PORT"))
 
 LLM_API_KEY = os.getenv("LLM_API_KEY")
 LLM_BASE_URL = os.getenv("LLM_BASE_URL")

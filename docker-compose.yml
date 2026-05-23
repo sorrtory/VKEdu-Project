@@ -167,6 +167,9 @@ services:
       KAFKA_TOPICS: ${MLIN_KAFKA_TOPICS}
       REDIS_HOST: ${REDIS_HOST}
       REDIS_PORT: ${REDIS_PORT}
+      LLM_API_KEY: ${LLM_API_KEY}
+      LLM_BASE_URL: ${LLM_BASE_URL}
+      VLM_MODEL: ${VLM_MODEL}
       PYTHONIOENCODING: utf-8
     depends_on:
       - broker
