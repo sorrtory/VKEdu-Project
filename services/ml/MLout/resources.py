@@ -1,7 +1,7 @@
 import os
 
-CHAT_AI_REQUEST_TOPIC = "calls.chat"
-CHAT_AI_RESPONSE_TOPIC = "calls.chat.ai.response"
+CHAT_AI_REQUEST_TOPIC = "conference.chat.ai.request"
+CHAT_AI_RESPONSE_TOPIC = "conference.chat.ai.response"
 
 SYSTEM_PROMPT = (
     "Ты — агент-помощник платформы видеоконференций BroadBoard. "
