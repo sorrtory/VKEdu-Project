@@ -41,6 +41,7 @@ services:
       RUSTFS_CONSOLE_ENABLE: "true"
       RUSTFS_ACCESS_KEY: ${S3_ACCESS_KEY_ID}
       RUSTFS_SECRET_KEY: ${S3_SECRET_ACCESS_KEY}
+      RUSTFS_ALLOW_INSECURE_DEFAULT_CREDENTIALS: "true"
     command: ["/data"]
     ports:
       - "${S3_PORT:-9000}:9000"
@@ -194,22 +195,6 @@ services:
     restart: unless-stopped
     networks:
       - app-network
-
-  ollama:
-    image: ollama/ollama:latest
-    profiles: ["ml"]
-    restart: unless-stopped
-    volumes:
-      - ollama_data:/root/.ollama
-    networks:
-      - app-network
-    entrypoint: ["/bin/sh", "-c"]
-    command:
-      - |
-        ollama serve &
-        sleep 5
-        ollama pull qwen2.5:0.5b
-        tail -f /dev/null
 
   agent:
     image: ${APP_IMAGE_PREFIX:-ghcr.io/sorrtory/vkedu-project}-agent:${APP_IMAGE_TAG:-latest}
