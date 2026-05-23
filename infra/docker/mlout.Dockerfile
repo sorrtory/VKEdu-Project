@@ -11,6 +11,6 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 COPY services/ml/MLout/requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
-COPY services/ml/MLout/main.py .
+COPY services/ml/MLout/*.py .
 
 CMD ["python", "main.py"]
