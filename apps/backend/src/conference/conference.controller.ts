@@ -11,6 +11,7 @@ import {
 } from "@nestjs/common"
 import { FileInterceptor } from "@nestjs/platform-express"
 import { ConferenceService } from "./conference.service"
+import { BoardCropMetadataDto } from "./dto/board-crop.dto"
 
 @Controller("conference")
 export class ConferenceController {
@@ -20,6 +21,25 @@ export class ConferenceController {
   async createConference(@Body() body: { conferenceName: string }) {
     await this.ConferenceService.createConference(body.conferenceName)
     return { success: true }
+  }
+
+  @Post(":conferenceName/boardcrop")
+  @UseInterceptors(FileInterceptor("file"))
+  async uploadBoardCrop(
+    @Param("conferenceName") conferenceName: string,
+    @Body() metadata: BoardCropMetadataDto,
+    @UploadedFile() file?: Express.Multer.File,
+  ) {
+    if (!file) {
+      throw new BadRequestException("file is required")
+    }
+
+    return this.ConferenceService.uploadBoardCrop(
+      conferenceName,
+      file,
+      metadata.participantIdentity,
+      metadata.participantName,
+    )
   }
 
   @Post(":conferenceName/upload")

@@ -1,5 +1,6 @@
 export class BoardCropEventDto {
   conferenceName!: string
+  roomId!: string
   participantIdentity?: string
   participantName?: string
   filename!: string

@@ -142,8 +142,8 @@ def handle_boardcrop(redis_client, producer, msg_value: str):
         logger.warning("Invalid JSON in boardcrop: %s", msg_value[:100])
         return
 
-    room_id = data.get("room_id") or data.get("roomId")
-    base64_image = data.get("image")
+    room_id = data.get("room_id") or data.get("roomId") or data.get("conferenceName")
+    base64_image = data.get("image") or data.get("imageBase64")
     if not room_id or not base64_image:
         return
 

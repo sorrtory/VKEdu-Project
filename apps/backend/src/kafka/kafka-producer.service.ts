@@ -10,6 +10,7 @@ import {
   FileContextEventDto,
   TextContextEventDto,
 } from "./dto/context-event.dto"
+import { BoardCropEventDto } from "./dto/board-crop-event.dto"
 import { ChatMessageEventDto } from "./dto/chat-message-event.dto"
 
 @Injectable()
@@ -33,6 +34,10 @@ export class KafkaProducerService implements OnModuleInit, OnModuleDestroy {
 
   emitTextContextEvent(payload: TextContextEventDto) {
     console.error("Unimplemented: emitTextContextEvent", payload)
+  }
+
+  emitBoardCropEvent(payload: BoardCropEventDto) {
+    this.kafkaClient.emit("conference.boardcrop", payload)
   }
 
   emitFileContextEvent(payload: FileContextEventDto) {
