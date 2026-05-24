@@ -9,6 +9,7 @@ import { useLocalParticipant, useRoomContext } from '@livekit/components-react';
 
 interface ExcalidrawBoardProps {
   creatorIdentity: string;
+  roomName: string;
 }
 
 type WhiteboardScenePayload = {
@@ -34,9 +35,41 @@ export default function ExcalidrawBoard({ creatorIdentity }: ExcalidrawBoardProp
   const { localParticipant } = useLocalParticipant();
   const [excalidrawAPI, setExcalidrawAPI] = useState<ExcalidrawImperativeAPI | null>(null);
   const sendTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const snapshotTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   
   const isCreator = localParticipant.identity === creatorIdentity;
   const canEdit = isCreator;
+
+  const uploadBoardCrop = useCallback(async () => {
+    if (!canEdit || !excalidrawAPI) {
+      return;
+    }
+
+    try {
+      const { exportToBlob } = await import('@excalidraw/excalidraw');
+      const blob = await exportToBlob({
+        elements: excalidrawAPI.getSceneElements(),
+        appState: excalidrawAPI.getAppState(),
+        files: {},
+      });
+
+      const file = new File([blob], 'boardcrop.png', {
+        type: blob.type || 'image/png',
+      });
+
+      const formData = new FormData();
+      formData.append('file', file);
+      formData.append('participantIdentity', localParticipant.identity);
+      formData.append('participantName', localParticipant.name ?? localParticipant.identity);
+
+      await fetch(`/api/conference/${encodeURIComponent(room.name)}/boardcrop`, {
+        method: 'POST',
+        body: formData,
+      });
+    } catch (error) {
+      console.error('Failed to send board snapshot:', error);
+    }
+  }, [canEdit, excalidrawAPI, localParticipant.identity, localParticipant.name, room?.name]);
 
   useEffect(() => {
     if (!room) return;
@@ -88,12 +121,23 @@ export default function ExcalidrawBoard({ creatorIdentity }: ExcalidrawBoardProp
         console.error('Failed to send whiteboard update:', error);
       }
     }, 80);
+
+    if (snapshotTimeoutRef.current) {
+      clearTimeout(snapshotTimeoutRef.current);
+    }
+
+    snapshotTimeoutRef.current = setTimeout(() => {
+      void uploadBoardCrop();
+    }, 1500);
   };
 
   useEffect(() => {
     return () => {
       if (sendTimeoutRef.current) {
         clearTimeout(sendTimeoutRef.current);
+      }
+      if (snapshotTimeoutRef.current) {
+        clearTimeout(snapshotTimeoutRef.current);
       }
     };
   }, []);
