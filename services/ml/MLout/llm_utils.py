@@ -34,16 +34,16 @@ def build_messages(room_id, user_message, redis_client, logger):
 
 
 def handle_chat_ai_request(raw_msg, redis_client, llm_client, logger):
-    """Обрабатываем одно сообщение из топика calls.chat."""
+    """Обрабатываем одно сообщение из топика conference.chat."""
     try:
         data = json.loads(raw_msg)
     except Exception:
         logger.warning("Failed to parse message as JSON: %s", raw_msg[:100])
         return
 
-    if data.get("type") != "chat":
-        logger.info("Ignoring message of type: %s", data.get("type"))
-        return
+    # if data.get("type") != "chat":
+        # logger.info("Ignoring message of type: %s", data.get("type"))
+        # return
 
     text = data.get("text", "").strip()
     room_id = data.get("room_id", "unknown-room")
