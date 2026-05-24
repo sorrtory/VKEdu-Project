@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getBackendUrl } from '../../../../shared';
+import { getBackendUrl } from '../../../shared';
 
 export async function POST(
   request: NextRequest,
