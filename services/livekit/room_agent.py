@@ -28,7 +28,6 @@ from livekit_refs import (
     get_participant_id,
     get_participant_identity,
     get_room_name,
-    resolve_room_id,
 )
 
 logger = logging.getLogger("livekit-agent")
@@ -106,7 +105,7 @@ async def entrypoint(ctx: JobContext):
             )
             return
 
-        session_room_id = await resolve_room_id(participant_ctx)
+        session_room_id = get_room_name(participant_ctx)
         logger.info("Starting participant session: %s", participant.identity)
 
         session = AgentSession(
@@ -227,7 +226,7 @@ async def entrypoint(ctx: JobContext):
 
     try:
         await ctx.connect(auto_subscribe=AutoSubscribe.SUBSCRIBE_ALL)
-        room_id = await resolve_room_id(ctx)
+        room_id = get_room_name(ctx)
         logger.info("Joined room %s.", ctx.room.name)
     except Exception:
         logger.exception("Room connection error")
