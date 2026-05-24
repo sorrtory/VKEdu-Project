@@ -10,7 +10,7 @@ import type { Server, Socket } from "socket.io"
 import { TranscriptEventDto } from "./dto/transcript-event.dto"
 
 interface JoinTranscriptRoomPayload {
-  roomName: string
+  roomId: string
 }
 
 interface TranscriptMessagePayload {
@@ -44,12 +44,13 @@ export class TranscriptGateway {
     @MessageBody() payload: JoinTranscriptRoomPayload,
     @ConnectedSocket() client: Socket,
   ) {
-    if (!payload.roomName) {
+    if (!payload.roomId) {
       return
     }
 
-    client.join(payload.roomName)
-    this.logger.debug(`Socket ${client.id} joined room ${payload.roomName}`)
+    const roomName = `room:${payload.roomId}`
+    client.join(roomName)
+    this.logger.debug(`Socket ${client.id} joined room ${roomName}`)
   }
 
   @SubscribeMessage("room:leave")
@@ -57,12 +58,13 @@ export class TranscriptGateway {
     @MessageBody() payload: JoinTranscriptRoomPayload,
     @ConnectedSocket() client: Socket,
   ) {
-    if (!payload.roomName) {
+    if (!payload.roomId) {
       return
     }
 
-    client.leave(payload.roomName)
-    this.logger.debug(`Socket ${client.id} left room ${payload.roomName}`)
+    const roomName = `room:${payload.roomId}`
+    client.leave(roomName)
+    this.logger.debug(`Socket ${client.id} left room ${roomName}`)
   }
 
   broadcastTranscript(message: TranscriptEventDto) {
@@ -77,8 +79,10 @@ export class TranscriptGateway {
       participantIdentity: message.participant_identity,
     }
 
-    if (payload.roomName) {
-      this.server.to(payload.roomName).emit("transcript:new", payload)
+    const roomName = payload.roomId ? `room:${payload.roomId}` : payload.roomName
+
+    if (roomName) {
+      this.server.to(roomName).emit("transcript:new", payload)
       return
     }
 

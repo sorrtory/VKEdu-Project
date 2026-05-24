@@ -7,6 +7,7 @@ import { KafkaConsumerController } from "./kafka-consumer.controller"
 import { KafkaConsumerService } from "./kafka-consumer.service"
 import { KafkaLoggingInterceptor } from "./kafka-logging.interceptor"
 import { KafkaExceptionFilter } from "./kafka-exception.filter"
+import { TranscriptGateway } from "./transcript.gateway"
 
 @Module({
   // Register kafka producer
@@ -37,6 +38,7 @@ import { KafkaExceptionFilter } from "./kafka-exception.filter"
     KafkaConsumerService,
     KafkaLoggingInterceptor,
     KafkaExceptionFilter,
+    TranscriptGateway,
   ],
   // Register kafka consumer controller
   controllers: [KafkaConsumerController],
