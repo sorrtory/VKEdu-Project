@@ -16,6 +16,7 @@ from resources import (
     TOPIC_CHAT_FILE,
     TOPIC_BOARDCROP,
     TOPIC_TRANSCRIPT_VOICE,
+    TOPIC_TRANSCRIPT_VOICE_LEGACY,
     TOPIC_TRANSCRIPT_OUT,
 )
 from kafka_utils import wait_for_topics
