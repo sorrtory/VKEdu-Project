@@ -20,7 +20,7 @@ services:
       - app-network
   redis:
     image: redis:alpine
-    profiles: ["infra", "db", "livekit"]
+    profiles: ["infra", "db", "livekit", "ml"]
     command: redis-server --appendonly yes # Enable data persistence
     volumes:
       - redis-data:/data
@@ -33,20 +33,59 @@ services:
       timeout: 3s
       retries: 20
 
+  rustfs:
+    image: rustfs/rustfs:latest
+    profiles: ["infra", "db"]
+    environment:
+      RUSTFS_ADDRESS: ":9000"
+      RUSTFS_CONSOLE_ENABLE: "true"
+      RUSTFS_ACCESS_KEY: ${S3_ACCESS_KEY_ID}
+      RUSTFS_SECRET_KEY: ${S3_SECRET_ACCESS_KEY}
+      RUSTFS_ALLOW_INSECURE_DEFAULT_CREDENTIALS: "true"
+    command: ["/data"]
+    ports:
+      - "${S3_PORT:-9000}:9000"
+      - "${S3_CONSOLE_PORT:-9001}:9001"
+    volumes:
+      - rustfs-data:/data
+    restart: unless-stopped
+    networks:
+      - app-network
+
   livekit:
     image: livekit/livekit-server:latest
     profiles: ["livekit", "infra"]
-    command:
-      - --config
-      - /etc/livekit.yaml
     environment:
       LIVEKIT_KEYS: "${LIVEKIT_API_KEY}: ${LIVEKIT_API_SECRET}"
+      LIVEKIT_CONFIG: |
+        port: ${LIVEKIT_PORT}
+        bind_addresses:
+          - "0.0.0.0"
+
+        rtc:
+          use_external_ip: ${LIVEKIT_RTC_USE_EXTERNAL_IP:-false}
+          tcp_port: ${LIVEKIT_RTC_TCP_PORT}
+          port_range_start: ${LIVEKIT_RTC_UDP_PORT_START}
+          port_range_end: ${LIVEKIT_RTC_UDP_PORT_END}
+
+        redis:
+          address: redis:6379
+
+        turn:
+          enabled: ${LIVEKIT_TURN_ENABLED:-false}
+          udp_port: ${LIVEKIT_TURN_UDP_PORT:-3478}
+          tls_port: ${LIVEKIT_TURN_TLS_PORT:-5349}
+          domain: ${LIVEKIT_TURN_DOMAIN:-localhost}
+          cert_file: ${LIVEKIT_TURN_CERT_FILE:-/etc/livekit/certs/local.crt}
+          key_file: ${LIVEKIT_TURN_KEY_FILE:-/etc/livekit/certs/local.key}
     volumes:
-      - ./infra/livekit/livekit.yaml:/etc/livekit.yaml:ro
+      - ./infra/nginx/certs:/etc/livekit/certs:ro
     ports:
       - "${LIVEKIT_PORT}:${LIVEKIT_PORT}"
-      - "${LIVEKIT_SIGNAL_PORT}:${LIVEKIT_SIGNAL_PORT}"
-      - "${LIVEKIT_RTC_UDP_PORT}:${LIVEKIT_RTC_UDP_PORT}/udp"
+      - "${LIVEKIT_RTC_TCP_PORT}:${LIVEKIT_RTC_TCP_PORT}"
+      - "${LIVEKIT_RTC_UDP_PORT_START}-${LIVEKIT_RTC_UDP_PORT_END}:${LIVEKIT_RTC_UDP_PORT_START}-${LIVEKIT_RTC_UDP_PORT_END}/udp"
+      - "${LIVEKIT_TURN_UDP_PORT:-3478}:${LIVEKIT_TURN_UDP_PORT:-3478}/udp"
+      - "${LIVEKIT_TURN_TLS_PORT:-5349}:${LIVEKIT_TURN_TLS_PORT:-5349}/tcp"
     restart: unless-stopped
     networks:
       - app-network
@@ -82,7 +121,7 @@ services:
   broker:
     image: apache/kafka:latest
     hostname: broker
-    profiles: ["infra", "db"]
+    profiles: ["infra", "db", "ml"]
     environment:
       KAFKA_NODE_ID: 1
       KAFKA_PROCESS_ROLES: broker,controller
@@ -116,16 +155,21 @@ services:
       - app-network
 
   mlin:
+    image: ${APP_IMAGE_PREFIX:-ghcr.io/sorrtory/vkedu-project}-mlin:${APP_IMAGE_TAG:-latest}
+    pull_policy: ${APP_IMAGE_PULL_POLICY:-missing}
     profiles: ["ml"]
     build:
-      context: ./services/ml/MLin
-      dockerfile: Dockerfile
+      context: .
+      dockerfile: infra/docker/mlin.Dockerfile
     environment:
       KAFKA_BOOTSTRAP_SERVERS: ${KAFKA_BOOTSTRAP_SERVERS}
       KAFKA_GROUP_ID: ${MLIN_KAFKA_GROUP_ID}
       KAFKA_TOPICS: ${MLIN_KAFKA_TOPICS}
       REDIS_HOST: ${REDIS_HOST}
       REDIS_PORT: ${REDIS_PORT}
+      LLM_API_KEY: ${LLM_API_KEY}
+      LLM_BASE_URL: ${LLM_BASE_URL}
+      VLM_MODEL: ${VLM_MODEL}
       PYTHONIOENCODING: utf-8
     depends_on:
       - broker
@@ -135,16 +179,22 @@ services:
       - app-network
 
   mlout:
+    image: ${APP_IMAGE_PREFIX:-ghcr.io/sorrtory/vkedu-project}-mlout:${APP_IMAGE_TAG:-latest}
+    pull_policy: ${APP_IMAGE_PULL_POLICY:-missing}
     profiles: ["ml"]
     build:
-      context: ./services/ml/MLout
-      dockerfile: Dockerfile
+      context: .
+      dockerfile: infra/docker/mlout.Dockerfile
     environment:
       KAFKA_BOOTSTRAP_SERVERS: ${KAFKA_BOOTSTRAP_SERVERS}
       KAFKA_GROUP_ID: ${MLOUT_KAFKA_GROUP_ID}
       KAFKA_TOPICS: ${MLOUT_KAFKA_TOPICS}
       REDIS_HOST: ${REDIS_HOST}
       REDIS_PORT: ${REDIS_PORT}
+      LLM_API_KEY: ${LLM_API_KEY}
+      LLM_BASE_URL: ${LLM_BASE_URL}
+      LLM_MODEL: ${LLM_MODEL}
+      PYTHONIOENCODING: utf-8
     depends_on:
       - broker
       - redis
@@ -152,23 +202,9 @@ services:
     networks:
       - app-network
 
-  ollama:
-    image: ollama/ollama:latest
-    profiles: ["ml"]
-    restart: unless-stopped
-    volumes:
-      - ollama_data:/root/.ollama
-    networks:
-      - app-network
-    entrypoint: ["/bin/sh", "-c"]
-    command:
-      - |
-        ollama serve &
-        sleep 5
-        ollama pull qwen2.5:0.5b
-        tail -f /dev/null
-
   agent:
+    image: ${APP_IMAGE_PREFIX:-ghcr.io/sorrtory/vkedu-project}-agent:${APP_IMAGE_TAG:-latest}
+    pull_policy: ${APP_IMAGE_PULL_POLICY:-missing}
     build:
       context: .
       dockerfile: infra/docker/livekit-agent.Dockerfile
@@ -185,6 +221,8 @@ services:
     restart: unless-stopped
 
   backend:
+    image: ${APP_IMAGE_PREFIX:-ghcr.io/sorrtory/vkedu-project}-backend:${APP_IMAGE_TAG:-latest}
+    pull_policy: ${APP_IMAGE_PULL_POLICY:-missing}
     profiles: ["web"]
     build:
       context: .
@@ -206,6 +244,8 @@ services:
       - .env.production
 
   frontend:
+    image: ${APP_IMAGE_PREFIX:-ghcr.io/sorrtory/vkedu-project}-frontend:${APP_IMAGE_TAG:-latest}
+    pull_policy: ${APP_IMAGE_PULL_POLICY:-missing}
     profiles: ["web"]
     build:
       context: .
@@ -234,3 +274,4 @@ volumes:
   postgres-data:
   redis-data:
   ollama_data:
+  rustfs-data:

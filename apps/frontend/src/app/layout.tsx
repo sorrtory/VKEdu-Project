@@ -1,5 +1,4 @@
 import type { Metadata } from "next";
-import Script from 'next/script';
 import '@excalidraw/excalidraw/index.css';
 import "./globals.css";
 import ThemeProvider from "../components/theme-provider";
@@ -11,7 +10,7 @@ export const metadata: Metadata = {
   description: "Video conferencing with AI-powered assistance for education",
 };
 
-export default function RootLayout({
+export default async function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
@@ -19,16 +18,10 @@ export default function RootLayout({
   return (
     <html
       lang="en"
+      suppressHydrationWarning
       className="h-full antialiased"
     >
       <body className="min-h-full flex flex-col">
-        <Script
-          id="theme-init"
-          strategy="beforeInteractive"
-          dangerouslySetInnerHTML={{
-            __html: `(function(){try{var t=localStorage.getItem('theme');if(t==='dark'||(!t&&window.matchMedia('(prefers-color-scheme: dark)').matches)){document.documentElement.classList.add('dark');document.documentElement.style.colorScheme='dark'} }catch(e){} })()`,
-          }}
-        />
         <ThemeProvider>
           <UserProvider>
             <div className="min-h-screen flex flex-col bg-white dark:bg-background-grey">

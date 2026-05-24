@@ -6,7 +6,11 @@ import {
 } from "@nestjs/common"
 import { ClientKafka } from "@nestjs/microservices"
 import { HelloEventDto } from "./dto/hello-event.dto"
-import { TextContextEventDto } from "./dto/context-event.dto"
+import {
+  FileContextEventDto,
+  TextContextEventDto,
+} from "./dto/context-event.dto"
+import { ChatMessageEventDto } from "./dto/chat-message-event.dto"
 
 @Injectable()
 export class KafkaProducerService implements OnModuleInit, OnModuleDestroy {
@@ -29,5 +33,17 @@ export class KafkaProducerService implements OnModuleInit, OnModuleDestroy {
 
   emitTextContextEvent(payload: TextContextEventDto) {
     console.error("Unimplemented: emitTextContextEvent", payload)
+  }
+
+  emitFileContextEvent(payload: FileContextEventDto) {
+    this.kafkaClient.emit("conference.chat.file", payload)
+  }
+
+  emitChatEvent(payload: ChatMessageEventDto) {
+    this.kafkaClient.emit("conference.chat", payload)
+  }
+
+  emitChatAiRequestEvent(payload: ChatMessageEventDto) {
+    this.kafkaClient.emit("conference.chat.ai.request", payload)
   }
 }

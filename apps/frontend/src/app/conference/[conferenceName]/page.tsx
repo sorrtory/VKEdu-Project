@@ -4,29 +4,32 @@ import { useEffect, useState } from 'react';
 import ConferenceRoom from '@/src/components/conference';
 import { useParams } from 'next/navigation';
 import { useUser } from '@/src/contexts/UserContext';
-import { createFallbackUserName } from '@/src/lib/livekit';
-
-const fallbackUserName = createFallbackUserName();
+import { useGuestParticipant } from '@/src/lib/livekit';
 
 export default function ConferenceRoomPage() {
   const [token, setToken] = useState<string | null>(null);
   const [creatorId, setCreatorId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [reloadKey, setReloadKey] = useState(0);
-  const { user } = useUser();
+  const { user, isAuthLoading } = useUser();
+  const guest = useGuestParticipant();
 
   const params = useParams();
   const roomName = params.conferenceName as string;
 
-  const userName = user?.nickname?.trim() || fallbackUserName;
-
-  const userId = userName;
+  const isParticipantLoading = isAuthLoading || (!user && !guest);
+  const participantName = user?.nickname?.trim() || guest?.name || '';
+  const participantIdentity = user?.userId ?? guest?.identity ?? '';
 
   useEffect(() => {
     let isMounted = true;
     const controller = new AbortController();
 
     async function fetchToken() {
+      if (isParticipantLoading) {
+        return;
+      }
+
       setError(null);
       setToken(null);
       setCreatorId(null);
@@ -35,13 +38,13 @@ export default function ConferenceRoomPage() {
         const response = await fetch('/api/conference/token', {
           method: 'POST',
           headers: {
-            'Content-Type': 'application/json'
+            'Content-Type': 'application/json',
           },
           body: JSON.stringify({
-            participantName: userName,
+            participantName,
+            participantIdentity,
             conferenceName: roomName,
-          })
-            
+          }),
         });
 
         const rawBody = await response.text();
@@ -83,7 +86,7 @@ export default function ConferenceRoomPage() {
       isMounted = false;
       controller.abort();
     };
-  }, [reloadKey, roomName, userName]);
+  }, [isParticipantLoading, participantIdentity, participantName, reloadKey, roomName]);
 
   const serverUrl = process.env.NEXT_PUBLIC_LIVEKIT_URL;
 
@@ -110,7 +113,7 @@ export default function ConferenceRoomPage() {
     );
   }
 
-  if (!token || !creatorId) {
+  if (isParticipantLoading || !token || !creatorId) {
     return (
       <div className="flex h-full items-center justify-center bg-slate-900 text-sm text-white">
         Запрашиваем токен LiveKit...
@@ -121,8 +124,8 @@ export default function ConferenceRoomPage() {
   return (
     <ConferenceRoom
       roomName={roomName}
-      userName={userName}
-      userId={userId}
+      userId={participantIdentity}
+      userName={participantName}
       serverUrl={serverUrl}
       token={token}
       creatorId={creatorId}

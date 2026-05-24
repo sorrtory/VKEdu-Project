@@ -8,9 +8,9 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     librdkafka-dev \
     && rm -rf /var/lib/apt/lists/*
 
-COPY requirements.txt .
+COPY services/ml/MLout/requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
-COPY main.py .
+COPY services/ml/MLout/*.py .
 
 CMD ["python", "main.py"]

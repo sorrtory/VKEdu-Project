@@ -5,13 +5,21 @@
 3) Будет ли MLout класть в контекст редиски ответ от LLM? Нет, это делает ML IN
 4) Будет ли использоваться Livekit Agent для вызова LLM? Нет!
 
+TODO: надо решить как синхранизировать доску. 
+Practical handshake pattern (recommended, minimal changes to your current code in excalidraw.tsx):
+On join, non-creator clients publish a small {"type":"request-scene"} data message addressed to the creator identity.
+The creator listens for request-scene and replies with {"type":"full-scene","elements":[...]} where elements = excalidrawAPI.getSceneElements().
+New clients, on receiving full-scene, call excalidrawAPI.updateScene({ elements }).
+Keep your existing edit sends as incremental/full-scene but debounce (you already use 80ms — good).
+
+
 ```
 Backend: слушает HTTP API /api
 - GET /conference/{id}/summary?type=json/pdf    : получение истории саммари       -> преобразованная postgres data в ответ
 - GET /conference/{id}/trascript?type=json/pdf  : получение истории расшифровки   -> преобразованная postgres data в ответ
 - GET /conference/{id}/chat    				    : получение истории чата  		  -> преобразованная postgres data в ответ
-- POST /conference/{id}/upload                  : загрузка файла в контекст конфы -> conference:filename в s3 и conference.chat.file в кафке
-- GET /conference/{id}/download?file=filename   : скачивание файла     			  -> prescribed ссылка на s3
+- POST /conference/{id}/upload                  : загрузка файла в контекст конфы -> conferences/{id}/... в s3-compatible хранилище и conference.chat.file в кафке
+- GET /conference/{id}/download?file=objectKey  : скачивание файла     			  -> presigned ссылка на s3-compatible хранилище
 - POST /conference/{id}/boardcrop				: отправка blob снепшота доски    -> emit в кафка conference.boardcrop
 - POST /conference/{id}/ticker body: cmd=start/stop target=summary. interval=N : включить тикер на беке  -> conference.summary.request каждые N секунд.
 
@@ -22,8 +30,8 @@ Backend: слушает Websocket /ws
 -- room:leave  : отключаем клиента из группы -> все видят что участник вышел
 -- Группа room:<room_id>
 --- message:send : слушаем новое сообщение от клиента -> 
+---- на фронте можно проверять на @ai. Публикуем как чат или ai запрос message:send { scope: "chat" | "ai" }
 ---- публикуем в комнату как message:new c sender_type = me/ai/speaker/chat
----? если текст начинается на @ai публикуем в кафку
 ---- на conference.chat.ai.request
 ---- иначе
 ---- на conference.chat

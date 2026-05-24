@@ -13,11 +13,38 @@ Note that:
 docker compose --profile infra up -d
 ```
 
+Run the web app behind nginx:
+
+```bash
+docker compose --profile infra --profile web --profile livekit up -d
+```
+
+For a production-like build, pass production overrides to compose interpolation too.
+`env_file` configures container runtime environment, but build args such as
+`NEXT_PUBLIC_LIVEKIT_URL` are resolved by compose before containers start.
+
+```bash
+docker compose --env-file .env --env-file .env.production --profile infra --profile web --profile livekit up -d --build
+```
+
+Nginx routes:
+
+- `/` -> frontend
+- `/api/` -> backend, with `/api` stripped
+- `/ws` -> backend Socket.IO gateway
+- `/rtc` -> LiveKit websocket endpoint, with `/rtc` stripped
+
 
 ## Run only kafka
 
 ```bash
 docker compose up -d broker
+```
+
+Run ML services with their Redis and Kafka dependencies:
+
+```bash
+docker compose --profile ml up -d
 ```
 
 ## Environment
@@ -42,3 +69,7 @@ We use global environment variables for all services.
 - MLIn
 - MLOut
 - LiveKit bot
+
+Service Dockerfiles are kept in `infra/docker/`. Compose and CI use the
+repository root as build context for app-owned images so Dockerfiles can copy
+the needed files by repository-relative paths.

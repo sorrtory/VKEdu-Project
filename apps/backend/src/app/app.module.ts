@@ -6,6 +6,7 @@ import { AuthModule } from "../auth/auth.module"
 import { UsersModule } from "../users/users.module"
 import { KafkaModule } from "../kafka/kafka.module"
 import { RequestLoggerMiddleware } from "../middleware/request-logger.middleware"
+import { ChatModule } from "../chat/chat.module"
 
 @Module({
   controllers: [AppController],
@@ -25,6 +26,8 @@ import { RequestLoggerMiddleware } from "../middleware/request-logger.middleware
     UsersModule,
     // Kafka consumer and producer
     KafkaModule,
+    // Conference websocket chat
+    ChatModule,
   ],
 })
 export class AppModule implements NestModule {
