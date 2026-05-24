@@ -33,7 +33,7 @@ def build_messages(room_id, user_message, redis_client, logger):
     return messages
 
 
-def handle_chat_ai_request(raw_msg, redis_client, llm_client, logger):
+def handle_chat_ai_request(raw_msg, redis_client, llm_client, producer, logger):
     """Обрабатываем одно сообщение из топика conference.chat."""
     try:
         data = json.loads(raw_msg)
@@ -51,8 +51,7 @@ def handle_chat_ai_request(raw_msg, redis_client, llm_client, logger):
         return
 
     logger.info("Processing chat message: room=%s, text=%s", room_id, text[:80])
-
-    messages = build_messages(room_id, text)
+    messages = build_messages(room_id, text, redis_client, logger)
 
     try:
         response = llm_client.chat.completions.create(
@@ -66,8 +65,8 @@ def handle_chat_ai_request(raw_msg, redis_client, llm_client, logger):
     except Exception as e:
         logger.error("LLM request failed: %s", e)
         answer = "Извините, произошла ошибка."
-
-    send_response_to_kafka(room_id, answer)
+# room_id, response_text, producer, logger
+    send_response_to_kafka(room_id, answer, producer=producer, logger=logger)
 
     ctx = get_context(room_id, redis_client, logger)
     if "ai_req" not in ctx:

@@ -75,7 +75,7 @@ def main():
                     raise KafkaException(msg.error())
 
             raw = msg.value().decode("utf-8")
-            handle_chat_ai_request(raw, redis_client, llm_client, logger)
+            handle_chat_ai_request(raw, redis_client, llm_client, producer, logger)
             consumer.commit(msg)
     except KeyboardInterrupt:
         shutdown(None, None)
