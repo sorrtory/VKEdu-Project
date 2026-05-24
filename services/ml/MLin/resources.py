@@ -10,7 +10,8 @@ TOPIC_CHAT_AI_RESPONSE = os.getenv("TOPIC_CHAT_AI_RESPONSE", "conference.chat.ai
 TOPIC_CHAT_FILE = os.getenv("TOPIC_CHAT_FILE", "conference.chat.file")
 TOPIC_BOARDCROP = os.getenv("TOPIC_BOARDCROP", "conference.boardcrop")
 TOPIC_TRANSCRIPT_VOICE = os.getenv("TOPIC_TRANSCRIPT_VOICE", "conference.transcript.voice")
-TOPIC_TRANSCRIPT_OUT = os.getenv("KAFKA_TRANSCRIPT_TOPIC", "conference.transcript")
+TOPIC_TRANSCRIPT_VOICE_LEGACY = os.getenv("TOPIC_TRANSCRIPT_VOICE_LEGACY", "calls.transcript")
+TOPIC_TRANSCRIPT_OUT = os.getenv("TOPIC_TRANSCRIPT_OUT", "conference.transcript")
 
 REDIS_HOST = os.getenv("REDIS_HOST", "redis")
 REDIS_PORT = int(os.getenv("REDIS_PORT", 6379))
