@@ -122,6 +122,9 @@ MLIN_KAFKA_GROUP_ID=mlin_group
 MLIN_KAFKA_TOPICS=speechEvent,boardEvent
 MLOUT_KAFKA_GROUP_ID=mlout_group
 MLOUT_KAFKA_TOPICS=chatEvent,summaryEvent
+LLM_API_KEY=change-me-to-your-llm-key
+LLM_BASE_URL=https://api.openai.com/v1
+LLM_MODEL=gpt-4o-mini
 ```
 
 ## Пример `.env.production`

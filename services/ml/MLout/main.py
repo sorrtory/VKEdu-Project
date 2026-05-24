@@ -20,6 +20,22 @@ logger = logging.getLogger("mlout")
 
 
 redis_client = redis.Redis(host=REDIS_HOST, port=REDIS_PORT, decode_responses=True)
+missing_llm_settings = [
+    name
+    for name, value in (
+        ("LLM_API_KEY", LLM_API_KEY),
+        ("LLM_BASE_URL", LLM_BASE_URL),
+    )
+    if not value
+]
+
+if missing_llm_settings:
+    logger.error(
+        "Missing required MLout environment variables: %s",
+        ", ".join(missing_llm_settings),
+    )
+    raise SystemExit(2)
+
 llm_client = openai.OpenAI(api_key=LLM_API_KEY, base_url=LLM_BASE_URL)
 
 producer = Producer({"bootstrap.servers": BOOTSTRAP_SERVERS})
