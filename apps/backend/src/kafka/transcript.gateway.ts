@@ -6,7 +6,9 @@ import {
   WebSocketGateway,
   WebSocketServer,
 } from "@nestjs/websockets"
+import { randomUUID } from "node:crypto"
 import type { Server, Socket } from "socket.io"
+import { ChatMessageEventDto } from "./dto/chat-message-event.dto"
 import { TranscriptEventDto } from "./dto/transcript-event.dto"
 
 interface JoinTranscriptRoomPayload {
@@ -22,6 +24,16 @@ interface TranscriptMessagePayload {
   text: string
   participantId?: string
   participantIdentity?: string
+}
+
+interface ChatMessagePayload {
+  id: string
+  roomId: string
+  senderId: string
+  senderName: string
+  senderType: "chat" | "ai"
+  text: string
+  createdAt: string
 }
 
 @Injectable()
@@ -69,11 +81,11 @@ export class TranscriptGateway {
 
   broadcastTranscript(message: TranscriptEventDto) {
     const payload: TranscriptMessagePayload = {
-      roomName: message.room_name,
+      roomName: message.room_name ?? message.room_id,
       roomId: message.room_id,
       timestamp: message.timestamp,
       type: message.type,
-      sequence: message.sequence,
+      sequence: message.sequence ?? 0,
       text: message.text,
       participantId: message.participant_id,
       participantIdentity: message.participant_identity,
@@ -87,5 +99,19 @@ export class TranscriptGateway {
     }
 
     this.server.emit("transcript:new", payload)
+  }
+
+  broadcastChatMessage(message: ChatMessageEventDto) {
+    const payload: ChatMessagePayload = {
+      id: randomUUID(),
+      roomId: message.roomId,
+      senderId: message.senderId,
+      senderName: message.senderName,
+      senderType: message.senderType,
+      text: message.text,
+      createdAt: message.createdAt,
+    }
+
+    this.server.to(`room:${payload.roomId}`).emit("message:new", payload)
   }
 }

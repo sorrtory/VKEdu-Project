@@ -46,7 +46,7 @@ def handle_chat_ai_request(raw_msg, redis_client, llm_client, producer, logger):
         # return
 
     text = data.get("text", "").strip()
-    room_id = data.get("room_id", "unknown-room")
+    room_id = data.get("room_id") or data.get("roomId") or "unknown-room"
     if not text or not room_id:
         return
 
@@ -65,7 +65,7 @@ def handle_chat_ai_request(raw_msg, redis_client, llm_client, producer, logger):
     except Exception as e:
         logger.error("LLM request failed: %s", e)
         answer = "Извините, произошла ошибка."
-# room_id, response_text, producer, logger
+
     send_response_to_kafka(room_id, answer, producer=producer, logger=logger)
 
     ctx = get_context(room_id, redis_client, logger)

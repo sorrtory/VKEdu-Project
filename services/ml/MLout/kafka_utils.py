@@ -1,8 +1,8 @@
-from confluent_kafka.admin import AdminClient, NewTopic
-import time
 import json
+import time
+from confluent_kafka.admin import AdminClient, NewTopic
 
-CHAT_AI_RESPONSE_TOPIC = "calls.chat.ai.response"
+CHAT_AI_RESPONSE_TOPIC = "conference.chat.ai.response"
 
 def wait_for_topics(bootstrap_servers, topics, logger, timeout=60):
     """Убеждаемся, что нужные топики существуют, иначе создаём."""
@@ -32,10 +32,12 @@ def wait_for_topics(bootstrap_servers, topics, logger, timeout=60):
 def send_response_to_kafka(room_id, response_text, producer, logger):
     """Отправляем ответ LLM в Kafka."""
     message = {
-        "type": "chat_response",
-        "room_id": room_id,
+        "roomId": room_id,
+        "senderId": "ai",
+        "senderName": "AI",
+        "senderType": "ai",
         "text": response_text,
-        "timestamp": time.time(),
+        "createdAt": time.strftime("%Y-%m-%dT%H:%M:%S.000Z", time.gmtime()),
     }
     try:
         producer.produce(

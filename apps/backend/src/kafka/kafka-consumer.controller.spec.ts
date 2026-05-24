@@ -7,6 +7,7 @@ describe("KafkaConsumerController", () => {
   const mockConsumerService = {
     hello: jest.fn(),
     transcript: jest.fn(),
+    chatAiResponse: jest.fn(),
   }
 
   beforeEach(async () => {
@@ -35,5 +36,21 @@ describe("KafkaConsumerController", () => {
 
     expect(mockConsumerService.transcript).toHaveBeenCalledTimes(1)
     expect(mockConsumerService.transcript).toHaveBeenCalledWith(message)
+  })
+
+  it("chatAiResponseHandler delegates conference.chat.ai.response events", () => {
+    const message = {
+      roomId: "room-1",
+      senderId: "ai",
+      senderName: "AI",
+      senderType: "ai",
+      text: "Здравствуйте! Чем я могу вам помочь?",
+      createdAt: "2026-05-24T10:15:30.000Z",
+    }
+
+    controller.chatAiResponseHandler(message as never)
+
+    expect(mockConsumerService.chatAiResponse).toHaveBeenCalledTimes(1)
+    expect(mockConsumerService.chatAiResponse).toHaveBeenCalledWith(message)
   })
 })

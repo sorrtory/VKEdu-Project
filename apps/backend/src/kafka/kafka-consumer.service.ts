@@ -2,6 +2,7 @@ import { Injectable } from "@nestjs/common"
 import { PrismaService } from "../prisma/prisma.service"
 import { HelloEventDto } from "./dto/hello-event.dto"
 import { TranscriptEventDto } from "./dto/transcript-event.dto"
+import { ChatMessageEventDto } from "./dto/chat-message-event.dto"
 import { TranscriptGateway } from "./transcript.gateway"
 
 @Injectable()
@@ -25,5 +26,9 @@ export class KafkaConsumerService {
 
   transcript(message: TranscriptEventDto) {
     this.transcriptGateway.broadcastTranscript(message)
+  }
+
+  chatAiResponse(message: ChatMessageEventDto) {
+    this.transcriptGateway.broadcastChatMessage(message)
   }
 }

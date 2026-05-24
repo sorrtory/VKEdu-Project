@@ -1,6 +1,7 @@
 import json
 import time
 import logging
+from datetime import datetime, timezone
 from confluent_kafka import Producer
 from resources import MAX_HISTORY_LENGTH, TOPIC_TRANSCRIPT_OUT
 from vlm import describe_image
@@ -42,8 +43,10 @@ def _publish_transcript(producer: Producer, room_id: str, transcript_text: str):
     message = {
         "type": "transcript",
         "room_id": room_id,
+        "room_name": room_id,
+        "sequence": int(time.time() * 1000),
         "text": transcript_text,
-        "timestamp": time.time(),
+        "timestamp": datetime.now(timezone.utc).isoformat().replace("+00:00", "Z"),
     }
     try:
         producer.produce(
