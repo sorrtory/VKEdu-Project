@@ -170,6 +170,6 @@ def handle_summary_request(raw_msg, redis_client, llm_client, producer, logger):
             value=json.dumps(summary_msg, ensure_ascii=False).encode("utf-8"),
         )
         producer.poll(0)
-        logger.info("Summary sent to %s: %s", SUMMARY_RESPONSE_TOPIC, summary[:80])
+        logger.info("Summary sent to %s: %s", SUMMARY_RESPONSE_TOPIC, summary)
     except Exception as e:
         logger.error("Failed to send summary to Kafka: %s", e)
