@@ -5,11 +5,12 @@ from confluent_kafka import Consumer, KafkaError, KafkaException, Producer
 import redis
 import openai
 from kafka_utils import wait_for_topics
-from llm_utils import handle_chat_ai_request
+from llm_utils import handle_chat_ai_request, handle_summary_request
 from resources import (
     CHAT_AI_REQUEST_TOPIC, CHAT_AI_RESPONSE_TOPIC,
     BOOTSTRAP_SERVERS, GROUP_ID, AUTO_OFFSET_RESET,
-    REDIS_HOST, REDIS_PORT, LLM_API_KEY, LLM_BASE_URL
+    REDIS_HOST, REDIS_PORT, LLM_API_KEY, LLM_BASE_URL,
+    SUMMARY_REQUEST_TOPIC, SUMMARY_RESPONSE_TOPIC
 )
 
 logging.basicConfig(
@@ -42,7 +43,16 @@ producer = Producer({"bootstrap.servers": BOOTSTRAP_SERVERS})
 
 
 def main():
-    wait_for_topics(BOOTSTRAP_SERVERS, [CHAT_AI_REQUEST_TOPIC, CHAT_AI_RESPONSE_TOPIC], logger)
+    wait_for_topics(
+        BOOTSTRAP_SERVERS,
+        [
+            CHAT_AI_REQUEST_TOPIC,
+            CHAT_AI_RESPONSE_TOPIC,
+            SUMMARY_REQUEST_TOPIC,
+            SUMMARY_RESPONSE_TOPIC
+        ],
+        logger
+    )
 
     consumer_conf = {
         "bootstrap.servers": BOOTSTRAP_SERVERS,
@@ -51,9 +61,9 @@ def main():
         "enable.auto.commit": False,
     }
     consumer = Consumer(consumer_conf)
-    consumer.subscribe([CHAT_AI_REQUEST_TOPIC])
+    consumer.subscribe([CHAT_AI_REQUEST_TOPIC, SUMMARY_REQUEST_TOPIC])
 
-    logger.info("MLout started. Listening to %s", CHAT_AI_REQUEST_TOPIC)
+    logger.info("MLout started. Listening to %s", CHAT_AI_REQUEST_TOPIC, SUMMARY_RESPONSE_TOPIC)
 
     def shutdown(sig, frame):
         logger.info("Shutting down MLout...")
@@ -73,9 +83,14 @@ def main():
                     continue
                 else:
                     raise KafkaException(msg.error())
-
+            topic = msg.topic()
             raw = msg.value().decode("utf-8")
-            handle_chat_ai_request(raw, redis_client, llm_client, producer, logger)
+            if topic == CHAT_AI_REQUEST_TOPIC:        
+                handle_chat_ai_request(raw, redis_client, llm_client, producer, logger)
+            elif topic == SUMMARY_REQUEST_TOPIC:
+                handle_summary_request(raw, redis_client, llm_client, producer, logger)
+            else:
+                logger.warning("Unknown topic: %s", topic)
             consumer.commit(msg)
     except KeyboardInterrupt:
         shutdown(None, None)

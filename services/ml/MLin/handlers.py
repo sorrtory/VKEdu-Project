@@ -151,7 +151,7 @@ def handle_boardcrop(redis_client, producer, msg_value: str):
         return
 
     description = describe_image(base64_image)
-    logger.info("Board description for room %s: %s", room_id, description[:50])
+    logger.info("Board description for room %s: %s", room_id, description)
 
     ctx = _load_context(redis_client, room_id)
 
