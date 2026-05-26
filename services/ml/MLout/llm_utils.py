@@ -1,4 +1,5 @@
 import json
+from datetime import datetime, timezone
 from kafka_utils import send_response_to_kafka
 from resources import SYSTEM_PROMPT, LLM_MODEL, SUMMARY_RESPONSE_TOPIC, SUMMARY_SYSTEM_PROMPT
 
@@ -161,7 +162,7 @@ def handle_summary_request(raw_msg, redis_client, llm_client, producer, logger):
         "type": "summary_response",
         "room_id": room_id,
         "text": summary,
-        "timestamp": data.get("timestamp"),
+        "timestamp": datetime.now(timezone.utc).isoformat().replace("+00:00", "Z"),
     }
     try:
         producer.produce(

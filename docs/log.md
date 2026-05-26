@@ -34,6 +34,7 @@ yarn dlx @yarnpkg/sdks base vscode
 8. `yarn add -D cross-env` - for setting env variables in package.json
 9. `yarn workspace backend add @nestjs/websockets @nestjs/platform-socket.io socket.io` - backend Socket.IO gateway for `/ws` conference chat
 10. `yarn workspace backend add @aws-sdk/client-s3 @aws-sdk/s3-request-presigner` - S3-compatible object storage client and presigned download URLs
+11. `yarn workspace frontend add react-markdown` - render markdown summaries in the conference sidebar
 
 ### Prisma
 

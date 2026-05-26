@@ -9,6 +9,7 @@ import {
 import { randomUUID } from "node:crypto"
 import type { Server, Socket } from "socket.io"
 import { ChatMessageEventDto } from "./dto/chat-message-event.dto"
+import { SummaryEventDto } from "./dto/summary-event.dto"
 import { TranscriptEventDto } from "./dto/transcript-event.dto"
 
 interface JoinTranscriptRoomPayload {
@@ -32,6 +33,13 @@ interface ChatMessagePayload {
   senderId: string
   senderName: string
   senderType: "chat" | "ai"
+  text: string
+  createdAt: string
+}
+
+interface SummaryMessagePayload {
+  id: string
+  roomId: string
   text: string
   createdAt: string
 }
@@ -113,5 +121,16 @@ export class TranscriptGateway {
     }
 
     this.server.to(`room:${payload.roomId}`).emit("message:new", payload)
+  }
+
+  broadcastSummary(message: SummaryEventDto) {
+    const payload: SummaryMessagePayload = {
+      id: randomUUID(),
+      roomId: message.room_id,
+      text: message.text,
+      createdAt: message.timestamp,
+    }
+
+    this.server.to(`room:${payload.roomId}`).emit("summary:new", payload)
   }
 }
