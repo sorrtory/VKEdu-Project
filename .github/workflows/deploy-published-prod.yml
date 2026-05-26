@@ -149,18 +149,11 @@ jobs:
             exit 1
           fi
 
-          COMPOSE_FILES=(-f docker-compose.yml)
-
-          if [ -f docker-compose.override.yml ]; then
-            echo "Using docker-compose.override.yml"
-            COMPOSE_FILES+=(-f docker-compose.override.yml)
-          fi
-
           COMPOSE=(
             docker compose
             --env-file .env
             --env-file .env.production
-            "${COMPOSE_FILES[@]}"
+            -f docker-compose.yml
             --profile infra
             --profile livekit
             --profile web
@@ -171,7 +164,7 @@ jobs:
             docker compose
             --env-file .env
             --env-file .env.production
-            "${COMPOSE_FILES[@]}"
+            -f docker-compose.yml
             --profile infra
             --profile livekit
             --profile web
@@ -179,14 +172,14 @@ jobs:
             --profile tools
           )
 
-          echo "Validating merged Compose config"
+          echo "Validating Compose config"
           "${COMPOSE_WITH_TOOLS[@]}" config -q
 
           echo "Pulling required images"
           "${COMPOSE_WITH_TOOLS[@]}" pull postgres migrate || true
 
           echo "Starting database container"
-          "${COMPOSE[@]}" up -d --wait postgres
+          "${COMPOSE[@]}" up -d --wait --remove-orphans postgres
 
           echo "Running Prisma migrations and seed"
           "${COMPOSE_WITH_TOOLS[@]}" run --rm migrate
