@@ -61,3 +61,5 @@ Dockerfile text eol=lf
 infra/nginx/certs/*.crt filter=git-crypt diff=git-crypt
 infra/nginx/certs/*.key filter=git-crypt diff=git-crypt
 infra/nginx/certs/*.pem filter=git-crypt diff=git-crypt
+
+infra/env/*.env filter=git-crypt diff=git-crypt
