@@ -8,6 +8,7 @@ on:
         required: false
         default: "deploy"
         type: string
+
   workflow_run:
     workflows:
       - Build and publish containers
@@ -111,6 +112,11 @@ jobs:
             exit 1
           fi
 
+          if [ ! -f docker-compose.yml ]; then
+            echo "docker-compose.yml does not exist in ${PROD_PROJECT_PATH}"
+            exit 1
+          fi
+
           if ! command -v git-crypt >/dev/null 2>&1; then
             echo "git-crypt is not installed on the server."
             exit 1
@@ -121,9 +127,16 @@ jobs:
             exit 1
           fi
 
-          git fetch --prune origin "${PROD_BRANCH}"
-          git checkout -B "${PROD_BRANCH}" "origin/${PROD_BRANCH}"
+          docker compose version
 
+          echo "Fetching latest deploy branch"
+          git fetch --prune origin "${PROD_BRANCH}"
+
+          echo "Checking out exact remote deploy branch"
+          git checkout -B "${PROD_BRANCH}" "origin/${PROD_BRANCH}"
+          git reset --hard "origin/${PROD_BRANCH}"
+
+          echo "Unlocking encrypted production files"
           git-crypt unlock "${PROD_GIT_CRYPT_KEY_PATH}"
 
           if [ ! -s infra/nginx/certs/certificate.crt ] || [ ! -s infra/nginx/certs/certificate.key ]; then
@@ -136,26 +149,51 @@ jobs:
             exit 1
           fi
 
-          docker compose version
+          COMPOSE_FILES=(-f docker-compose.yml)
 
-          echo "Running yarn prod equivalent (without yarn)"
-          docker compose \
-            --env-file .env \
-            --env-file .env.production \
-            -f docker-compose.yml \
-            --profile infra \
-            --profile livekit \
-            --profile web \
-            --profile ml \
-            up -d --pull always
+          if [ -f docker-compose.override.yml ]; then
+            echo "Using docker-compose.override.yml"
+            COMPOSE_FILES+=(-f docker-compose.override.yml)
+          fi
 
-          docker compose \
-            --env-file .env \
-            --env-file .env.production \
-            -f docker-compose.yml \
-            --profile infra \
-            --profile livekit \
-            --profile web \
-            --profile ml \
-            ps
+          COMPOSE=(
+            docker compose
+            --env-file .env
+            --env-file .env.production
+            "${COMPOSE_FILES[@]}"
+            --profile infra
+            --profile livekit
+            --profile web
+            --profile ml
+          )
+
+          COMPOSE_WITH_TOOLS=(
+            docker compose
+            --env-file .env
+            --env-file .env.production
+            "${COMPOSE_FILES[@]}"
+            --profile infra
+            --profile livekit
+            --profile web
+            --profile ml
+            --profile tools
+          )
+
+          echo "Validating merged Compose config"
+          "${COMPOSE_WITH_TOOLS[@]}" config -q
+
+          echo "Pulling required images"
+          "${COMPOSE_WITH_TOOLS[@]}" pull postgres migrate || true
+
+          echo "Starting database container"
+          "${COMPOSE[@]}" up -d --wait postgres
+
+          echo "Running Prisma migrations and seed"
+          "${COMPOSE_WITH_TOOLS[@]}" run --rm migrate
+
+          echo "Starting remaining services"
+          "${COMPOSE[@]}" up -d --pull always --remove-orphans
+
+          echo "Current Compose status"
+          "${COMPOSE[@]}" ps
           REMOTE
