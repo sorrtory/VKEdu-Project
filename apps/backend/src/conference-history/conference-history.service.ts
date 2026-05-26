@@ -1,7 +1,7 @@
 import { Injectable } from "@nestjs/common"
 import { PrismaService } from "../prisma/prisma.service"
 import { ChatMessageKind } from "../generated/prisma/enums"
-import type { Prisma } from "../generated/prisma/client"
+import { Prisma } from "../generated/prisma/client"
 
 interface SaveChatMessageParams {
   roomId: string

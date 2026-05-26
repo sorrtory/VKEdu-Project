@@ -10,6 +10,21 @@ import { KafkaExceptionFilter } from "./kafka-exception.filter"
 import { TranscriptGateway } from "./transcript.gateway"
 import { ConferenceHistoryModule } from "../conference-history/conference-history.module"
 
+function getKafkaBrokers(config: ConfigService): string[] {
+  const bootstrapServers = config.get<string>("KAFKA_BOOTSTRAP_SERVERS")
+
+  if (bootstrapServers) {
+    return bootstrapServers
+      .split(",")
+      .map((broker) => broker.trim())
+      .filter(Boolean)
+  }
+
+  return [
+    `${config.getOrThrow("BACKEND_KAFKA_HOST")}:${config.getOrThrow("KAFKA_PORT")}`,
+  ]
+}
+
 @Module({
   // Register kafka producer
   imports: [
@@ -23,9 +38,7 @@ import { ConferenceHistoryModule } from "../conference-history/conference-histor
           options: {
             client: {
               clientId: config.getOrThrow("BACKEND_KAFKA_CLIENT_ID"),
-              brokers: [
-                `${config.getOrThrow("BACKEND_KAFKA_HOST")}:${config.getOrThrow("KAFKA_PORT")}`,
-              ],
+              brokers: getKafkaBrokers(config),
             },
             // We don't need a consumer here for request-response kafka.send
             producerOnlyMode: true,

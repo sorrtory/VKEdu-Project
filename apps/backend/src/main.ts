@@ -8,6 +8,9 @@ import { MicroserviceOptions, Transport } from "@nestjs/microservices"
 import { ConfigService } from "@nestjs/config"
 import { Kafka } from "kafkajs"
 
+const KAFKA_ADMIN_RETRY_ATTEMPTS = 20
+const KAFKA_ADMIN_RETRY_DELAY_MS = 3000
+
 const BACKEND_KAFKA_TOPICS = [
   "test",
   "conference.chat",
@@ -43,10 +46,8 @@ async function bootstrap() {
   const document = SwaggerModule.createDocument(app, config)
   SwaggerModule.setup("api", app, document)
 
-  const kafkaBrokers = [
-    `${configService.getOrThrow("BACKEND_KAFKA_HOST")}:${configService.getOrThrow("KAFKA_PORT")}`,
-  ]
-  await ensureKafkaTopics(
+  const kafkaBrokers = getKafkaBrokers(configService)
+  await ensureKafkaTopicsWithRetry(
     configService.getOrThrow("BACKEND_KAFKA_CLIENT_ID"),
     kafkaBrokers,
     [
@@ -81,6 +82,48 @@ async function bootstrap() {
   await app.listen(port, "0.0.0.0")
 }
 void bootstrap()
+
+function getKafkaBrokers(configService: ConfigService): string[] {
+  const bootstrapServers = configService.get<string>("KAFKA_BOOTSTRAP_SERVERS")
+
+  if (bootstrapServers) {
+    return bootstrapServers
+      .split(",")
+      .map((broker) => broker.trim())
+      .filter(Boolean)
+  }
+
+  return [
+    `${configService.getOrThrow("BACKEND_KAFKA_HOST")}:${configService.getOrThrow("KAFKA_PORT")}`,
+  ]
+}
+
+async function ensureKafkaTopicsWithRetry(
+  clientId: string,
+  brokers: string[],
+  topics: Array<string | undefined>,
+) {
+  for (let attempt = 1; attempt <= KAFKA_ADMIN_RETRY_ATTEMPTS; attempt += 1) {
+    try {
+      await ensureKafkaTopics(clientId, brokers, topics)
+      return
+    } catch (error) {
+      if (attempt === KAFKA_ADMIN_RETRY_ATTEMPTS) {
+        throw error
+      }
+
+      console.warn(
+        `Kafka is not ready yet (${attempt}/${KAFKA_ADMIN_RETRY_ATTEMPTS}); retrying in ${KAFKA_ADMIN_RETRY_DELAY_MS}ms`,
+        error,
+      )
+      await delay(KAFKA_ADMIN_RETRY_DELAY_MS)
+    }
+  }
+}
+
+function delay(ms: number) {
+  return new Promise((resolve) => setTimeout(resolve, ms))
+}
 
 async function ensureKafkaTopics(
   clientId: string,

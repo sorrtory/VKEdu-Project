@@ -107,11 +107,6 @@ jobs:
             exit 1
           fi
 
-          if [ ! -f .env ] || [ ! -f .env.production ]; then
-            echo "Both .env and .env.production must exist in ${PROD_PROJECT_PATH}"
-            exit 1
-          fi
-
           if [ ! -f docker-compose.yml ]; then
             echo "docker-compose.yml does not exist in ${PROD_PROJECT_PATH}"
             exit 1
@@ -149,6 +144,25 @@ jobs:
             exit 1
           fi
 
+          if [ ! -s infra/env/prod.env ] || [ ! -s infra/env/prod.override.env ]; then
+            echo "Encrypted production env files are missing or empty after git-crypt unlock."
+            exit 1
+          fi
+
+          if grep -q "GITCRYPT" infra/env/prod.env infra/env/prod.override.env 2>/dev/null; then
+            echo "Production env files still look encrypted after git-crypt unlock."
+            exit 1
+          fi
+
+          if grep -q "REPLACE_" infra/env/prod.env infra/env/prod.override.env 2>/dev/null; then
+            echo "Production env files still contain REPLACE_ placeholders."
+            exit 1
+          fi
+
+          echo "Copying decrypted production env files"
+          install -m 600 infra/env/prod.env .env
+          install -m 600 infra/env/prod.override.env .env.production
+
           COMPOSE=(
             docker compose
             --env-file .env
@@ -185,11 +199,21 @@ jobs:
           "${COMPOSE[@]}" up -d --wait --remove-orphans postgres
 
           echo "Running Prisma migrations and seed"
-          "${COMPOSE_WITH_TOOLS[@]}" run --rm migrate
+          if ! "${COMPOSE_WITH_TOOLS[@]}" run --rm -T --interactive=false migrate; then
+            echo "Migration or seed failed. Current Compose status:"
+            "${COMPOSE_WITH_TOOLS[@]}" ps || true
+            echo "Recent migrate logs:"
+            "${COMPOSE_WITH_TOOLS[@]}" logs --no-color --tail=200 migrate || true
+            exit 1
+          fi
+
+          echo "Migration and seed completed"
 
           echo "Starting remaining services"
           "${COMPOSE[@]}" up -d --pull always --remove-orphans
 
           echo "Current Compose status"
           "${COMPOSE[@]}" ps
+
+          echo "Production deploy completed"
           REMOTE
