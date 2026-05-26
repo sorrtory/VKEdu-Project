@@ -2433,7 +2433,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@livekit/components-react@npm:^2.9.20":
+"@livekit/components-react@npm:2.9.21":
   version: 2.9.21
   resolution: "@livekit/components-react@npm:2.9.21"
   dependencies:
@@ -2469,21 +2469,21 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@livekit/protocol@npm:1.45.3":
-  version: 1.45.3
-  resolution: "@livekit/protocol@npm:1.45.3"
-  dependencies:
-    "@bufbuild/protobuf": "npm:^1.10.0"
-  checksum: 10c0/8c9c889d9042d3b27acc0dd537df36e0c804c1d205741e2d3789111c728d840933ab0743655cb81df52c7715210db193c1fc8e2e223d765d05537c502918299b
-  languageName: node
-  linkType: hard
-
-"@livekit/protocol@npm:^1.43.1":
+"@livekit/protocol@npm:1.45.8":
   version: 1.45.8
   resolution: "@livekit/protocol@npm:1.45.8"
   dependencies:
     "@bufbuild/protobuf": "npm:^1.10.0"
   checksum: 10c0/fa89cfb86b4110649e0a00df88584ae08b8e5764657a469b57448ec9a88b7d2f3ef8752a8ef4af9a293d2b13330918ac2726a10cf3f55557909fd0a70a2fb57d
+  languageName: node
+  linkType: hard
+
+"@livekit/protocol@npm:^1.45.6":
+  version: 1.46.0
+  resolution: "@livekit/protocol@npm:1.46.0"
+  dependencies:
+    "@bufbuild/protobuf": "npm:^1.10.0"
+  checksum: 10c0/6cfe79487f055ba96f37582aadb05d458859ff65ca9e423dc84da4d2dfc8df8612dffd09ee152df267242a02bcaf7ef06f9e5c7e425ac05292ad3223142a1525
   languageName: node
   linkType: hard
 
@@ -6558,7 +6558,7 @@ __metadata:
     globals: "npm:^16.0.0"
     jest: "npm:^30.0.0"
     kafkajs: "npm:^2.2.4"
-    livekit-server-sdk: "npm:^2.15.0"
+    livekit-server-sdk: "npm:2.15.3"
     passport: "npm:^0.7.0"
     passport-jwt: "npm:^4.0.1"
     passport-local: "npm:^1.0.0"
@@ -9566,7 +9566,7 @@ __metadata:
   resolution: "frontend@workspace:apps/frontend"
   dependencies:
     "@excalidraw/excalidraw": "npm:latest"
-    "@livekit/components-react": "npm:^2.9.20"
+    "@livekit/components-react": "npm:2.9.21"
     "@livekit/components-styles": "npm:^1.2.0"
     "@tailwindcss/postcss": "npm:^4"
     "@types/node": "npm:^25.5.0"
@@ -9574,7 +9574,7 @@ __metadata:
     "@types/react-dom": "npm:^19.2.3"
     eslint: "npm:^9"
     eslint-config-next: "npm:16.2.1"
-    livekit-client: "npm:^2.17.3"
+    livekit-client: "npm:2.19.0"
     next: "npm:^16.2.1"
     next-themes: "npm:^0.4.6"
     react: "npm:^19.2.4"
@@ -11768,12 +11768,12 @@ __metadata:
   languageName: node
   linkType: hard
 
-"livekit-client@npm:^2.17.3":
-  version: 2.18.9
-  resolution: "livekit-client@npm:2.18.9"
+"livekit-client@npm:2.19.0":
+  version: 2.19.0
+  resolution: "livekit-client@npm:2.19.0"
   dependencies:
     "@livekit/mutex": "npm:1.1.1"
-    "@livekit/protocol": "npm:1.45.3"
+    "@livekit/protocol": "npm:1.45.8"
     events: "npm:^3.3.0"
     jose: "npm:^6.1.0"
     loglevel: "npm:^1.9.2"
@@ -11783,19 +11783,19 @@ __metadata:
     webrtc-adapter: "npm:9.0.5"
   peerDependencies:
     "@types/dom-mediacapture-record": ^1
-  checksum: 10c0/67fc21046c8fe3e1fdf9db13d8bd58da5c0605072565993ae2300745dedd148670aeab8172598f789d189fc7e3c9741bed58e93a09c097e3cdc02cc232e8c833
+  checksum: 10c0/7c9a75678fe976e69dc02a32f6126f7c1746ee6571dbe9ffcc617829e18abf95779b34a34ec645708d7142e8cd5940f038982820d0378f12295bf03f55c19f0b
   languageName: node
   linkType: hard
 
-"livekit-server-sdk@npm:^2.15.0":
-  version: 2.15.2
-  resolution: "livekit-server-sdk@npm:2.15.2"
+"livekit-server-sdk@npm:2.15.3":
+  version: 2.15.3
+  resolution: "livekit-server-sdk@npm:2.15.3"
   dependencies:
     "@bufbuild/protobuf": "npm:^1.10.1"
-    "@livekit/protocol": "npm:^1.43.1"
+    "@livekit/protocol": "npm:^1.45.6"
     camelcase-keys: "npm:^9.0.0"
     jose: "npm:^5.1.2"
-  checksum: 10c0/a06cc2d52f9a000bec941a1c1dbcde7e205c92f552c76408ec3772e64869b659a7062c36cfa083d66a7e8173df64cd085fff347955badad3e1c7b9692ee5f570
+  checksum: 10c0/2aba0a558679cb9f7e4cd7ea477fc8132deeaff0a423b3edae259caba122501f5061b155401a58fc24265fec67d937dfcaf9c3d708799d24a70c8fb1b0046622
   languageName: node
   linkType: hard
 
