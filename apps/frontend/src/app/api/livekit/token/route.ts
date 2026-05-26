@@ -21,9 +21,10 @@ export async function POST(request: NextRequest) {
     const result: { token?: string; creatorId?: string } = await response.json();
 
     return NextResponse.json({ token: result.token, creatorId: result.creatorId });
-  } catch {
+  } catch (error) {
+    console.error('[livekit/token] proxy failed:', error);
     return NextResponse.json(
-      { error: 'Ошибка при получении токена' },
+      { error: error instanceof Error ? error.message : 'Ошибка при получении токена' },
       { status: 500 },
     );
   }

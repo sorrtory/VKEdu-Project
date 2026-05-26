@@ -12,6 +12,7 @@ import {
 } from "./dto/context-event.dto"
 import { BoardCropEventDto } from "./dto/board-crop-event.dto"
 import { ChatMessageEventDto } from "./dto/chat-message-event.dto"
+import { SummaryRequestEventDto } from "./dto/summary-request-event.dto"
 
 @Injectable()
 export class KafkaProducerService implements OnModuleInit, OnModuleDestroy {
@@ -50,5 +51,9 @@ export class KafkaProducerService implements OnModuleInit, OnModuleDestroy {
 
   emitChatAiRequestEvent(payload: ChatMessageEventDto) {
     this.kafkaClient.emit("conference.chat.ai.request", payload)
+  }
+
+  emitSummaryRequestEvent(payload: SummaryRequestEventDto) {
+    this.kafkaClient.emit("conference.summary.request", payload)
   }
 }

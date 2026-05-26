@@ -1,9 +1,15 @@
 'use client';
 
 import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { IoChevronBack, IoChevronForward, IoChatbubbleEllipsesOutline } from 'react-icons/io5';
+import {
+  IoChevronBack,
+  IoChevronForward,
+  IoChatbubbleEllipsesOutline,
+  IoPlayOutline,
+  IoRefreshOutline,
+  IoStopOutline,
+} from 'react-icons/io5';
 import { io, type Socket } from 'socket.io-client';
-import ReactMarkdown from 'react-markdown';
 
 type ChatTab = 'chat' | 'summary' | 'transcript';
 type SenderType = 'chat' | 'ai' | 'speaker';
@@ -12,6 +18,7 @@ interface ConferenceChatProps {
   roomName: string;
   userId: string;
   userName: string;
+  creatorId: string;
   isCollapsed: boolean;
   onCollapsedChange: (isCollapsed: boolean) => void;
 }
@@ -49,6 +56,25 @@ interface StreamItem {
   createdAt: string;
 }
 
+interface HistoryResponse<T> {
+  success: boolean;
+  items: T[];
+}
+
+interface SummaryTickerResponse {
+  success: boolean;
+  active?: boolean;
+  intervalSeconds?: number | null;
+  lastRequestedAt?: string | null;
+  firstRequest?: {
+    requested?: boolean;
+    reason?: string;
+  };
+  requested?: boolean;
+  reason?: string;
+  error?: string;
+}
+
 interface SystemItem {
   id: string;
   roomId: string;
@@ -69,6 +95,10 @@ const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL;
 
 function getSocketBaseUrl(url: string): string {
   return url.replace(/\/+$/, '').replace(/\/api$/, '');
+}
+
+function getBackendHttpUrl(path: string): string {
+  return `/api/${path.replace(/^\/+/, '')}`;
 }
 
 function getStreamText(event: StreamEvent): string {
@@ -112,6 +142,7 @@ export default function ConferenceChat({
   roomName,
   userId,
   userName,
+  creatorId,
   isCollapsed,
   onCollapsedChange,
 }: ConferenceChatProps) {
@@ -124,9 +155,14 @@ export default function ConferenceChat({
   const [connectionError, setConnectionError] = useState<string | null>(
     backendUrl ? null : 'NEXT_PUBLIC_BACKEND_URL не настроен',
   );
+  const [summaryControlError, setSummaryControlError] = useState<string | null>(null);
+  const [isSummaryControlPending, setIsSummaryControlPending] = useState(false);
+  const [isSummaryTickerActive, setIsSummaryTickerActive] = useState(false);
+  const [summaryTickerIntervalSeconds, setSummaryTickerIntervalSeconds] = useState(60);
   const socketRef = useRef<Socket | null>(null);
   const isCollapsedRef = useRef(isCollapsed);
 
+  const canControlSummary = userId === creatorId;
   const canSend = activeTab === 'chat' && inputValue.trim().length > 0;
 
   const currentStreamItems = useMemo(() => {
@@ -140,64 +176,126 @@ export default function ConferenceChat({
   }, [isCollapsed]);
 
   useEffect(() => {
+    if (!canControlSummary || activeTab !== 'summary') {
+      return;
+    }
+
+    let isActive = true;
+    void fetch(getBackendHttpUrl(`conference/${encodeURIComponent(roomName)}/ticker`))
+      .then((response) => response.json() as Promise<SummaryTickerResponse>)
+      .then((payload) => {
+        if (!isActive || !payload.success) return;
+        setIsSummaryTickerActive(Boolean(payload.active));
+        if (payload.intervalSeconds) {
+          setSummaryTickerIntervalSeconds(payload.intervalSeconds);
+        }
+      })
+      .catch(() => undefined);
+
+    return () => {
+      isActive = false;
+    };
+  }, [activeTab, canControlSummary, roomName]);
+
+  useEffect(() => {
     if (!backendUrl) {
       return;
     }
 
-    const socket = io(`${getSocketBaseUrl(backendUrl)}/conference`, {
-      path: '/ws',
-      transports: ['websocket'],
-    });
+    let isActive = true;
+    let socket: Socket | null = null;
 
-    socketRef.current = socket;
+    const loadHistory = async () => {
+      const [chatResponse, summaryResponse, transcriptResponse] = await Promise.all([
+        fetch(getBackendHttpUrl(`conference/${encodeURIComponent(roomName)}/chat`)),
+        fetch(getBackendHttpUrl(`conference/${encodeURIComponent(roomName)}/summary`)),
+        fetch(getBackendHttpUrl(`conference/${encodeURIComponent(roomName)}/transcript`)),
+      ]);
 
-    socket.on('connect', () => {
-      setConnectionError(null);
-      socket.emit('room:join', {
-        roomId: roomName,
-        participantId: userId,
-        participantName: userName,
-      });
-    });
+      const [chat, summary, transcript] = await Promise.all([
+        chatResponse.json() as Promise<HistoryResponse<ChatItem>>,
+        summaryResponse.json() as Promise<HistoryResponse<StreamItem>>,
+        transcriptResponse.json() as Promise<HistoryResponse<StreamItem>>,
+      ]);
 
-    socket.on('connect_error', (error) => {
-      setConnectionError(error.message);
-    });
-
-    socket.on('exception', (error: { message?: string }) => {
-      setConnectionError(error.message ?? 'Ошибка websocket');
-    });
-
-    socket.on('room:joined', (event: RoomEvent) => {
-      setChatItems((items) => [...items, createSystemItem(event, 'joined')]);
-    });
-
-    socket.on('room:left', (event: RoomEvent) => {
-      setChatItems((items) => [...items, createSystemItem(event, 'left')]);
-    });
-
-    socket.on('message:new', (event: MessageEvent) => {
-      setChatItems((items) => [...items, event]);
-      if (isCollapsedRef.current && event.senderId !== userId) {
-        setUnreadCount((count) => count + 1);
+      if (!isActive) {
+        return;
       }
-    });
 
-    socket.on('summary:new', (event: StreamEvent) => {
-      const item = createStreamItem(event);
-      if (!item.text.trim()) return;
-      setSummaryItems((items) => [...items, item]);
-    });
+      setChatItems(chat.items ?? []);
+      setSummaryItems(summary.items ?? []);
+      setTranscriptItems(transcript.items ?? []);
+    };
 
-    socket.on('transcript:new', (event: StreamEvent) => {
-      const item = createStreamItem(event);
-      if (!item.text.trim()) return;
-      setTranscriptItems((items) => [...items, item]);
-    });
+    const connectSocket = () => {
+      socket = io(`${getSocketBaseUrl(backendUrl)}/conference`, {
+        path: '/ws',
+        transports: ['websocket'],
+      });
+
+      socketRef.current = socket;
+
+      socket.on('connect', () => {
+        setConnectionError(null);
+        socket?.emit('room:join', {
+          roomId: roomName,
+          participantId: userId,
+          participantName: userName,
+        });
+      });
+
+      socket.on('connect_error', (error) => {
+        setConnectionError(error.message);
+      });
+
+      socket.on('exception', (error: { message?: string }) => {
+        setConnectionError(error.message ?? 'Ошибка websocket');
+      });
+
+      socket.on('room:joined', (event: RoomEvent) => {
+        setChatItems((items) => [...items, createSystemItem(event, 'joined')]);
+      });
+
+      socket.on('room:left', (event: RoomEvent) => {
+        setChatItems((items) => [...items, createSystemItem(event, 'left')]);
+      });
+
+      socket.on('message:new', (event: MessageEvent) => {
+        setChatItems((items) => [...items, event]);
+        if (isCollapsedRef.current && event.senderId !== userId) {
+          setUnreadCount((count) => count + 1);
+        }
+      });
+
+      socket.on('summary:new', (event: StreamEvent) => {
+        const item = createStreamItem(event);
+        if (!item.text.trim()) return;
+        setSummaryItems((items) => [...items, item]);
+      });
+
+      socket.on('transcript:new', (event: StreamEvent) => {
+        const item = createStreamItem(event);
+        if (!item.text.trim()) return;
+        setTranscriptItems((items) => [...items, item]);
+      });
+    };
+
+    void loadHistory()
+      .catch((error: Error) => {
+        if (isActive) {
+          setConnectionError(error.message);
+        }
+      })
+      .finally(() => {
+        if (isActive) {
+          connectSocket();
+        }
+      });
 
     return () => {
-      socket.emit('room:leave', { roomId: roomName });
-      socket.disconnect();
+      isActive = false;
+      socket?.emit('room:leave', { roomId: roomName });
+      socket?.disconnect();
       socketRef.current = null;
     };
   }, [roomName, userId, userName]);
@@ -213,6 +311,58 @@ export default function ConferenceChat({
       text,
     });
     setInputValue('');
+  };
+
+  const runSummaryAction = async (action: () => Promise<SummaryTickerResponse>) => {
+    setIsSummaryControlPending(true);
+    setSummaryControlError(null);
+    try {
+      const payload = await action();
+      if (!payload.success) {
+        throw new Error(payload.error ?? 'Не удалось выполнить действие');
+      }
+
+      if ('active' in payload) {
+        setIsSummaryTickerActive(Boolean(payload.active));
+        if (payload.intervalSeconds) {
+          setSummaryTickerIntervalSeconds(payload.intervalSeconds);
+        }
+      }
+
+      const skippedEmptyRoom =
+        payload.reason === 'empty-room' || payload.firstRequest?.reason === 'empty-room';
+      if (skippedEmptyRoom) {
+        setSummaryControlError('В комнате нет участников, запрос саммари пропущен');
+      }
+    } catch (error) {
+      setSummaryControlError(error instanceof Error ? error.message : 'Ошибка управления саммари');
+    } finally {
+      setIsSummaryControlPending(false);
+    }
+  };
+
+  const requestSummaryNow = () => {
+    void runSummaryAction(async () => {
+      const response = await fetch(
+        getBackendHttpUrl(`conference/${encodeURIComponent(roomName)}/summary/request`),
+        { method: 'POST' },
+      );
+      return response.json() as Promise<SummaryTickerResponse>;
+    });
+  };
+
+  const updateSummaryTicker = (action: 'start' | 'stop') => {
+    void runSummaryAction(async () => {
+      const response = await fetch(getBackendHttpUrl(`conference/${encodeURIComponent(roomName)}/ticker`), {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          action,
+          intervalSeconds: summaryTickerIntervalSeconds,
+        }),
+      });
+      return response.json() as Promise<SummaryTickerResponse>;
+    });
   };
 
   const hasUnreadMessages = unreadCount > 0;
@@ -379,6 +529,95 @@ export default function ConferenceChat({
           </div>
         )}
 
+        {activeTab === 'summary' && canControlSummary && (
+          <div
+            style={{
+              display: 'grid',
+              gap: '8px',
+              padding: '10px 12px',
+              borderBottom: '1px solid rgba(255,255,255,0.1)',
+              background: '#0f172a',
+            }}
+          >
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <button
+                type="button"
+                onClick={requestSummaryNow}
+                disabled={isSummaryControlPending}
+                title="Запросить саммари сейчас"
+                aria-label="Запросить саммари сейчас"
+                style={{
+                  width: '34px',
+                  height: '32px',
+                  display: 'grid',
+                  placeItems: 'center',
+                  borderRadius: '8px',
+                  border: '1px solid rgba(59,130,246,0.45)',
+                  background: '#1d4ed8',
+                  color: 'white',
+                  cursor: isSummaryControlPending ? 'default' : 'pointer',
+                }}
+              >
+                <IoRefreshOutline size={16} />
+              </button>
+              <label
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '6px',
+                  minWidth: 0,
+                  color: 'rgba(255,255,255,0.72)',
+                  fontSize: '12px',
+                }}
+              >
+                <span>Интервал</span>
+                <input
+                  type="number"
+                  min={15}
+                  max={3600}
+                  value={summaryTickerIntervalSeconds}
+                  onChange={(event) => setSummaryTickerIntervalSeconds(Number(event.target.value))}
+                  style={{
+                    width: '70px',
+                    padding: '6px 8px',
+                    borderRadius: '8px',
+                    border: '1px solid rgba(255,255,255,0.18)',
+                    background: '#111827',
+                    color: 'white',
+                  }}
+                />
+                <span>сек</span>
+              </label>
+              <button
+                type="button"
+                onClick={() => updateSummaryTicker(isSummaryTickerActive ? 'stop' : 'start')}
+                disabled={isSummaryControlPending}
+                title={isSummaryTickerActive ? 'Остановить авто-саммари' : 'Запустить авто-саммари'}
+                aria-label={isSummaryTickerActive ? 'Остановить авто-саммари' : 'Запустить авто-саммари'}
+                style={{
+                  marginLeft: 'auto',
+                  width: '34px',
+                  height: '32px',
+                  display: 'grid',
+                  placeItems: 'center',
+                  borderRadius: '8px',
+                  border: `1px solid ${isSummaryTickerActive ? 'rgba(248,113,113,0.5)' : 'rgba(34,197,94,0.5)'}`,
+                  background: isSummaryTickerActive ? '#991b1b' : '#166534',
+                  color: 'white',
+                  cursor: isSummaryControlPending ? 'default' : 'pointer',
+                }}
+              >
+                {isSummaryTickerActive ? <IoStopOutline size={16} /> : <IoPlayOutline size={16} />}
+              </button>
+            </div>
+            {summaryControlError && (
+              <div style={{ color: '#fbbf24', fontSize: '12px', lineHeight: 1.35 }}>
+                {summaryControlError}
+              </div>
+            )}
+          </div>
+        )}
+
         <div style={{ flex: 1, overflowY: 'auto', padding: '16px', display: 'flex', flexDirection: 'column', gap: '12px' }}>
         {activeTab === 'chat' &&
           chatItems.map((item) => {
@@ -437,9 +676,7 @@ export default function ConferenceChat({
                 wordBreak: 'break-word',
               }}
             >
-                <div style={{ lineHeight: 1.5 }}>
-                  <ReactMarkdown>{item.text}</ReactMarkdown>
-                </div>
+              <div style={{ lineHeight: 1.5 }}>{item.text}</div>
               <div style={{ fontSize: '10px', opacity: 0.65, marginTop: '6px' }}>
                 {formatTime(item.createdAt)}
               </div>

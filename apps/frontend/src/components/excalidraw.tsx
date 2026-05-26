@@ -69,7 +69,7 @@ export default function ExcalidrawBoard({ creatorIdentity }: ExcalidrawBoardProp
     } catch (error) {
       console.error('Failed to send board snapshot:', error);
     }
-  }, [canEdit, excalidrawAPI, localParticipant.identity, localParticipant.name, room?.name]);
+  }, [canEdit, excalidrawAPI, localParticipant.identity, localParticipant.name, room]);
 
   useEffect(() => {
     if (!room) return;

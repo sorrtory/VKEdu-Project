@@ -8,10 +8,12 @@ import { KafkaConsumerService } from "./kafka-consumer.service"
 import { KafkaLoggingInterceptor } from "./kafka-logging.interceptor"
 import { KafkaExceptionFilter } from "./kafka-exception.filter"
 import { TranscriptGateway } from "./transcript.gateway"
+import { ConferenceHistoryModule } from "../conference-history/conference-history.module"
 
 @Module({
   // Register kafka producer
   imports: [
+    ConferenceHistoryModule,
     ClientsModule.registerAsync([
       {
         name: "KAFKA_SERVICE",

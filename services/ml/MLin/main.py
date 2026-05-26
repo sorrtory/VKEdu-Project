@@ -11,6 +11,7 @@ from resources import (
     REDIS_HOST,
     REDIS_PORT,
     TOPIC_CHAT,
+    TOPIC_LIVEKIT_CHAT,
     TOPIC_CHAT_AI_REQUEST,
     TOPIC_CHAT_AI_RESPONSE,
     TOPIC_CHAT_FILE,
@@ -35,15 +36,16 @@ logging.basicConfig(
 )
 logger = logging.getLogger("mlin")
 
-INPUT_TOPICS = [
+INPUT_TOPICS = list(dict.fromkeys([
     TOPIC_CHAT,
+    TOPIC_LIVEKIT_CHAT,
     TOPIC_CHAT_AI_REQUEST,
     TOPIC_CHAT_AI_RESPONSE,
     TOPIC_CHAT_FILE,
     TOPIC_BOARDCROP,
     TOPIC_TRANSCRIPT_VOICE,
     TOPIC_TRANSCRIPT_VOICE_LEGACY,
-]
+]))
 
 ALL_REQUIRED_TOPICS = INPUT_TOPICS + [TOPIC_TRANSCRIPT_OUT]
 
@@ -88,7 +90,7 @@ def main():
             raw = msg.value().decode("utf-8")
 
             try:
-                if topic == TOPIC_CHAT:
+                if topic in (TOPIC_CHAT, TOPIC_LIVEKIT_CHAT):
                     handle_chat(redis_client, producer, raw)
                 elif topic == TOPIC_CHAT_AI_REQUEST:
                     handle_chat_ai_request(redis_client, producer, raw)
@@ -98,7 +100,7 @@ def main():
                     handle_chat_file(redis_client, producer, raw)
                 elif topic == TOPIC_BOARDCROP:
                     handle_boardcrop(redis_client, producer, raw)
-                elif topic == TOPIC_TRANSCRIPT_VOICE:
+                elif topic in (TOPIC_TRANSCRIPT_VOICE, TOPIC_TRANSCRIPT_VOICE_LEGACY):
                     handle_transcript_voice(redis_client, producer, raw)
                 else:
                     logger.warning("Unknown topic: %s", topic)

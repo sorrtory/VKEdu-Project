@@ -13,12 +13,17 @@ describe("ConferenceController", () => {
     offMicro: jest.fn(),
     offCam: jest.fn(),
     uploadBoardCrop: jest.fn(),
+    requestSummary: jest.fn(),
+    getSummaryTickerStatus: jest.fn(),
+    updateSummaryTicker: jest.fn(),
   }
 
   beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({
       controllers: [ConferenceController],
-      providers: [{ provide: ConferenceService, useValue: mockConferenceService }],
+      providers: [
+        { provide: ConferenceService, useValue: mockConferenceService },
+      ],
     }).compile()
 
     controller = module.get<ConferenceController>(ConferenceController)
@@ -60,6 +65,51 @@ describe("ConferenceController", () => {
   it("uploadBoardCrop rejects missing file", async () => {
     await expect(
       controller.uploadBoardCrop("room-1", {}, undefined),
+    ).rejects.toBeInstanceOf(BadRequestException)
+  })
+
+  it("requestSummary delegates to service", async () => {
+    mockConferenceService.requestSummary.mockResolvedValue({
+      success: true,
+      requested: true,
+    })
+
+    await expect(controller.requestSummary("room-1")).resolves.toEqual({
+      success: true,
+      requested: true,
+    })
+    expect(mockConferenceService.requestSummary).toHaveBeenCalledWith("room-1")
+  })
+
+  it("updateSummaryTicker starts ticker with interval", async () => {
+    mockConferenceService.updateSummaryTicker.mockResolvedValue({
+      success: true,
+      active: true,
+      intervalSeconds: 60,
+    })
+
+    await expect(
+      controller.updateSummaryTicker("room-1", {
+        action: "start",
+        intervalSeconds: 60,
+      }),
+    ).resolves.toEqual({
+      success: true,
+      active: true,
+      intervalSeconds: 60,
+    })
+    expect(mockConferenceService.updateSummaryTicker).toHaveBeenCalledWith(
+      "room-1",
+      "start",
+      60,
+    )
+  })
+
+  it("updateSummaryTicker rejects invalid action", async () => {
+    await expect(
+      controller.updateSummaryTicker("room-1", {
+        action: "pause" as "start",
+      }),
     ).rejects.toBeInstanceOf(BadRequestException)
   })
 })

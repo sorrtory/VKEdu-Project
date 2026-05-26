@@ -14,14 +14,16 @@ describe("KafkaConsumerController", () => {
   beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({
       controllers: [KafkaConsumerController],
-      providers: [{ provide: KafkaConsumerService, useValue: mockConsumerService }],
+      providers: [
+        { provide: KafkaConsumerService, useValue: mockConsumerService },
+      ],
     }).compile()
 
     controller = module.get<KafkaConsumerController>(KafkaConsumerController)
     jest.clearAllMocks()
   })
 
-  it("transcriptHandler delegates conference.transcript events", () => {
+  it("transcriptHandler delegates conference.transcript events", async () => {
     const message = {
       timestamp: "2026-05-24T10:15:30.000Z",
       type: "speech",
@@ -33,13 +35,13 @@ describe("KafkaConsumerController", () => {
       text: "Hello transcript",
     }
 
-    controller.transcriptHandler(message as never)
+    await controller.transcriptHandler(message)
 
     expect(mockConsumerService.transcript).toHaveBeenCalledTimes(1)
     expect(mockConsumerService.transcript).toHaveBeenCalledWith(message)
   })
 
-  it("chatAiResponseHandler delegates conference.chat.ai.response events", () => {
+  it("chatAiResponseHandler delegates conference.chat.ai.response events", async () => {
     const message = {
       roomId: "room-1",
       senderId: "ai",
@@ -49,13 +51,13 @@ describe("KafkaConsumerController", () => {
       createdAt: "2026-05-24T10:15:30.000Z",
     }
 
-    controller.chatAiResponseHandler(message as never)
+    await controller.chatAiResponseHandler(message as never)
 
     expect(mockConsumerService.chatAiResponse).toHaveBeenCalledTimes(1)
     expect(mockConsumerService.chatAiResponse).toHaveBeenCalledWith(message)
   })
 
-  it("summaryHandler delegates conference.summary.response events", () => {
+  it("summaryHandler delegates conference.summary.response events", async () => {
     const message = {
       type: "summary_response",
       room_id: "room-1",
@@ -63,7 +65,7 @@ describe("KafkaConsumerController", () => {
       timestamp: "2026-05-24T10:15:30.000Z",
     }
 
-    controller.summaryHandler(message as never)
+    await controller.summaryHandler(message)
 
     expect(mockConsumerService.summary).toHaveBeenCalledTimes(1)
     expect(mockConsumerService.summary).toHaveBeenCalledWith(message)

@@ -5,6 +5,7 @@ import Image from 'next/image';
 import Link from 'next/link';
 import { CgProfile } from 'react-icons/cg';
 import { IoMdSettings } from 'react-icons/io';
+import { FaHistory } from 'react-icons/fa';
 import { useUser } from '@/src/contexts/UserContext';
 import { useState } from 'react';
 
@@ -32,6 +33,13 @@ export default function Header() {
                     </Link>
                 </div>
                 <div className="flex gap-2">
+                    <Link
+                        href="/history"
+                        title="История конференций"
+                        className="bg-primary hover:bg-primary-hover px-4 py-2 rounded-4 h-12 w-12 flex flex-col items-center justify-center gap-2 text-white"
+                    >
+                        <FaHistory size={24}/>
+                    </Link>
                         <button className="bg-primary hover:bg-primary-hover px-4 py-2 rounded-4 h-12 w-12 flex flex-col items-center justify-center gap-2"          >
                             <IoMdSettings size={60}/>
                         </button>

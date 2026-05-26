@@ -78,7 +78,9 @@ def handle_chat(redis_client, producer, msg_value: str):
     if "chat" not in ctx:
         ctx["chat"] = []
 
-    ctx["chat"].append({"sender": data.get("senderName"), "text": text, "timestamp": data.get("createdAt")})
+    sender = data.get("senderName") or data.get("participant_identity") or "unknown"
+    timestamp = data.get("createdAt") or data.get("timestamp")
+    ctx["chat"].append({"sender": sender, "text": text, "timestamp": timestamp})
 
     if len(ctx["chat"]) > MAX_HISTORY_LENGTH:
         ctx["chat"] = ctx["chat"][-MAX_HISTORY_LENGTH:]

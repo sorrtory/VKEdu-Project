@@ -33,17 +33,17 @@ export class KafkaConsumerController {
   }
 
   @EventPattern("conference.transcript")
-  transcriptHandler(@Payload() message: TranscriptEventDto) {
-    this.kafkaConsumerService.transcript(message)
+  async transcriptHandler(@Payload() message: TranscriptEventDto) {
+    await this.kafkaConsumerService.transcript(message)
   }
 
   @EventPattern("conference.chat.ai.response")
-  chatAiResponseHandler(@Payload() message: ChatMessageEventDto) {
-    this.kafkaConsumerService.chatAiResponse(message)
+  async chatAiResponseHandler(@Payload() message: ChatMessageEventDto) {
+    await this.kafkaConsumerService.chatAiResponse(message)
   }
 
   @EventPattern("conference.summary.response")
-  summaryHandler(@Payload() message: SummaryEventDto) {
-    this.kafkaConsumerService.summary(message)
+  async summaryHandler(@Payload() message: SummaryEventDto) {
+    await this.kafkaConsumerService.summary(message)
   }
 }

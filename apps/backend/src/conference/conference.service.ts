@@ -1,4 +1,8 @@
-import { BadRequestException, Injectable } from "@nestjs/common"
+import {
+  BadRequestException,
+  Injectable,
+  OnModuleDestroy,
+} from "@nestjs/common"
 import { ConfigService } from "@nestjs/config"
 import {
   AccessToken,
@@ -9,19 +13,29 @@ import {
 } from "livekit-server-sdk"
 import { KafkaProducerService } from "../kafka/kafka-producer.service"
 import { S3StorageService, type StoredObject } from "../storage/storage.service"
+import { ConferenceHistoryService } from "../conference-history/conference-history.service"
 
 @Injectable()
-export class ConferenceService {
+export class ConferenceService implements OnModuleDestroy {
+  private static readonly MIN_SUMMARY_TICKER_INTERVAL_SECONDS = 15
+  private static readonly MAX_SUMMARY_TICKER_INTERVAL_SECONDS = 3600
+  private static readonly LIVEKIT_AGENT_PARTICIPANT_KIND = 4
+
   private readonly roomService: RoomServiceClient
   private readonly API_KEY: string
   private readonly API_SECRET: string
   private readonly LK_HOST: string
   private readonly conferenceCreators = new Map<string, string>()
+  private readonly summaryTickers = new Map<
+    string,
+    { timer: NodeJS.Timeout; intervalSeconds: number; lastRequestedAt?: string }
+  >()
 
   constructor(
     private readonly configService: ConfigService,
     private readonly storageService: S3StorageService,
     private readonly kafkaProducerService: KafkaProducerService,
+    private readonly conferenceHistoryService: ConferenceHistoryService,
   ) {
     // These environment variables are required — getOrThrow will throw at startup if missing
     this.LK_HOST = this.configService.getOrThrow<string>("BACKEND_LIVEKIT_HOST")
@@ -34,6 +48,13 @@ export class ConferenceService {
       this.API_KEY,
       this.API_SECRET,
     )
+  }
+
+  onModuleDestroy() {
+    for (const ticker of this.summaryTickers.values()) {
+      clearInterval(ticker.timer)
+    }
+    this.summaryTickers.clear()
   }
 
   // 🔍 Вспомогательный метод: проверка существования комнаты
@@ -61,6 +82,7 @@ export class ConferenceService {
     console.log(
       `[generateToken] Processing request for room: ${conferenceName}, participant: ${participantIdentity}`,
     )
+    await this.conferenceHistoryService.ensureConference(conferenceName)
 
     // 1. Проверяем, существует ли комната (SDK v2.x: listRooms принимает массив имён)
     let roomExists = false
@@ -149,6 +171,7 @@ export class ConferenceService {
 
   // Опционально: явное создание комнаты без участника (агент НЕ прикрепится)
   async createConference(conferenceName: string) {
+    await this.conferenceHistoryService.ensureConference(conferenceName)
     await this.roomService.createRoom({ name: conferenceName })
   }
 
@@ -174,6 +197,14 @@ export class ConferenceService {
       contentType: storedFile.contentType,
       size: storedFile.size,
     })
+    await this.conferenceHistoryService.saveAttachment({
+      roomId: conferenceName,
+      filename: storedFile.filename,
+      bucket: storedFile.bucket,
+      objectKey: storedFile.key,
+      contentType: storedFile.contentType,
+      size: storedFile.size,
+    })
 
     return {
       ...storedFile,
@@ -188,16 +219,18 @@ export class ConferenceService {
     participantIdentity?: string,
     participantName?: string,
   ) {
-    this.kafkaProducerService.emitBoardCropEvent({
-      conferenceName,
-      roomId: conferenceName,
-      participantIdentity,
-      participantName,
-      filename: file.originalname,
-      contentType: file.mimetype,
-      size: file.size,
-      imageBase64: file.buffer.toString("base64"),
-    })
+    await Promise.resolve(
+      this.kafkaProducerService.emitBoardCropEvent({
+        conferenceName,
+        roomId: conferenceName,
+        participantIdentity,
+        participantName,
+        filename: file.originalname,
+        contentType: file.mimetype,
+        size: file.size,
+        imageBase64: file.buffer.toString("base64"),
+      }),
+    )
 
     return {
       success: true,
@@ -216,6 +249,148 @@ export class ConferenceService {
     return {
       downloadUrl: await this.storageService.createDownloadUrl(file),
       downloadTtlSeconds: this.storageService.getDownloadTtlSeconds(),
+    }
+  }
+
+  async getChatHistory(conferenceName: string) {
+    return this.conferenceHistoryService.getChatHistory(conferenceName)
+  }
+
+  async getTranscriptHistory(conferenceName: string) {
+    return this.conferenceHistoryService.getTranscriptHistory(conferenceName)
+  }
+
+  async getSummaryHistory(conferenceName: string) {
+    return this.conferenceHistoryService.getSummaryHistory(conferenceName)
+  }
+
+  async listConferences() {
+    return this.conferenceHistoryService.listConferences()
+  }
+
+  async requestSummary(conferenceName: string) {
+    await this.conferenceHistoryService.ensureConference(conferenceName)
+
+    const activeParticipants =
+      await this.getActiveHumanParticipantCount(conferenceName)
+    if (activeParticipants === 0) {
+      return {
+        success: true,
+        requested: false,
+        reason: "empty-room",
+        activeParticipants,
+      }
+    }
+
+    const createdAt = new Date().toISOString()
+    this.kafkaProducerService.emitSummaryRequestEvent({
+      type: "summary_request",
+      roomId: conferenceName,
+      room_id: conferenceName,
+      createdAt,
+    })
+
+    const ticker = this.summaryTickers.get(conferenceName)
+    if (ticker) {
+      ticker.lastRequestedAt = createdAt
+    }
+
+    return {
+      success: true,
+      requested: true,
+      activeParticipants,
+      createdAt,
+    }
+  }
+
+  async updateSummaryTicker(
+    conferenceName: string,
+    action: "start" | "stop",
+    intervalSeconds?: number,
+  ) {
+    if (action === "stop") {
+      this.stopSummaryTicker(conferenceName)
+      return this.getSummaryTickerStatus(conferenceName)
+    }
+
+    const normalizedIntervalSeconds =
+      this.normalizeSummaryTickerInterval(intervalSeconds)
+    this.stopSummaryTicker(conferenceName)
+
+    const timer = setInterval(() => {
+      void this.requestSummary(conferenceName).catch((error: unknown) => {
+        console.error(
+          `[summaryTicker] failed to request summary for ${conferenceName}`,
+          error,
+        )
+      })
+    }, normalizedIntervalSeconds * 1000)
+
+    this.summaryTickers.set(conferenceName, {
+      timer,
+      intervalSeconds: normalizedIntervalSeconds,
+    })
+
+    const firstRequest = await this.requestSummary(conferenceName)
+    return {
+      ...this.getSummaryTickerStatus(conferenceName),
+      firstRequest,
+    }
+  }
+
+  getSummaryTickerStatus(conferenceName: string) {
+    const ticker = this.summaryTickers.get(conferenceName)
+    return {
+      success: true,
+      active: Boolean(ticker),
+      intervalSeconds: ticker?.intervalSeconds ?? null,
+      lastRequestedAt: ticker?.lastRequestedAt ?? null,
+    }
+  }
+
+  private stopSummaryTicker(conferenceName: string) {
+    const ticker = this.summaryTickers.get(conferenceName)
+    if (!ticker) {
+      return
+    }
+
+    clearInterval(ticker.timer)
+    this.summaryTickers.delete(conferenceName)
+  }
+
+  private normalizeSummaryTickerInterval(intervalSeconds?: number) {
+    const fallbackIntervalSeconds = 60
+    const value = Number(intervalSeconds ?? fallbackIntervalSeconds)
+    if (!Number.isFinite(value)) {
+      return fallbackIntervalSeconds
+    }
+
+    return Math.min(
+      ConferenceService.MAX_SUMMARY_TICKER_INTERVAL_SECONDS,
+      Math.max(
+        ConferenceService.MIN_SUMMARY_TICKER_INTERVAL_SECONDS,
+        Math.floor(value),
+      ),
+    )
+  }
+
+  private async getActiveHumanParticipantCount(conferenceName: string) {
+    try {
+      const agentName = this.configService.get<string>("LIVEKIT_AGENT_NAME")
+      const participants =
+        await this.roomService.listParticipants(conferenceName)
+      return participants.filter(
+        (participant) =>
+          Number(participant.kind) !==
+            ConferenceService.LIVEKIT_AGENT_PARTICIPANT_KIND &&
+          (!agentName || participant.identity !== agentName),
+      ).length
+    } catch (error: unknown) {
+      const livekitError = error as { status?: number }
+      if (livekitError.status === 404) {
+        return 0
+      }
+      throw error
     }
   }
 

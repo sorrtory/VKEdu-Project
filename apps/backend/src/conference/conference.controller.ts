@@ -23,6 +23,14 @@ export class ConferenceController {
     return { success: true }
   }
 
+  @Get()
+  async listConferences() {
+    return {
+      success: true,
+      items: await this.ConferenceService.listConferences(),
+    }
+  }
+
   @Post(":conferenceName/boardcrop")
   @UseInterceptors(FileInterceptor("file"))
   async uploadBoardCrop(
@@ -34,7 +42,7 @@ export class ConferenceController {
       throw new BadRequestException("file is required")
     }
 
-    return this.ConferenceService.uploadBoardCrop(
+    return await this.ConferenceService.uploadBoardCrop(
       conferenceName,
       file,
       metadata.participantIdentity,
@@ -75,6 +83,80 @@ export class ConferenceController {
     )
 
     return { success: true, ...result }
+  }
+
+  @Get(":conferenceName/chat")
+  async getChatHistory(
+    @Param("conferenceName") conferenceName: string,
+    @Query("type") type = "json",
+  ) {
+    this.assertJsonHistoryType(type)
+    return {
+      success: true,
+      items: await this.ConferenceService.getChatHistory(conferenceName),
+    }
+  }
+
+  @Get(":conferenceName/transcript")
+  async getTranscriptHistory(
+    @Param("conferenceName") conferenceName: string,
+    @Query("type") type = "json",
+  ) {
+    this.assertJsonHistoryType(type)
+    return {
+      success: true,
+      items: await this.ConferenceService.getTranscriptHistory(conferenceName),
+    }
+  }
+
+  @Get(":conferenceName/trascript")
+  async getTranscriptHistoryLegacy(
+    @Param("conferenceName") conferenceName: string,
+    @Query("type") type = "json",
+  ) {
+    return this.getTranscriptHistory(conferenceName, type)
+  }
+
+  @Get(":conferenceName/summary")
+  async getSummaryHistory(
+    @Param("conferenceName") conferenceName: string,
+    @Query("type") type = "json",
+  ) {
+    this.assertJsonHistoryType(type)
+    return {
+      success: true,
+      items: await this.ConferenceService.getSummaryHistory(conferenceName),
+    }
+  }
+
+  @Post(":conferenceName/summary/request")
+  async requestSummary(@Param("conferenceName") conferenceName: string) {
+    return await this.ConferenceService.requestSummary(conferenceName)
+  }
+
+  @Get(":conferenceName/ticker")
+  getSummaryTickerStatus(@Param("conferenceName") conferenceName: string) {
+    return this.ConferenceService.getSummaryTickerStatus(conferenceName)
+  }
+
+  @Post(":conferenceName/ticker")
+  async updateSummaryTicker(
+    @Param("conferenceName") conferenceName: string,
+    @Body()
+    body: {
+      action?: "start" | "stop"
+      intervalSeconds?: number
+    },
+  ) {
+    if (body.action !== "start" && body.action !== "stop") {
+      throw new BadRequestException("action must be start or stop")
+    }
+
+    return await this.ConferenceService.updateSummaryTicker(
+      conferenceName,
+      body.action,
+      body.intervalSeconds,
+    )
   }
 
   @Post("token")
@@ -164,5 +246,11 @@ export class ConferenceController {
       body.targettName,
     )
     return { success: true }
+  }
+
+  private assertJsonHistoryType(type: string) {
+    if (type !== "json") {
+      throw new BadRequestException("Only type=json is supported in the MVP")
+    }
   }
 }
