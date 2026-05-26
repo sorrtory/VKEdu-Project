@@ -98,12 +98,14 @@ overrides it with `S3_ENDPOINT=http://rustfs:9000`.
 ## Realtime AI Streams
 
 The MVP realtime context is kept in Redis by MLin. It listens to backend chat
-events, LiveKit chat events, whiteboard snapshots, and voice transcripts
-published by the LiveKit agent to `KAFKA_TRANSCRIPT_TOPIC`
-(`conference.transcript.voice`). MLin republishes normalized transcript chunks
-to `conference.transcript`, which the backend forwards to Socket.IO as
-`transcript:new`. Backend Kafka clients use `KAFKA_BOOTSTRAP_SERVERS` when it is
-set, falling back to `BACKEND_KAFKA_HOST:KAFKA_PORT`.
+events, LiveKit chat events, file metadata, whiteboard snapshots, and voice
+transcripts published by the LiveKit agent to `KAFKA_TRANSCRIPT_TOPIC`
+(`conference.transcript.voice`). MLin accepts both plain Kafka JSON and the
+NestJS Kafka envelope (`{ pattern, data }`) used by backend producers. MLin
+republishes normalized transcript chunks to `conference.transcript`, which the
+backend forwards to Socket.IO as `transcript:new`. Backend Kafka clients use
+`KAFKA_BOOTSTRAP_SERVERS` when it is set, falling back to
+`BACKEND_KAFKA_HOST:KAFKA_PORT`.
 
 MLout reads the same Redis context for `conference.chat.ai.request` and
 `conference.summary.request`, then publishes AI answers and summaries back to

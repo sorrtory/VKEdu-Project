@@ -2,6 +2,7 @@ import json
 from datetime import datetime, timezone
 from kafka_utils import send_response_to_kafka
 from resources import SYSTEM_PROMPT, LLM_MODEL, SUMMARY_RESPONSE_TOPIC, SUMMARY_SYSTEM_PROMPT
+from kafka_payload import parse_kafka_json
 
 def get_context(room_id, redis_client, logger):
     """Получаем контекст конференции из Redis."""
@@ -46,6 +47,18 @@ def format_context_for_prompt(ctx: dict) -> str:
             lines.append(f"- {participant}: {text}")
         parts.append("Расшифровка речи:\n" + "\n".join(lines))
 
+    # файлы
+    if "attachments" in ctx and ctx["attachments"]:
+        lines = []
+        for entry in ctx["attachments"]:
+            filename = entry.get("filename") or entry.get("objectKey") or "файл"
+            content_type = entry.get("contentType")
+            if content_type:
+                lines.append(f"- {filename} ({content_type})")
+            else:
+                lines.append(f"- {filename}")
+        parts.append("Загруженные материалы:\n" + "\n".join(lines))
+
     return "\n\n".join(parts) if parts else "Контекст пустой."
 
 def build_messages(room_id, user_message, redis_client, logger):
@@ -78,7 +91,7 @@ def build_messages(room_id, user_message, redis_client, logger):
 def handle_chat_ai_request(raw_msg, redis_client, llm_client, producer, logger):
     """Обрабатываем одно сообщение из топика conference.chat."""
     try:
-        data = json.loads(raw_msg)
+        data = parse_kafka_json(raw_msg)
     except Exception:
         logger.warning("Failed to parse message as JSON: %s", raw_msg[:100])
         return
@@ -126,7 +139,7 @@ def handle_summary_request(raw_msg, redis_client, llm_client, producer, logger):
     """Генерирует саммари и отправляет в conference.summary.response."""
     # достали контекстик
     try:
-        data = json.loads(raw_msg)
+        data = parse_kafka_json(raw_msg)
     except Exception:
         logger.warning("Invalid JSON in summary.request: %s", raw_msg[:100])
         return

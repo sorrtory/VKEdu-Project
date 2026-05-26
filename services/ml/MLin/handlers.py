@@ -5,6 +5,7 @@ from datetime import datetime, timezone
 from confluent_kafka import Producer
 from resources import MAX_HISTORY_LENGTH, TOPIC_TRANSCRIPT_OUT
 from vlm import describe_image
+from kafka_payload import parse_kafka_json
 
 logger = logging.getLogger("mlin.handlers")
 
@@ -63,7 +64,7 @@ def _publish_transcript(producer: Producer, room_id: str, transcript_text: str):
 def handle_chat(redis_client, producer, msg_value: str):
     """Обработка сообщения из conference.chat."""
     try:
-        data = json.loads(msg_value)
+        data = parse_kafka_json(msg_value)
     except Exception:
         logger.warning("Invalid JSON in conference.chat: %s", msg_value[:100])
         return
@@ -93,7 +94,7 @@ def handle_chat(redis_client, producer, msg_value: str):
 def handle_chat_ai_request(redis_client, producer, msg_value: str):
     """conference.chat.ai.request – сохраняем промпт в контекст."""
     try:
-        data = json.loads(msg_value)
+        data = parse_kafka_json(msg_value)
     except Exception:
         logger.warning("Invalid JSON in chat.ai.request: %s", msg_value[:100])
         return
@@ -115,7 +116,7 @@ def handle_chat_ai_request(redis_client, producer, msg_value: str):
 def handle_chat_ai_response(redis_client, producer, msg_value: str):
     """conference.chat.ai.response – сохраняем ответ LLM в контекст."""
     try:
-        data = json.loads(msg_value)
+        data = parse_kafka_json(msg_value)
     except Exception:
         logger.warning("Invalid JSON in chat.ai.response: %s", msg_value[:100])
         return
@@ -136,13 +137,42 @@ def handle_chat_ai_response(redis_client, producer, msg_value: str):
 
 def handle_chat_file(redis_client, producer, msg_value: str):
     """conference.chat.file – сохраняем S3-ссылку на файл в контекст."""
-    pass # TODO
+    try:
+        data = parse_kafka_json(msg_value)
+    except Exception:
+        logger.warning("Invalid JSON in chat.file: %s", msg_value[:100])
+        return
+
+    room_id = data.get("room_id") or data.get("roomId") or data.get("conferenceName")
+    object_key = data.get("objectKey")
+    filename = data.get("filename") or object_key
+    if not room_id or not object_key:
+        return
+
+    ctx = _load_context(redis_client, room_id)
+    if "attachments" not in ctx:
+        ctx["attachments"] = []
+
+    ctx["attachments"].append(
+        {
+            "filename": filename,
+            "objectKey": object_key,
+            "contentType": data.get("contentType"),
+            "size": data.get("size"),
+        }
+    )
+
+    if len(ctx["attachments"]) > MAX_HISTORY_LENGTH:
+        ctx["attachments"] = ctx["attachments"][-MAX_HISTORY_LENGTH:]
+
+    _save_context(redis_client, room_id, ctx)
+    logger.info("File context added for room %s: %s", room_id, filename)
 
 
 def handle_boardcrop(redis_client, producer, msg_value: str):
     """conference.boardcrop – обработка снимка доски через VLM, сохранение описания."""
     try:
-        data = json.loads(msg_value)
+        data = parse_kafka_json(msg_value)
     except Exception:
         logger.warning("Invalid JSON in boardcrop: %s", msg_value[:100])
         return
@@ -174,7 +204,7 @@ def handle_boardcrop(redis_client, producer, msg_value: str):
 def handle_transcript_voice(redis_client, producer, msg_value: str):
     """conference.transcript.voice – добавляет голосовую расшифровку в контекст и публикует в transcript."""
     try:
-        data = json.loads(msg_value)
+        data = parse_kafka_json(msg_value)
     except Exception:
         logger.warning("Invalid JSON in transcript.voice: %s", msg_value[:100])
         return

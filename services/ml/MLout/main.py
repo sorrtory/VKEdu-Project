@@ -63,7 +63,10 @@ def main():
     consumer = Consumer(consumer_conf)
     consumer.subscribe([CHAT_AI_REQUEST_TOPIC, SUMMARY_REQUEST_TOPIC])
 
-    logger.info("MLout started. Listening to %s", CHAT_AI_REQUEST_TOPIC, SUMMARY_RESPONSE_TOPIC)
+    logger.info(
+        "MLout started. Listening to %s",
+        [CHAT_AI_REQUEST_TOPIC, SUMMARY_REQUEST_TOPIC],
+    )
 
     def shutdown(sig, frame):
         logger.info("Shutting down MLout...")
