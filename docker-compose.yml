@@ -323,8 +323,4 @@ volumes:
   redis-data:
   ollama_data:
   rustfs-data:
-<<<<<<< HEAD
   yarn-cache:
-=======
-  yarn-cache:
->>>>>>> master
