@@ -125,7 +125,10 @@ curl -X POST "http://localhost:3000/conference/my-room/ticker" \
   -d '{"action":"stop"}'
 ```
 
-`GET /conference` returns saved rooms for the archive UI. Each room endpoint
+`GET /conference` returns saved rooms for the archive UI for the authenticated
+user only. A room is added to that personal archive when the user receives a
+conference token. Guests do not receive the shared backend archive; the frontend
+keeps a local list of guest room names in `localStorage`. Each room endpoint
 returns JSON history. New frontend clients load this history over HTTP first,
 then receive new `message:new`, `transcript:new`, and `summary:new` events over
 Socket.IO. The frontend archive lives at `/history`, with read-only room history

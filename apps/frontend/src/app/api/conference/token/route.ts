@@ -4,10 +4,12 @@ import { getBackendUrl } from '../../shared';
 export async function POST(request: NextRequest) {
   try {
     const { conferenceName, participantIdentity, participantName } = await request.json();
+    const authorization = request.headers.get('authorization');
     const response = await fetch(getBackendUrl('conference/token'), {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
+        ...(authorization ? { Authorization: authorization } : {}),
       },
       body: JSON.stringify({
         conferenceName,

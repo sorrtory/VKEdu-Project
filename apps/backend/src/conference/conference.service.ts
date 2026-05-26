@@ -14,6 +14,7 @@ import {
 import { KafkaProducerService } from "../kafka/kafka-producer.service"
 import { S3StorageService, type StoredObject } from "../storage/storage.service"
 import { ConferenceHistoryService } from "../conference-history/conference-history.service"
+import { ConferenceRole } from "../generated/prisma/enums"
 
 @Injectable()
 export class ConferenceService implements OnModuleDestroy {
@@ -78,6 +79,7 @@ export class ConferenceService implements OnModuleDestroy {
     participantIdentity: string,
     participantName: string,
     isAdmin: boolean,
+    userId?: string,
   ): Promise<{ token: string; creatorId: string }> {
     console.log(
       `[generateToken] Processing request for room: ${conferenceName}, participant: ${participantIdentity}`,
@@ -122,6 +124,15 @@ export class ConferenceService implements OnModuleDestroy {
     }
     const creatorId =
       this.conferenceCreators.get(conferenceName) ?? participantIdentity
+    if (userId) {
+      await this.conferenceHistoryService.ensureConferenceMembership(
+        conferenceName,
+        userId,
+        creatorId === participantIdentity
+          ? ConferenceRole.host
+          : ConferenceRole.participant,
+      )
+    }
 
     // 4. Если комната создаётся впервые — добавляем конфигурацию с агентом
     if (!roomExists) {
@@ -264,8 +275,8 @@ export class ConferenceService implements OnModuleDestroy {
     return this.conferenceHistoryService.getSummaryHistory(conferenceName)
   }
 
-  async listConferences() {
-    return this.conferenceHistoryService.listConferences()
+  async listConferences(userId: string) {
+    return this.conferenceHistoryService.listConferences(userId)
   }
 
   async requestSummary(conferenceName: string) {

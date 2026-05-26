@@ -6,12 +6,13 @@ import { VideoConference } from '@livekit/components-react/prefabs';
 import '@livekit/components-styles';
 import { useUser } from '@/src/contexts/UserContext';
 import { useGuestParticipant } from '@/src/lib/livekit';
+import { rememberGuestConference } from '@/src/lib/conference-history';
 
 export default function RoomPage() {
   const [token, setToken] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [reloadKey, setReloadKey] = useState(0);
-  const { user, isAuthLoading } = useUser();
+  const { user, accessToken, isAuthLoading } = useUser();
   const guest = useGuestParticipant();
 
   const roomName = process.env.NEXT_PUBLIC_LIVEKIT_ROOM;
@@ -40,6 +41,7 @@ export default function RoomPage() {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
+            ...(accessToken ? { Authorization: `Bearer ${accessToken}` } : {}),
           },
           signal: controller.signal,
           body: JSON.stringify({
@@ -69,6 +71,9 @@ export default function RoomPage() {
 
         if (isMounted) {
           setToken(payload.token);
+          if (!user) {
+            rememberGuestConference(roomName);
+          }
         }
       } catch (requestError) {
         if (controller.signal.aborted) {
@@ -91,7 +96,7 @@ export default function RoomPage() {
       isMounted = false;
       controller.abort();
     };
-  }, [isParticipantLoading, participantIdentity, participantName, reloadKey, roomName]);
+  }, [accessToken, isParticipantLoading, participantIdentity, participantName, reloadKey, roomName, user]);
 
   const livekitUrl = process.env.NEXT_PUBLIC_LIVEKIT_URL;
 

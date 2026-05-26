@@ -3,21 +3,8 @@
 import Link from 'next/link';
 import { useEffect, useMemo, useState } from 'react';
 import { FaClock, FaComments, FaFileAlt, FaListUl, FaPlay, FaSearch } from 'react-icons/fa';
-
-interface ConferenceArchiveItem {
-  id: string;
-  roomName: string;
-  title: string;
-  description?: string | null;
-  startedAt?: string | null;
-  updatedAt: string;
-  counts: {
-    chatMessages: number;
-    transcriptEntries: number;
-    summaryEntries: number;
-    attachments: number;
-  };
-}
+import { useUser } from '@/src/contexts/UserContext';
+import { getGuestConferenceHistory, type ConferenceArchiveItem } from '@/src/lib/conference-history';
 
 interface ConferenceListResponse {
   success: boolean;
@@ -42,13 +29,35 @@ export default function ConferenceHistoryPage() {
   const [query, setQuery] = useState('');
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const { user, accessToken, isAuthLoading } = useUser();
 
   useEffect(() => {
     let isActive = true;
 
     async function loadConferences() {
+      if (isAuthLoading) {
+        return;
+      }
+
+      if (isActive) {
+        setIsLoading(true);
+      }
+
+      if (!user || !accessToken) {
+        if (isActive) {
+          setItems(getGuestConferenceHistory());
+          setError(null);
+          setIsLoading(false);
+        }
+        return;
+      }
+
       try {
-        const response = await fetch('/api/conference');
+        const response = await fetch('/api/conference', {
+          headers: {
+            Authorization: `Bearer ${accessToken}`,
+          },
+        });
         const payload = (await response.json()) as ConferenceListResponse;
 
         if (!response.ok || !payload.success) {
@@ -75,7 +84,7 @@ export default function ConferenceHistoryPage() {
     return () => {
       isActive = false;
     };
-  }, []);
+  }, [accessToken, isAuthLoading, user]);
 
   const filteredItems = useMemo(() => {
     const normalizedQuery = query.trim().toLowerCase();
@@ -96,7 +105,9 @@ export default function ConferenceHistoryPage() {
           <div>
             <h1 className="text-2xl font-semibold">История конференций</h1>
             <p className="mt-1 text-sm text-slate-300">
-              Сохранённые чаты, саммари и расшифровки по комнатам.
+              {user
+                ? 'Сохранённые чаты, саммари и расшифровки по вашим комнатам.'
+                : 'Комнаты, в которые вы заходили на этом устройстве.'}
             </p>
           </div>
 

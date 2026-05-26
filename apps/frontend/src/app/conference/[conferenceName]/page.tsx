@@ -5,13 +5,14 @@ import ConferenceRoom from '@/src/components/conference';
 import { useParams } from 'next/navigation';
 import { useUser } from '@/src/contexts/UserContext';
 import { useGuestParticipant } from '@/src/lib/livekit';
+import { rememberGuestConference } from '@/src/lib/conference-history';
 
 export default function ConferenceRoomPage() {
   const [token, setToken] = useState<string | null>(null);
   const [creatorId, setCreatorId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [reloadKey, setReloadKey] = useState(0);
-  const { user, isAuthLoading } = useUser();
+  const { user, accessToken, isAuthLoading } = useUser();
   const guest = useGuestParticipant();
 
   const params = useParams();
@@ -39,6 +40,7 @@ export default function ConferenceRoomPage() {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
+            ...(accessToken ? { Authorization: `Bearer ${accessToken}` } : {}),
           },
           body: JSON.stringify({
             participantName,
@@ -67,6 +69,9 @@ export default function ConferenceRoomPage() {
         if (isMounted) {
           setToken(payload.token);
           setCreatorId(payload.creatorId);
+          if (!user) {
+            rememberGuestConference(roomName);
+          }
         }
       } catch (requestError) {
         if (controller.signal.aborted) return;
@@ -86,7 +91,7 @@ export default function ConferenceRoomPage() {
       isMounted = false;
       controller.abort();
     };
-  }, [isParticipantLoading, participantIdentity, participantName, reloadKey, roomName]);
+  }, [accessToken, isParticipantLoading, participantIdentity, participantName, reloadKey, roomName, user]);
 
   const serverUrl = process.env.NEXT_PUBLIC_LIVEKIT_URL;
 

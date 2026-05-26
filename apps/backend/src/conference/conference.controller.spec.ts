@@ -16,6 +16,7 @@ describe("ConferenceController", () => {
     requestSummary: jest.fn(),
     getSummaryTickerStatus: jest.fn(),
     updateSummaryTicker: jest.fn(),
+    listConferences: jest.fn(),
   }
 
   beforeEach(async () => {
@@ -79,6 +80,63 @@ describe("ConferenceController", () => {
       requested: true,
     })
     expect(mockConferenceService.requestSummary).toHaveBeenCalledWith("room-1")
+  })
+
+  it("listConferences returns only authenticated user conferences", async () => {
+    mockConferenceService.listConferences.mockResolvedValue([{ id: "room-1" }])
+
+    await expect(
+      controller.listConferences({
+        user: {
+          userId: "user-1",
+          email: "alice@example.com",
+          nickname: "Alice",
+        },
+      } as never),
+    ).resolves.toEqual({
+      success: true,
+      items: [{ id: "room-1" }],
+    })
+    expect(mockConferenceService.listConferences).toHaveBeenCalledWith("user-1")
+  })
+
+  it("listConferences returns empty list for guests", async () => {
+    await expect(controller.listConferences({} as never)).resolves.toEqual({
+      success: true,
+      items: [],
+    })
+    expect(mockConferenceService.listConferences).not.toHaveBeenCalled()
+  })
+
+  it("generateToken uses authenticated user identity when present", async () => {
+    mockConferenceService.generateToken.mockResolvedValue({
+      token: "token",
+      creatorId: "user-1",
+    })
+
+    await expect(
+      controller.generateToken(
+        {
+          user: {
+            userId: "user-1",
+            email: "alice@example.com",
+            nickname: "Alice",
+          },
+        } as never,
+        {
+          conferenceName: "room-1",
+          participantName: "Ignored",
+          participantIdentity: "guest:fake",
+        },
+      ),
+    ).resolves.toEqual({ token: "token", creatorId: "user-1" })
+    expect(mockConferenceService.generateToken).toHaveBeenCalledWith(
+      "room-1",
+      "user-1",
+      "Alice",
+      true,
+      "user-1",
+    )
   })
 
   it("updateSummaryTicker starts ticker with interval", async () => {

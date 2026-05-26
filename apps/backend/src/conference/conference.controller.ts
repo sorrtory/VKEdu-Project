@@ -6,12 +6,16 @@ import {
   Param,
   Post,
   Query,
+  Req,
   UploadedFile,
+  UseGuards,
   UseInterceptors,
 } from "@nestjs/common"
 import { FileInterceptor } from "@nestjs/platform-express"
 import { ConferenceService } from "./conference.service"
 import { BoardCropMetadataDto } from "./dto/board-crop.dto"
+import { OptionalJwtAuthGuard } from "../auth/optional-jwt-auth.guard"
+import type { RequestWithOptionalUser } from "../auth/types/request-with-optional-user.type"
 
 @Controller("conference")
 export class ConferenceController {
@@ -24,10 +28,13 @@ export class ConferenceController {
   }
 
   @Get()
-  async listConferences() {
+  @UseGuards(OptionalJwtAuthGuard)
+  async listConferences(@Req() req: RequestWithOptionalUser) {
     return {
       success: true,
-      items: await this.ConferenceService.listConferences(),
+      items: req.user
+        ? await this.ConferenceService.listConferences(req.user.userId)
+        : [],
     }
   }
 
@@ -160,7 +167,9 @@ export class ConferenceController {
   }
 
   @Post("token")
+  @UseGuards(OptionalJwtAuthGuard)
   async generateToken(
+    @Req() req: RequestWithOptionalUser,
     @Body()
     body: {
       conferenceName: string
@@ -168,14 +177,17 @@ export class ConferenceController {
       participantIdentity?: string
     },
   ) {
+    const user = req.user ?? null
     const participantIdentity =
-      body.participantIdentity?.trim() || body.participantName
+      user?.userId ?? body.participantIdentity?.trim() ?? body.participantName
+    const participantName = user?.nickname ?? body.participantName
 
     const result = await this.ConferenceService.generateToken(
       body.conferenceName,
       participantIdentity,
-      body.participantName,
+      participantName,
       true,
+      user?.userId,
     )
     return result
   }

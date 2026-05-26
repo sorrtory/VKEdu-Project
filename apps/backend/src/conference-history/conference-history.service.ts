@@ -1,6 +1,6 @@
 import { Injectable } from "@nestjs/common"
 import { PrismaService } from "../prisma/prisma.service"
-import { ChatMessageKind } from "../generated/prisma/enums"
+import { ChatMessageKind, ConferenceRole } from "../generated/prisma/enums"
 import { Prisma } from "../generated/prisma/client"
 
 interface SaveChatMessageParams {
@@ -45,6 +45,29 @@ export class ConferenceHistoryService {
 
   async ensureConference(roomName: string) {
     return this.getOrCreateConference(roomName)
+  }
+
+  async ensureConferenceMembership(
+    roomName: string,
+    userId: string,
+    role: ConferenceRole,
+  ) {
+    const conference = await this.getOrCreateConference(roomName)
+
+    return this.prisma.conferenceUser.upsert({
+      where: {
+        userId_conferenceId: {
+          userId,
+          conferenceId: conference.conferenceId,
+        },
+      },
+      create: {
+        userId,
+        conferenceId: conference.conferenceId,
+        role,
+      },
+      update: {},
+    })
   }
 
   async saveChatMessage(params: SaveChatMessageParams) {
@@ -160,8 +183,13 @@ export class ConferenceHistoryService {
     }))
   }
 
-  async listConferences() {
+  async listConferences(userId: string) {
     const conferences = await this.prisma.conference.findMany({
+      where: {
+        participants: {
+          some: { userId },
+        },
+      },
       orderBy: { updatedAt: "desc" },
       include: {
         _count: {
