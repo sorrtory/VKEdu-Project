@@ -191,7 +191,7 @@ function RoomContent({
             >
               {showBoard && (
                 <div style={{ minHeight: 0, overflow: 'hidden' }}>
-                  <ExcalidrawBoard creatorIdentity={creatorId} />
+                  <ExcalidrawBoard creatorIdentity={creatorId} roomName={roomName} />
                 </div>
               )}
 

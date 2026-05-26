@@ -182,6 +182,29 @@ export class ConferenceService {
     }
   }
 
+  async uploadBoardCrop(
+    conferenceName: string,
+    file: Express.Multer.File,
+    participantIdentity?: string,
+    participantName?: string,
+  ) {
+    this.kafkaProducerService.emitBoardCropEvent({
+      conferenceName,
+      roomId: conferenceName,
+      participantIdentity,
+      participantName,
+      filename: file.originalname,
+      contentType: file.mimetype,
+      size: file.size,
+      imageBase64: file.buffer.toString("base64"),
+    })
+
+    return {
+      success: true,
+      message: "Board snapshot sent to Kafka",
+    }
+  }
+
   async createDownloadUrl(conferenceName: string, file: string) {
     const safeConferenceName =
       conferenceName.trim().replace(/[^a-zA-Z0-9._-]/g, "_") || "file"

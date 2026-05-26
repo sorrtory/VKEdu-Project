@@ -3,6 +3,7 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { IoChevronBack, IoChevronForward, IoChatbubbleEllipsesOutline } from 'react-icons/io5';
 import { io, type Socket } from 'socket.io-client';
+import ReactMarkdown from 'react-markdown';
 
 type ChatTab = 'chat' | 'summary' | 'transcript';
 type SenderType = 'chat' | 'ai' | 'speaker';
@@ -436,7 +437,9 @@ export default function ConferenceChat({
                 wordBreak: 'break-word',
               }}
             >
-              <div>{item.text}</div>
+                <div style={{ lineHeight: 1.5 }}>
+                  <ReactMarkdown>{item.text}</ReactMarkdown>
+                </div>
               <div style={{ fontSize: '10px', opacity: 0.65, marginTop: '6px' }}>
                 {formatTime(item.createdAt)}
               </div>

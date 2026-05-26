@@ -86,8 +86,8 @@ REDIS_PORT=6379
 
 KAFKA_PORT=9092
 KAFKA_BOOTSTRAP_SERVERS=broker:9092
-KAFKA_TRANSCRIPT_TOPIC=calls.transcript
-KAFKA_CHAT_TOPIC=calls.chat
+KAFKA_TRANSCRIPT_TOPIC=conference.transcript.voice
+KAFKA_CHAT_TOPIC=conference.chat
 
 LIVEKIT_PORT=7880
 LIVEKIT_RTC_USE_EXTERNAL_IP=false
@@ -122,6 +122,9 @@ MLIN_KAFKA_GROUP_ID=mlin_group
 MLIN_KAFKA_TOPICS=speechEvent,boardEvent
 MLOUT_KAFKA_GROUP_ID=mlout_group
 MLOUT_KAFKA_TOPICS=chatEvent,summaryEvent
+LLM_API_KEY=change-me-to-your-llm-key
+LLM_BASE_URL=https://api.openai.com/v1
+LLM_MODEL=gpt-4o-mini
 ```
 
 ## Пример `.env.production`

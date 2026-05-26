@@ -1,79 +1,82 @@
-import os
 import signal
 import sys
-import base64
-from confluent_kafka import Consumer, KafkaError, KafkaException
+import logging
+from confluent_kafka import Consumer, KafkaError, KafkaException, Producer
 import redis
-import time
-from confluent_kafka.admin import AdminClient, NewTopic
 
-BOOTSTRAP_SERVERS = os.getenv('KAFKA_BOOTSTRAP_SERVERS', 'localhost:9092')
-GROUP_ID = os.getenv('KAFKA_GROUP_ID', 'mlin_group')
-TOPICS = os.getenv('KAFKA_TOPICS', 'speechEvent,boardEvent').split(',')
-AUTO_OFFSET_RESET = os.getenv('KAFKA_AUTO_OFFSET_RESET', 'earliest')
+from resources import (
+    BOOTSTRAP_SERVERS,
+    GROUP_ID,
+    AUTO_OFFSET_RESET,
+    REDIS_HOST,
+    REDIS_PORT,
+    TOPIC_CHAT,
+    TOPIC_CHAT_AI_REQUEST,
+    TOPIC_CHAT_AI_RESPONSE,
+    TOPIC_CHAT_FILE,
+    TOPIC_BOARDCROP,
+    TOPIC_TRANSCRIPT_VOICE,
+    TOPIC_TRANSCRIPT_VOICE_LEGACY,
+    TOPIC_TRANSCRIPT_OUT,
+)
+from kafka_utils import wait_for_topics
+from handlers import (
+    handle_chat,
+    handle_chat_ai_request,
+    handle_chat_ai_response,
+    handle_chat_file,
+    handle_boardcrop,
+    handle_transcript_voice,
+)
 
-REDIS_HOST = os.getenv('REDIS_HOST', 'redis')
-REDIS_PORT = int(os.getenv('REDIS_PORT', 6379))
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s [%(levelname)s] %(name)s: %(message)s"
+)
+logger = logging.getLogger("mlin")
 
-redis_client = redis.Redis(host=REDIS_HOST, port=REDIS_PORT, decode_responses=True)
+INPUT_TOPICS = [
+    TOPIC_CHAT,
+    TOPIC_CHAT_AI_REQUEST,
+    TOPIC_CHAT_AI_RESPONSE,
+    TOPIC_CHAT_FILE,
+    TOPIC_BOARDCROP,
+    TOPIC_TRANSCRIPT_VOICE,
+    TOPIC_TRANSCRIPT_VOICE_LEGACY,
+]
 
-def wait_for_topics(bootstrap_servers, topics, timeout=60):
-    start = time.time()
-    last_error = None
-    while time.time() - start < timeout:
-        try:
-            admin = AdminClient({'bootstrap.servers': bootstrap_servers})
-            existing = set(admin.list_topics(timeout=10).topics.keys())
-            missing = [t for t in topics if t not in existing]
-            if missing:
-                print(f"Creating topics: {missing}")
-                new_topics = [NewTopic(t, num_partitions=1, replication_factor=1) for t in missing]
-                fs = admin.create_topics(new_topics)
-                for topic, f in fs.items():
-                    f.result(timeout=10)
-                    print(f"Topic {topic} created")
-            else:
-                print("All topics already exist")
-            return
-        except Exception as e:
-            last_error = e
-            print(f"Waiting for Kafka/topics... {e}")
-            time.sleep(2)
-    raise Exception(f"Failed to ensure topics after {timeout} seconds: {last_error}")
+ALL_REQUIRED_TOPICS = INPUT_TOPICS + [TOPIC_TRANSCRIPT_OUT]
 
-def speech_event_handler(msg):
-    print(f"[speechEvent] Received: {msg.value().decode('utf-8')}")
-
-def board_event_handler(msg):
-    base64_data = msg.value().decode('utf-8')
-    print(f"[boardEvent] Received image, base64 length: {len(base64_data)} chars")
-    # Декодировка:
-    # image_data = base64.b64decode(base64_data)
-    # print(f"Decoded image size: {len(image_data)} bytes")
-
-def signal_handler(sig, frame):
-    print("\nStopping MLin...")
-    sys.exit(0)
 
 def main():
-    conf = {
-        'bootstrap.servers': BOOTSTRAP_SERVERS,
-        'group.id': GROUP_ID,
-        'auto.offset.reset': AUTO_OFFSET_RESET,
-        'enable.auto.commit': False,
-    }
-    wait_for_topics(BOOTSTRAP_SERVERS, TOPICS)
-    consumer = Consumer(conf)
-    print("Consumer created, subscribing...", flush=True)
-    consumer.subscribe(TOPICS)
-    print(f"Subscribed to {TOPICS}", flush=True)
+    wait_for_topics(BOOTSTRAP_SERVERS, ALL_REQUIRED_TOPICS)
 
-    print(f"MLin started. Subscribed to: {TOPICS}")
+    redis_client = redis.Redis(host=REDIS_HOST, port=REDIS_PORT, decode_responses=True)
+    producer = Producer({"bootstrap.servers": BOOTSTRAP_SERVERS})
+
+    consumer_conf = {
+        "bootstrap.servers": BOOTSTRAP_SERVERS,
+        "group.id": GROUP_ID,
+        "auto.offset.reset": AUTO_OFFSET_RESET,
+        "enable.auto.commit": False,
+    }
+    consumer = Consumer(consumer_conf)
+    consumer.subscribe(INPUT_TOPICS)
+
+    logger.info("MLin started. Listening to %s", INPUT_TOPICS)
+
+    def shutdown(sig, frame):
+        logger.info("Shutting down MLin...")
+        consumer.close()
+        sys.exit(0)
+
+    signal.signal(signal.SIGINT, shutdown)
+    signal.signal(signal.SIGTERM, shutdown)
+
     try:
         while True:
             msg = consumer.poll(timeout=1.0)
             if msg is None:
-                # print("No message received", flush=True)
                 continue
             if msg.error():
                 if msg.error().code() == KafkaError._PARTITION_EOF:
@@ -82,19 +85,34 @@ def main():
                     raise KafkaException(msg.error())
 
             topic = msg.topic()
-            if topic == 'speechEvent':
-                speech_event_handler(msg)
-            elif topic == 'boardEvent':
-                board_event_handler(msg)
-            else:
-                print(f"Unknown topic: {topic}")
+            raw = msg.value().decode("utf-8")
+
+            try:
+                if topic == TOPIC_CHAT:
+                    handle_chat(redis_client, producer, raw)
+                elif topic == TOPIC_CHAT_AI_REQUEST:
+                    handle_chat_ai_request(redis_client, producer, raw)
+                elif topic == TOPIC_CHAT_AI_RESPONSE:
+                    handle_chat_ai_response(redis_client, producer, raw)
+                elif topic == TOPIC_CHAT_FILE:
+                    handle_chat_file(redis_client, producer, raw)
+                elif topic == TOPIC_BOARDCROP:
+                    handle_boardcrop(redis_client, producer, raw)
+                elif topic == TOPIC_TRANSCRIPT_VOICE:
+                    handle_transcript_voice(redis_client, producer, raw)
+                else:
+                    logger.warning("Unknown topic: %s", topic)
+            except Exception:
+                logger.exception("Error processing message from topic %s", topic)
 
             consumer.commit(msg)
     except KeyboardInterrupt:
-        signal_handler(None, None)
+        shutdown(None, None)
+    except Exception:
+        logger.exception("Unexpected error")
     finally:
         consumer.close()
 
-if __name__ == '__main__':
-    signal.signal(signal.SIGINT, signal_handler)
+
+if __name__ == "__main__":
     main()
