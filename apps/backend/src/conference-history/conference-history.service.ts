@@ -202,27 +202,71 @@ export class ConferenceHistoryService {
   }
 
   private async getOrCreateConference(roomName: string) {
-    return this.prisma.conference.upsert({
+    const existingConference = await this.prisma.conference.findUnique({
       where: { roomName },
-      update: {},
-      create: {
-        roomName,
-        title: roomName,
-        startedAt: new Date(),
-      },
     })
+    if (existingConference) {
+      return existingConference
+    }
+
+    try {
+      return await this.prisma.conference.create({
+        data: {
+          roomName,
+          title: roomName,
+          startedAt: new Date(),
+        },
+      })
+    } catch (error) {
+      if (
+        error instanceof Prisma.PrismaClientKnownRequestError &&
+        error.code === "P2002"
+      ) {
+        const conference = await this.prisma.conference.findUnique({
+          where: { roomName },
+        })
+
+        if (conference) {
+          return conference
+        }
+      }
+
+      throw error
+    }
   }
 
   private async getOrCreateChat(roomName: string) {
     const conference = await this.getOrCreateConference(roomName)
 
-    return this.prisma.conferenceChat.upsert({
+    const existingChat = await this.prisma.conferenceChat.findUnique({
       where: { conferenceId: conference.conferenceId },
-      update: {},
-      create: {
-        conferenceId: conference.conferenceId,
-      },
     })
+    if (existingChat) {
+      return existingChat
+    }
+
+    try {
+      return await this.prisma.conferenceChat.create({
+        data: {
+          conferenceId: conference.conferenceId,
+        },
+      })
+    } catch (error) {
+      if (
+        error instanceof Prisma.PrismaClientKnownRequestError &&
+        error.code === "P2002"
+      ) {
+        const chat = await this.prisma.conferenceChat.findUnique({
+          where: { conferenceId: conference.conferenceId },
+        })
+
+        if (chat) {
+          return chat
+        }
+      }
+
+      throw error
+    }
   }
 
   private parseDate(value?: string | Date) {
