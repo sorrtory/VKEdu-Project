@@ -94,3 +94,42 @@ infra, the compose stack includes RustFS on ports `9000` (S3 API) and `9001`
 (console). For a backend process on the host, use
 `S3_ENDPOINT=http://localhost:9000`. For the backend container, `.env.production`
 overrides it with `S3_ENDPOINT=http://rustfs:9000`.
+
+## Realtime AI Streams
+
+The MVP realtime context is kept in Redis by MLin. It listens to backend chat
+events, LiveKit chat events, whiteboard snapshots, and voice transcripts
+published to `KAFKA_TRANSCRIPT_TOPIC` (`calls.transcript` by default). MLin
+republishes normalized transcript chunks to `conference.transcript`, which the
+backend forwards to Socket.IO as `transcript:new`.
+
+MLout reads the same Redis context for `conference.chat.ai.request` and
+`conference.summary.request`, then publishes AI answers and summaries back to
+Kafka for backend websocket delivery.
+
+The backend persists the same MVP streams in PostgreSQL:
+
+```bash
+curl "http://localhost:3000/conference"
+curl "http://localhost:3000/conference/my-room/chat"
+curl "http://localhost:3000/conference/my-room/transcript"
+curl "http://localhost:3000/conference/my-room/summary"
+curl -X POST "http://localhost:3000/conference/my-room/summary/request"
+curl -X POST "http://localhost:3000/conference/my-room/ticker" \
+  -H "Content-Type: application/json" \
+  -d '{"action":"start","intervalSeconds":60}'
+curl -X POST "http://localhost:3000/conference/my-room/ticker" \
+  -H "Content-Type: application/json" \
+  -d '{"action":"stop"}'
+```
+
+`GET /conference` returns saved rooms for the archive UI. Each room endpoint
+returns JSON history. New frontend clients load this history over HTTP first,
+then receive new `message:new`, `transcript:new`, and `summary:new` events over
+Socket.IO. The frontend archive lives at `/history`, with read-only room history
+at `/history/[conferenceName]`.
+
+The creator can request a summary manually from the conference sidebar or start
+a backend ticker. Before each `conference.summary.request` emit, the backend
+checks LiveKit participants and skips the request when no non-agent participant
+is currently in the room.

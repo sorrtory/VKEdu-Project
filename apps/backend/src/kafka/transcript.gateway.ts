@@ -60,7 +60,7 @@ export class TranscriptGateway {
   private readonly logger = new Logger(TranscriptGateway.name)
 
   @SubscribeMessage("room:join")
-  joinRoom(
+  async joinRoom(
     @MessageBody() payload: JoinTranscriptRoomPayload,
     @ConnectedSocket() client: Socket,
   ) {
@@ -69,12 +69,12 @@ export class TranscriptGateway {
     }
 
     const roomName = `room:${payload.roomId}`
-    client.join(roomName)
+    await client.join(roomName)
     this.logger.debug(`Socket ${client.id} joined room ${roomName}`)
   }
 
   @SubscribeMessage("room:leave")
-  leaveRoom(
+  async leaveRoom(
     @MessageBody() payload: JoinTranscriptRoomPayload,
     @ConnectedSocket() client: Socket,
   ) {
@@ -83,7 +83,7 @@ export class TranscriptGateway {
     }
 
     const roomName = `room:${payload.roomId}`
-    client.leave(roomName)
+    await client.leave(roomName)
     this.logger.debug(`Socket ${client.id} left room ${roomName}`)
   }
 
@@ -99,7 +99,9 @@ export class TranscriptGateway {
       participantIdentity: message.participant_identity,
     }
 
-    const roomName = payload.roomId ? `room:${payload.roomId}` : payload.roomName
+    const roomName = payload.roomId
+      ? `room:${payload.roomId}`
+      : payload.roomName
 
     if (roomName) {
       this.server.to(roomName).emit("transcript:new", payload)

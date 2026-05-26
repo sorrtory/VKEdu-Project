@@ -8,7 +8,7 @@ from confluent_kafka import Producer
 from config import (
     KAFKA_BOOTSTRAP_SERVERS,
     KAFKA_CHAT_TOPIC,
-    KAFKA_TRANSCRIPT_VOICE_TOPIC,
+    KAFKA_TRANSCRIPT_TOPIC,
 )
 
 logger = logging.getLogger("livekit-agent.kafka")
@@ -98,7 +98,7 @@ class KafkaEventPublisher:
             sequence=sequence,
         )
         self._produce(
-            topic=KAFKA_TRANSCRIPT_VOICE_TOPIC,
+            topic=KAFKA_TRANSCRIPT_TOPIC,
             key=room_id,
             message=message,
             log_label="transcript",

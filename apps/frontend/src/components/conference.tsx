@@ -224,6 +224,7 @@ function RoomContent({
               roomName={roomName}
               userId={userId}
               userName={userName}
+              creatorId={creatorId}
               isCollapsed={isChatCollapsed}
               onCollapsedChange={setIsChatCollapsed}
             />
