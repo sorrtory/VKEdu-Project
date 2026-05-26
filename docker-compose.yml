@@ -18,10 +18,11 @@ services:
       - ./infra/nginx/certs:/etc/nginx/certs:ro
     networks:
       - app-network
+
   redis:
     image: redis:alpine
     profiles: ["infra", "db", "livekit", "ml"]
-    command: redis-server --appendonly yes # Enable data persistence
+    command: redis-server --appendonly yes
     volumes:
       - redis-data:/data
     restart: unless-stopped
@@ -91,6 +92,7 @@ services:
     depends_on:
       redis:
         condition: service_healthy
+
   egress:
     image: livekit/egress:v1.12.0
     profiles: ["livekit", "infra"]
@@ -140,11 +142,11 @@ services:
     image: postgres:alpine
     profiles: ["infra", "db"]
     environment:
-      POSTGRES_DB: ${POSTGRES_DB} # on a first run, it will create a database with this name
+      POSTGRES_DB: ${POSTGRES_DB}
       POSTGRES_USER: ${POSTGRES_USER}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -157,11 +159,9 @@ services:
     networks:
       - app-network
 
-  # small migrating helper
   migrate:
     image: node:22-bookworm-slim
-    profiles:
-      - tools
+    profiles: ["tools"]
     working_dir: /app
     volumes:
       - .:/app
@@ -323,4 +323,8 @@ volumes:
   redis-data:
   ollama_data:
   rustfs-data:
+<<<<<<< HEAD
   yarn-cache:
+=======
+  yarn-cache:
+>>>>>>> master
