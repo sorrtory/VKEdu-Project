@@ -175,6 +175,9 @@ jobs:
           echo "Validating Compose config"
           "${COMPOSE_WITH_TOOLS[@]}" config -q
 
+          echo "Stopping old containers and removing volumes"
+          "${COMPOSE_WITH_TOOLS[@]}" down -v --remove-orphans || true
+
           echo "Pulling required images"
           "${COMPOSE_WITH_TOOLS[@]}" pull postgres migrate || true
 

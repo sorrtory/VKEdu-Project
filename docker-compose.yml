@@ -159,7 +159,8 @@ services:
 
   migrate:
     image: node:22-bookworm-slim
-    profiles: ["tools"]
+    profiles:
+      - tools
     working_dir: /app
     volumes:
       - .:/app
@@ -174,10 +175,16 @@ services:
       - app-network
     command: >
       bash -lc "
+        set -euo pipefail &&
+        apt-get update -y &&
+        apt-get install -y --no-install-recommends openssl ca-certificates &&
         corepack enable &&
+        corepack prepare yarn@4.14.1 --activate &&
+        yarn config set --home enableTelemetry 0 &&
         yarn install --immutable &&
+        yarn workspace backend exec prisma generate &&
         yarn workspace backend exec prisma migrate deploy &&
-        yarn workspace backend exec prisma db seed
+        yarn workspace backend exec tsx prisma/seed.ts
       "
 
   mlin:
