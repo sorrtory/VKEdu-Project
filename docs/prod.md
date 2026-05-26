@@ -6,6 +6,8 @@
 docker compose --env-file .env --env-file .env.production -f docker-compose.yml --profile infra --profile livekit --profile web --profile ml up -d --pull always
 ```
 
+После `docker compose down -v` deploy поднимает только `postgres`, затем применяет Prisma schema через `yarn prisma db push`, выполняет `yarn seed`, и только после этого поднимает весь стек. В текущем репозитории migrations Prisma не хранятся, поэтому production-путь опирается на schema push для создания таблиц в пустой базе.
+
 ## Что должно быть на сервере
 
 - Ubuntu/Debian сервер с публичным IP и доменом, который указывает на этот IP.

@@ -152,8 +152,35 @@ services:
     volumes:
       - postgres-data:/var/lib/postgresql
     restart: unless-stopped
+    ports:
+      - "127.0.0.1:5432:5432"
     networks:
       - app-network
+
+  # small migrating helper
+  migrate:
+    image: node:22-bookworm-slim
+    profiles:
+      - tools
+    working_dir: /app
+    volumes:
+      - .:/app
+      - yarn-cache:/usr/local/share/.cache/yarn
+    env_file:
+      - .env
+      - .env.production
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - app-network
+    command: >
+      bash -lc "
+        corepack enable &&
+        yarn install --immutable &&
+        yarn workspace backend exec prisma migrate deploy &&
+        yarn workspace backend exec prisma db seed
+      "
 
   mlin:
     image: ${APP_IMAGE_PREFIX:-ghcr.io/sorrtory/vkedu-project}-mlin:${APP_IMAGE_TAG:-latest}
@@ -296,3 +323,4 @@ volumes:
   redis-data:
   ollama_data:
   rustfs-data:
+  yarn-cache:
